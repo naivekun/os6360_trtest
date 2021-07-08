@@ -1,0 +1,33 @@
+# $(warning "Started") 
+#SUBDIRS = dxChxGen
+
+#List of subfolders to include in build
+MODULES := dxChxGen 
+
+
+ifeq (EXISTS, $(CH3_FAMILY))
+	#SUBDIRS += dxCh3
+	MODULES += dxCh3
+endif
+ifeq (EXISTS, $(CH3P_FAMILY))
+	#SUBDIRS += dxCh3p
+	 MODULES += dxCh3p
+endif
+
+
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

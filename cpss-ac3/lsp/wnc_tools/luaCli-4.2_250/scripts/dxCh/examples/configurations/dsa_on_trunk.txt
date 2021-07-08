@@ -1,0 +1,16 @@
+// TAG:               DSA; trunk; rxtx
+// Short Description: Enable rxtx and LACP trap to cpu
+// Description:       Enable LACP trap to CPU, rxtx, loopback mode
+//                    to generate storm on the transmit port
+
+end
+configure
+mac pdu protocol lacp trap device ${dev}
+interface ethernet ${dev}/${port[2]}
+channel-group 2
+loopback mode internal
+force link up
+exit
+do traffic
+protocol enable rxtx
+end

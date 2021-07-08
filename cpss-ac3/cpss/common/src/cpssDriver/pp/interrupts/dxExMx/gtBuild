@@ -1,0 +1,36 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+LIB_NAME = cpssDrvPpInterruptsDxExMx.lib
+
+## Common files
+C_FILE_LIST  = cpssDrvPpIntInterrupts.c cpssDrvPpIntInit.c cpssDrvPpIntCtrl.c
+
+## Add DXCHX files
+ifeq (EXISTS, $(CHX_FAMILY))
+  C_FILE_LIST += cpssDrvPpIntDxChEventsUnify.c \
+                 cpssDrvPpIntDefDxChLion2.c \
+                 cpssDrvPpIntDefDxChBobcat2.c cpssDrvPpIntDefDxChXcat3.c \
+                 cpssDrvPpIntDefDxChBobcat3.c cpssDrvPpIntDefDxChBobK.c \
+                 cpssDrvPpIntDefDxChAldrin.c \
+                 cpssDrvPpIntDefDxChFalcon.c \
+                 cpssDrvPpIntDefDxChAldrin2.c
+endif
+
+## Add PX Pipe files
+ifeq (EXISTS, $(PX_FAMILY))
+  C_FILE_LIST += cpssDrvPpIntDefPxPipe.c
+endif
+
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

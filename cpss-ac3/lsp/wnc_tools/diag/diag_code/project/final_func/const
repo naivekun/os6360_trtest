@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# RUN_BY_ROUND: run several times
+# RUN_PERMANENT: run forever
+# RUN_UNTIL_TIMEOUT: run until time expires
+RUN_BY_ROUND=1
+RUN_PERMANENT=2
+RUN_UNTIL_TIMEOUT=3
+
+# STOP_NEVER: never stop
+# STOP_ON_ERROR: stop on error detected
+STOP_NEVER=1
+STOP_ON_ERROR=2
+
+# RUNNING: still running
+# ERROR: something goes wrong
+# STOPPING: stopping
+# LISTENING: wait for signal
+RUNNING=0
+ERROR=1
+STOPPING=2
+LISTENING=3
+
+# stamp file indicates cmd daemon is running
+RUN_STAMP_FILE=".cmd_daemon_stamp"
+
+
+# MNT_CANT_MOUNTED: persistent media cannot mounted
+# MNT_NEW_MOUNTED:  persistent media new mounted with writable
+# MNT_MOUNTED_NOT_WRITABLE: persistent media has been mounted with not writable
+# MNT_MOUNTED_WRITABLE: persistent media has been mounted with writable
+MNT_CANT_MOUNTED=0
+MNT_NEW_MOUNTED=1
+MNT_MOUNTED_NOT_WRITABLE=2
+MNT_MOUNTED_WRITABLE=3

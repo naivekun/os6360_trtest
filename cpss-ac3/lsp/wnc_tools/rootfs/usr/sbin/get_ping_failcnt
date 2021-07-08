@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#This command to get fail count of ping test.
+
+PING_DATA_FOLDER=/usr/data/pingtest
+PING_CNT_FILE=$PING_DATA_FOLDER/ping_cnt
+PING_DATA_PREFIX=pingdata_ 
+
+NOTFOUND=$PING_DATA_PREFIX"notfound_"
+NOLINK=$PING_DATA_PREFIX"nolink_"
+PINGFAIL=$PING_DATA_PREFIX"pingfail_"
+SELFTESTFAIL=$PING_DATA_PREFIX"selftest_fail_"
+
+if [ -f $PING_TEST_CNT ];
+then
+   PING_TEST_CNT=`cat $PING_CNT_FILE`
+else
+   PING_TEST_CNT=0
+fi
+
+CNT_NOTFOUND=`ls $PING_DATA_FOLDER | grep -c "$NOTFOUND"` 
+CNT_NOLINK=`ls $PING_DATA_FOLDER | grep -c "$NOLINK"` 
+CNT_PINGFAIL=`ls $PING_DATA_FOLDER | grep -c "$PINGFAIL"` 
+CNT_SELFTESTFAIL=`ls $PING_DATA_FOLDER | grep -c "$SELFTESTFAIL"` 
+
+echo Ping Test Count = $PING_TEST_CNT
+echo Device not found fail = $CNT_NOTFOUND
+echo No link fail = $CNT_NOLINK
+echo Ping fail = $CNT_PINGFAIL
+echo Selftest fail = $CNT_SELFTESTFAIL
+
+exit 0

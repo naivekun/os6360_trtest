@@ -1,0 +1,43 @@
+# $(warning "Started")
+MODULES := generic
+addExMx :=
+
+ifeq (EXISTS, $(EX_FAMILY))
+        addExMx = YES
+endif
+ifeq (EXISTS, $(MX_FAMILY))
+        addExMx = YES
+endif
+ifeq (EXISTS, $(CHX_FAMILY))
+        MODULES += dxCh
+endif
+ifeq (EXISTS, $(SAL_FAMILY))
+        MODULES += dxSal
+endif
+ifeq (YES, $(addExMx))
+        MODULES += exMx
+endif
+ifeq (EXISTS, $(PM_FAMILY))
+        MODULES += exMxPm
+endif
+
+##List of subfolders to include in build
+#MODULES := \
+# dxCh \
+# generic 
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINPPDRV_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

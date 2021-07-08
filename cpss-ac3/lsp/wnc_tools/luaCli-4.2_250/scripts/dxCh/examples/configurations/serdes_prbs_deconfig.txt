@@ -1,0 +1,10 @@
+// TAG:               prbs; disable; show; lane;
+// Short Description: stop prbs on all lanes of specific port
+// Description:       stop prbs on all lanes of specific port
+//                    
+end
+configure 
+interface ethernet ${@@serdes_env.devNum}/${@@serdes_env.PortNum}  
+no prbs enable lane all
+//prbs show lane all
+end     

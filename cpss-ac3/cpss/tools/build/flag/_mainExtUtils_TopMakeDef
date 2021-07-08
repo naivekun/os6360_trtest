@@ -1,0 +1,58 @@
+
+###########################################
+##                                       ##
+##    Top Make file for CPSS drivers     ##
+##                                       ##
+###########################################
+
+$(PROJ_NAME)_PROJECT_PATH := \
+        $(PATH_EXT_UTILS)    \
+        $(PATH_COMMON)       \
+        $(PATH_MXML)         \
+        $(PATH_MAINOS)
+
+ifeq (EXISTS, $(ASIC_SIMULATION))
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_SIM)
+endif
+
+# check if need to use 'GM_USED'.
+#needed when 'force' image to use GM.
+#also needed for Puma2,3 where use always GM. (for simulation)
+ifeq (EXISTS, $(FORCE_GM_USE))
+  $(PROJ_NAME)_AD_CFLAGS += $(FD)GM_USED
+endif
+ifeq (EXISTS, $(CHX_FAMILY))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_PP_DRV)
+endif
+ifeq (EXISTS, $(PX_FAMILY))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_PX_DRV)
+endif
+ifeq (yes, $(CMD_LUA_CLI))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_LUA)
+endif
+
+##################
+## GALTIS FLAGS ##
+##################
+ifneq (EXCLUDE_LIB, $(EXCLUDE_GALTIS))
+        $(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_GALTIS
+endif
+
+$(PROJ_NAME)_AD_CFLAGS += $(FD)CONFIG_DDR3
+
+
+#################
+## DEBUG FLAGS ##
+#################
+ifdef PRESTERA_DEBUG
+        $(PROJ_NAME)_CDEBUG = $(FD)PRESTERA_DEBUG
+endif
+
+########################
+## WNC_CPSS_IPC FLAGS ##
+########################
+ifeq (yes, $(WNC_CPSS_IPC))
+    $(PROJ_NAME)_AD_CFLAGS += $(FD)WNC_CPSS_IPC
+endif
+
+$(PROJ_NAME)_PROJECT_PATH += $(LUA_SRCPATH)

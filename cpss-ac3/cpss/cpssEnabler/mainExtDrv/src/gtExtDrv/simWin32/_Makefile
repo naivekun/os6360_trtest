@@ -1,0 +1,189 @@
+# $(warning "Started")
+#C_EXCLUDE_FILE_LIST =
+
+        MODULES :=
+ifeq (win32, $(OS_RUN))
+
+  ifeq (EXISTS, $(CHX_FAMILY))
+        #List of subfolders to include in build
+        MODULES :=simDragonite
+  endif
+
+  ifeq (SX_FAMILY, $(PRESTERA_FAMILY))
+        #C_EXCLUDE_FILE_LIST = win32SmiHwCtrl.c
+
+        FILES := \
+                win32DragoniteBsp.c         \
+                win32DragoniteDrv.c         \
+                win32EthPortCtrl.c          \
+                win32Gen.c                  \
+                win32HsuDrv.c               \
+                win32IntDrv.c               \
+                win32RhodesTwsiHwCtrl.c     \
+                win32SmiDrvCtrl.c           \
+                win32SohoHwIfOp.c           \
+                win32SohoSmiHwCtrl.c        \
+                win32StubsCacheMng.c        \
+                win32StubsDmaDrv.c          \
+                win32StubsGppIsr.c          \
+                win32StubsHwIfDrv.c         \
+                win32StubsI2cDrv.c          \
+                win32StubsPciDrvAsicSim.c   \
+                win32StubsResetDrv.c        \
+                win32StubsUartDrv.c         \
+                win32TwsiHwCtrl.c
+
+  else
+          ifeq (SX_FAMILY, $(SECOND_FAMILY))
+                #C_EXCLUDE_FILE_LIST = win32SmiHwCtrl.c
+
+                FILES := \
+                        win32DragoniteBsp.c         \
+                        win32DragoniteDrv.c         \
+                        win32EthPortCtrl.c          \
+                        win32Gen.c                  \
+                        win32HsuDrv.c               \
+                        win32IntDrv.c               \
+                        win32RhodesTwsiHwCtrl.c     \
+                        win32SmiDrvCtrl.c           \
+                        win32SohoHwIfOp.c           \
+                        win32SohoSmiHwCtrl.c        \
+                        win32StubsCacheMng.c        \
+                        win32StubsDmaDrv.c          \
+                        win32StubsGppIsr.c          \
+                        win32StubsHwIfDrv.c         \
+                        win32StubsI2cDrv.c          \
+                        win32StubsPciDrvAsicSim.c   \
+                        win32StubsResetDrv.c        \
+                        win32StubsUartDrv.c         \
+                        win32TwsiHwCtrl.c
+
+
+          else 
+                #C_EXCLUDE_FILE_LIST =  win32SohoSmiHwCtrl.c
+
+                FILES := \
+                        win32DragoniteBsp.c         \
+                        win32DragoniteDrv.c         \
+                        win32EthPortCtrl.c          \
+                        win32Gen.c                  \
+                        win32HsuDrv.c               \
+                        win32IntDrv.c               \
+                        win32RhodesTwsiHwCtrl.c     \
+                        win32SmiDrvCtrl.c           \
+                        win32SmiHwCtrl.c            \
+                        win32SohoHwIfOp.c           \
+                        win32StubsCacheMng.c        \
+                        win32StubsDmaDrv.c          \
+                        win32StubsGppIsr.c          \
+                        win32StubsHwIfDrv.c         \
+                        win32StubsI2cDrv.c          \
+                        win32StubsPciDrvAsicSim.c   \
+                        win32StubsResetDrv.c        \
+                        win32StubsUartDrv.c         \
+                        win32TwsiHwCtrl.c
+          endif
+  endif
+else
+        FILES := \
+                win32DragoniteBsp.c\
+                win32DragoniteDrv.c\
+                win32EthPortCtrl.c\
+                win32Gen.c\
+                win32HsuDrv.c\
+                win32IntDrv.c\
+                win32RhodesTwsiHwCtrl.c\
+                win32SmiDrvCtrl.c\
+                win32SmiHwCtrl.c\
+                win32SohoHwIfOp.c\
+                win32SohoSmiHwCtrl.c\
+                win32StubsCacheMng.c\
+                win32StubsDmaDrv.c\
+                win32StubsGppIsr.c\
+                win32StubsHwIfDrv.c\
+                win32StubsI2cDrv.c\
+                win32StubsPciDrvAsicSim.c\
+                win32StubsResetDrv.c\
+                win32StubsUartDrv.c\
+                win32TwsiHwCtrl.c
+
+endif
+
+ifeq (1, $(LINUX_SIM))
+    #C_EXCLUDE_FILE_LIST = win32SohoSmiHwCtrl.c
+        FILES := \
+                win32DragoniteBsp.c         \
+                win32DragoniteDrv.c         \
+                win32EthPortCtrl.c          \
+                win32Gen.c                  \
+                win32HsuDrv.c               \
+                win32IntDrv.c               \
+                win32RhodesTwsiHwCtrl.c     \
+                win32SmiDrvCtrl.c           \
+                win32SmiHwCtrl.c            \
+                win32SohoHwIfOp.c           \
+                win32StubsCacheMng.c        \
+                win32StubsDmaDrv.c          \
+                win32StubsGppIsr.c          \
+                win32StubsHwIfDrv.c         \
+                win32StubsI2cDrv.c          \
+                win32StubsPciDrvAsicSim.c   \
+                win32StubsResetDrv.c        \
+                win32StubsUartDrv.c         \
+                win32TwsiHwCtrl.c
+
+endif
+
+ifneq (A1, $(DRAGONITE_TYPE))
+        #C_EXCLUDE_FILE_LIST += win32DragoniteBsp.c win32DragoniteDrv.c
+        #  win32SohoSmiHwCtrl.c        
+
+        FILES := \
+                win32EthPortCtrl.c          \
+                win32Gen.c                  \
+                win32HsuDrv.c               \
+                win32IntDrv.c               \
+                win32RhodesTwsiHwCtrl.c     \
+                win32SmiDrvCtrl.c           \
+                win32SmiHwCtrl.c            \
+                win32SohoHwIfOp.c           \
+                win32StubsCacheMng.c        \
+                win32StubsDmaDrv.c          \
+                win32StubsGppIsr.c          \
+                win32StubsHwIfDrv.c         \
+                win32StubsI2cDrv.c          \
+                win32StubsPciDrvAsicSim.c   \
+                win32StubsResetDrv.c        \
+                win32StubsUartDrv.c         \
+                win32TwsiHwCtrl.c
+
+endif
+
+
+#$(warning "FILES = $(FILES)")
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+        LIB_NAME = mainExtDrv.lib
+endif
+
+
+
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainExtDrv.lib
+    cpssEnabler_mainExtDrv_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

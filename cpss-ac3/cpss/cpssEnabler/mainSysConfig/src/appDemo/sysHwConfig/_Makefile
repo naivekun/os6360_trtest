@@ -1,0 +1,108 @@
+# $(warning "Started") 
+
+######################
+## CPSS FAMILY TYPE ##
+######################
+ifeq (EXISTS, $(EX_FAMILY))
+  EXMX_FAMILY = EXIST
+endif
+ifeq (EXISTS, $(TG_FAMILY))
+  EXMX_FAMILY = EXIST
+endif
+ifeq (EXISTS, $(TD_FAMILY))
+  EXMX_FAMILY = EXIST
+endif
+ifeq (EXISTS, $(CHX_FAMILY))
+  DX_FAMILY = EXIST
+endif
+ifeq (EXISTS, $(SAL_FAMILY))
+  DX_FAMILY = EXIST
+endif
+ifeq (EXISTS, $(PM_FAMILY))
+  PM_DEVICE = EXIST
+endif
+
+
+USE_FA_FILES = NOT_USED
+USE_XBAR_FILES = NOT_USED
+
+EXMX_FILES := gtAppDemoExMxSysConfig.c
+
+DX_FILES :=     gtAppDemoDxSysConfig.c          \
+                gtAppDemoQT2025PhyConfig.c      \
+                gtAppDemoSfPhyIf.c              \
+                gtAppDemoLion2FabricForBc2.c
+                
+ifeq (YES, $(INCLUDE_TM))
+	DX_FILES += gtAppDemoTmConfig.c 
+	DX_FILES += gtAppDemoTmUtils.c  
+endif
+
+
+PM_FILES := gtAppDemoExMxPmSysConfig.c
+
+FILES := gtAppInit.c gtAppDemoGenSysConfig.c gtAppDemoPciConfig.c gtAppDemoSmiConfig.c appDemoDb.c
+FILES += appDemoStaticDb.c gtAppDemoZarlinkConfig.c
+
+
+
+XBAR_FILES = gtAppDemoXbarConfig_stub.c
+ifeq (PRESTERA, $(XBAR_VENDOR))
+  XBAR_FILES := gtAppDemoXbarConfig.c
+endif
+
+FA_FILES = gtAppDemoFaConfig_stub.c
+ifeq (PRESTERA, $(FA_VENDOR))
+  FA_FILES := gtAppDemoFaConfig.c
+endif
+
+
+ifeq (EXIST, $(EXMX_FAMILY))
+ FILES += $(EXMX_FILES)
+ USE_FA_FILES = USED
+ USE_XBAR_FILES = USED
+endif
+
+ifeq (EXIST, $(DX_FAMILY))
+ FILES += $(DX_FILES)
+endif
+
+ifeq (EXIST, $(PM_DEVICE))
+ FILES += $(PM_FILES)
+endif
+
+ifeq (USED, $(USE_FA_FILES))
+ FILES += $(FA_FILES)
+endif
+
+ifeq (USED, $(USE_XBAR_FILES))
+ FILES += $(XBAR_FILES)
+endif
+
+#ifeq (EXISTS, $(CHX_FAMILY))
+# CFLAGS += $(FD)IMPL_TM
+#endif
+
+LIB_NAME = mainSysConfig.lib
+
+
+#List of subfolders to include in build
+MODULES := 
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainSysConfig.lib
+    cpssEnabler_mainSysConfig_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

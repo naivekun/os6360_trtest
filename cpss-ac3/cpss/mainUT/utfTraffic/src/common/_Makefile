@@ -1,0 +1,60 @@
+# $(warning "Started")
+
+
+#List of subfolders to include in build
+MODULES := \
+ customer
+
+#List of files to include in list
+FILES := \
+ tgfAutoFlow.c \
+ tgfBridgeGen.c \
+ tgfBridgeL2EcmpGen.c \
+ tgfCncGen.c \
+ tgfCommon.c \
+ tgfConfigGen.c \
+ tgfCosGen.c \
+ tgfCscdGen.c \
+ tgfCutThrough.c \
+ tgfDiagGen.c \
+ tgfDitGen.c \
+ tgfInlifGen.c \
+ tgfIpGen.c \
+ tgfIpfixGen.c \
+ tgfL2MllGen.c \
+ tgfLion2FabricGen.c \
+ tgfLogicalTargetGen.c \
+ tgfLpmGen.c \
+ tgfMirror.c \
+ tgfMplsGen.c \
+ tgfNetIfGen.c \
+ tgfNstGen.c \
+ tgfOamGen.c \
+ tgfPacketGen.c \
+ tgfPclGen.c \
+ tgfPolicerGen.c \
+ tgfPolicerStageGen.c \
+ tgfPortGen.c \
+ tgfProtectionGen.c \
+ tgfPtpGen.c \
+ tgfStcGen.c \
+ tgfTcamGen.c \
+ tgfTcamManagerGen.c \
+ tgfTrunkGen.c \
+ tgfTunnelGen.c \
+ tgfVntGen.c \
+ tgfQcnGen.c\
+ tgfExactMatchGen.c \
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

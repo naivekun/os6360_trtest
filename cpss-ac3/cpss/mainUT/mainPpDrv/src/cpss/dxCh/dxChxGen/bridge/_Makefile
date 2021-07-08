@@ -1,0 +1,37 @@
+# $(warning "Started") 
+#LIB_NAME = cpssDxChGenBridgeUT.lib
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ cpssDxChBrgCountUT.c \
+ cpssDxChBrgE2PhyUT.c \
+ cpssDxChBrgEgrFltUT.c \
+ cpssDxChBrgFdbRoutingUT.c \
+ cpssDxChBrgFdbUT.c \
+ cpssDxChBrgGenUT.c \
+ cpssDxChBrgL2EcmpUT.c \
+ cpssDxChBrgMcUT.c \
+ cpssDxChBrgNestVlanUT.c \
+ cpssDxChBrgPeUT.c \
+ cpssDxChBrgPrvEdgeVlanUT.c \
+ cpssDxChBrgSecurityBreachUT.c \
+ cpssDxChBrgSrcIdUT.c \
+ cpssDxChBrgStpUT.c \
+ cpssDxChBrgVlanUT.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

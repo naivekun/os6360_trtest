@@ -1,0 +1,92 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH = 
+#INCLUDE_PATH = 
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+	LIB_NAME = gtOs.lib
+endif
+
+ifeq (1, $(LINUX_SIM))
+	ifneq (EXISTS, $(RTOS_ON_SIM))
+		INCLUDE_PATH += -I$(DIST_HOME)/include
+	endif
+else
+	ifneq (yes,$(MV_KERNEL_EXT_NEWDRIVER))
+		ifeq (6,$(KPATCHLEVEL))
+			#SUBDIRS = 2_6
+			KERNELSUBDIRS = 2_6
+			INCLUDE_PATH = -I$(DIST_HOME)/include -I./kerneldrv/2_6
+		else
+			ifeq (4,$(KPATCHLEVEL))
+				#SUBDIRS = 2_4
+				KERNELSUBDIRS = 2_4
+				INCLUDE_PATH = -I$(DIST_HOME) -I./kerneldrv/2_4
+			else
+				SUBDIRS =
+				$(error kernel not supported)
+			endif
+		endif
+	else
+		SUBDIRS = NONE
+		AD_CFLAGS += -DMV_KERNEL_EXT_NEWDRIVER
+	endif
+endif
+
+# flag kernel patches
+ifeq (yes,$(KERNEL_SYSCALL_TABLE_EXPORTED))
+	AD_CFLAGS += -DMVKERNELEXT_SYSCALLS
+endif
+ifeq (yes,$(KERNEL_TASK_STRUCT_EXTENDED))
+	AD_CFLAGS += -DMVKERNELEXT_TASK_STRUCT
+endif
+
+# WA: Enable userspace mutexes for SHLIB
+# This is required due to number of mutex limit (hardcoded in kernel)
+# It was possible to increase it in module command line
+ifneq (yes,$(MV_KERNEL_EXT_MUTEXES))
+	AD_CFLAGS += -DOS_USERSPACE_MUTEXES=512
+endif
+
+ifneq (yes,$(MV_KERNEL_EXT_BUILD))
+	SUBDIRS = NONE
+endif
+
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake
+
+ifeq (yes,$(MV_KERNEL_EXT_NEWDRIVER))
+## comment to build kernel module
+#APP_DEMO_ONLY=YES
+
+ifeq (YES,$(APP_DEMO_ONLY))
+	COPY_MODULES=
+	KERNELSUBDIRS=
+else
+	KERNEL_MODULE_SUBDIR = kerneldrv_mvKernelExt
+	KERNELSUBDIRS = $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+	COPY_MODULES = copy_kernel_module
+endif
+
+ifeq (NO,$(LINUX_BUILD_KERNEL))
+	COPY_MODULES=
+	KERNELSUBDIRS=
+endif
+
+build_dir: $(SCRAP_DIR) $(LIB_DIR) $(COPY_MODULES)
+
+copy_kernel_module:
+	rm -rf $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+	-mkdir $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+	cp -R driver/* $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+
+endif

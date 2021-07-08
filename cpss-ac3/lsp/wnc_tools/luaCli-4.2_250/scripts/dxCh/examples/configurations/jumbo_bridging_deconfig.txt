@@ -1,0 +1,11 @@
+// TAG:               Jumbo-frame;vlan; restore; default;
+// Short Description: Remove vlan#2 for dev#0 and disable Jumbo 9K on ports
+// Description:       Remove vlan#2 for dev#0
+//                    disable Jumbo 9K on ports
+end
+configure
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+no jumbo-frame
+exit
+no interface vlan device ${dev} vid 2
+end

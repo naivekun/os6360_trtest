@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+# catch CTRL-c and gracefully exit
+# or else script just explodes
+Signal.trap('INT') { exit 1 }
+
+require_relative '../lib/msign/cli'
+
+MSign::CLI.start(ARGV)

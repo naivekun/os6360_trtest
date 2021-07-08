@@ -1,0 +1,179 @@
+#!/bin/bash
+
+# ## Include ## #
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/defines
+source ${dir_path}/sh_funcs/exit
+source ${dir_path}/sh_funcs/print
+source ${dir_path}/sh_funcs/sdkutils_mrvl
+
+prog_name=`echo ${0} | awk -F / '{print $NF}'`
+
+# ## Functions ## #
+
+function usage() {
+echo "
+Usage:
+NAME
+        006_pcie_controller - test PCIE controller
+
+SYNOPSIS
+        006_pcie_controller [-t] [-h]
+
+DESCRIPTION
+         006_pcie_controller is used to run on Master SoC
+         has to issue command to slave SoC to create a FDB entry
+         and read register of slave SoC. It is to confirm that the
+         communication between two SoC via this PCIe bus works normally.
+
+MANDATORY OPTIONS
+        At least one optional option is needed.
+
+OPTIONAL OPTIONS
+        -t    test PCIE controller        
+
+        -h    Help message
+
+PASS CRITERIA
+        - test PCIE controller (-t):
+            SUCCESS: Can create a FDB entry and read register of slave SoC
+                Display: PASS
+                Return code: 0
+
+            ERROR: Can't create a FDB entry and read register of slave SoC
+                Display: FAIL
+                Return code: 1
+
+Example:
+        006_pcie_controller -t
+" >&2
+}
+
+function error_msg() {
+
+    # 1: error_code, 2: error_msg
+
+    # ERROR CODE
+    #   Input error : 1
+    #   Option error: 2
+    #   System error: 3
+    #   Read error  : 4
+    #   Write error : 5 
+    #   Test error  : 6 
+
+    if [ ${1} -eq 1 ]; then
+        echo -e "\n[Input error] ${2}" >&2
+    elif [ ${1} -eq 2 ]; then
+        :
+    elif [ ${1} -eq 3 ]; then
+        echo -e "\n[System error] ${2}" >&2
+    elif [ ${1} -eq 4 ]; then
+        echo -e "\n[Read error] ${2}" >&2
+    elif [ ${1} -eq 5 ]; then
+        echo -e "\n[Write error] ${2}" >&2
+    elif [ ${1} -eq 6 ]; then
+        echo -e "\n[Test error] ${2}" >&2
+    fi
+    quit ${1}
+}
+
+function check_mac_rule() {
+
+    local file_path=${1}
+    local mac_address=${2}
+    local check_word=${3}
+
+    wait_cpss
+    cpss_set_mac_table "1" "1" "1/0" ${mac_address} add > ${file_path}
+    sync
+    cpss_get_mac_table "1" >> ${file_path}
+    sync
+    echo `cpss_load_config_file "${file_path}" show` | grep "${check_word}"
+}
+
+function restore_mac_rule() {
+
+    local file_path=${1}
+    cpss_clear_all_dynamic_mac_table 1 > ${file_path}
+    sync
+    cpss_load_config_file ${file_path} no_show
+}
+
+# ## Initial variables ## #
+
+sku_file_path="/usr/local/sku"
+product_name=`cat ${sku_file_path}`
+
+mac_rule_file_path="/tmp/mac_rule"
+mac_address="00:00:00:00:00:11"
+check_word="${mac_address} 1 0 No Eth 1/0"
+
+mode=""
+
+# ## Check sys argvs ## #
+
+if [ $# -lt 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] At least one optional option is needed."
+fi
+
+while getopts ":th" arg
+do
+    case ${arg} in      
+        t)
+            if [ -z ${mode} ]; then
+                mode=1
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        :)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Option \"-${OPTARG}\" requires an argument"
+            ;;
+        ?)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Unknown option \"-${OPTARG}\""
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] No options were passed"
+fi
+
+case ${product_name} in
+    OS6360-10 | OS6360-P10)
+        error_msg 6 "SKU: ${product_name} is not support this command: ${prog_name}"
+        ;;
+    OS6360-P24X | OS6360-PH24)
+        error_msg 6 "SKU: ${product_name} is not support this command: ${prog_name}"
+        ;;
+    OS6360-P48X)
+        if [ ${mode} -eq 1 ]; then
+
+            if [ -z "`check_mac_rule "${mac_rule_file_path}" "${mac_address}" "${check_word}"`" ]; then
+                error_msg 6 "Can't create a FDB entry"
+            else
+                restore_mac_rule ${mac_rule_file_path}
+                echo -e "\nThe communication between two SoC via the PCIe bus works normally"
+                quit ${PASS}
+            fi
+        fi
+        ;;
+    *) # OS6360-10 or OS6360-P10
+        error_msg 6 "SKU: ${product_name} is not support this command ${prog_name}"
+        ;;
+esac

@@ -1,0 +1,207 @@
+#!/bin/bash
+# Script name: 002_gpios_controller
+# Script version: V2.00.00
+# Author: WeiHsiang Chen, Ray Tsai
+# History: 
+#     V0.00.01 - New release - 2019.11.27
+#     V0.00.02 - (1) Modify usage - 2019.12.12
+#     			 (2) Revise spec (pin_j level) - 2019.12.12
+#     V2.00.00 - (1) Modify ALL - 2019.12.31
+#                (2) Final
+#####################################################################
+
+# ----- Include ----- #
+source $(dirname $0)/sh_funcs/include
+
+# ----- Path ----- #
+drv_path="/sys/class/gpio"
+## Select test path (in VM)
+TEST_select=0
+if [ ${TEST_select} -eq 1 ]; then
+	drv_path=/home/ray/share_folder/temp/${drv_path}
+fi
+
+# ----- Declare ----- #
+prog_name=`echo $0 | awk -F / '{print $NF}'`
+
+# ----- Function ----- #
+function usage() {
+echo "
+Usage:
+NAME
+       ${prog_name} - Verify the configuration of GPIO pin
+
+SYNOPSIS
+       ${prog_name} [-i] [-j] [-a] [-l] [-h]
+
+DESCRIPTION
+       ${prog_name} is used to verify the configuration of GPIO pin,
+       ensure their direction and default level are set correctly.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+       Only one optional option will be processed at once.
+
+OPTIONAL OPTIONS
+       -i    Verify the configuration of all interrupt detecting pins
+
+       -j    Verify the configuration of all JTAG pins
+
+       -a    Execute -i and -j function sequentially
+
+       -l    List current status
+
+       -h    Help message
+
+PASS CRITERIA
+       - Verify the configuration of GPIO pin (-i, -j, -a) :
+           SUCCESS: the configuration is correct.
+             Display: PASS
+             Return code: 0
+
+           ERROR: the configuration is not as expected.
+             Display: FAIL
+             Return code: 1
+
+EXAMPLE
+       ${prog_name} -i
+       ${prog_name} -j
+       ${prog_name} -a
+       ${prog_name} -l	   
+" >&2
+}
+
+function access_drv() {
+	# Function description: 
+	#   Access driver (gpio), if DO exist, check "direction" and "default level"
+	# Parameter:
+	#   $1=array of gpio pin number
+	#   $2=direction of gpio pin on spec.
+	#   $3=default level of gpio pin on spec.
+
+	local list1=("${!1}")
+	local list2=("${!2}")
+	local list3=("${!3}")
+
+	for ((cnt_pin=0; cnt_pin < ${#list1[@]}; cnt_pin++))
+	do 
+		if [ ! -d ${drv_path}/gpio${list1[cnt_pin]} ]; then
+			echo "*GPIO[${list1[cnt_pin]}] could NOT be found." >&2
+			cnt_fail=$(( ${cnt_fail} +1 )) # [File Error] File could NOT be found.
+		else
+			get_dir=`cat ${drv_path}/gpio${list1[cnt_pin]}/direction`
+			get_lv=`cat ${drv_path}/gpio${list1[cnt_pin]}/value`
+
+			if [ ${get_dir} != ${list2[cnt_pin]} ] || [ ${get_lv} != ${list3[cnt_pin]} ]; then
+				echo "*GPIO[${list1[cnt_pin]}]:" >&2
+				echo "  - Direction: [Current] ${get_dir} / [Expected] ${list2[cnt_pin]}" >&2
+				echo "  - Default Level: [Current] ${get_lv} / [Expected] ${list3[cnt_pin]}" >&2				
+				echo " ==> Result: Oops" >&2
+				cnt_fail=$(( ${cnt_fail} +1 )) # [Setting Error] Current setting is unexpected.
+
+			fi
+		fi
+	done
+}
+
+function list_drv() {
+	# Function description: 
+	#   Access driver (gpio), if DO exist, check "direction" and "default level"
+	# Parameter:
+	#   $1=array of gpio pin number
+	#   $2=direction of gpio pin on spec.
+	#   $3=default level of gpio pin on spec.
+
+	local list1=("${!1}")
+	local list2=("${!2}")
+	local list3=("${!3}")
+
+	for ((cnt_pin=0; cnt_pin < ${#list1[@]}; cnt_pin++))
+	do 
+		if [ ! -d ${drv_path}/gpio${list1[cnt_pin]} ]; then
+			echo "*GPIO[${list1[cnt_pin]}] could NOT be found." >&2
+			cnt_fail=$(( ${cnt_fail} +1 )) # [File Error] File could NOT be found.
+		else
+			get_dir=`cat ${drv_path}/gpio${list1[cnt_pin]}/direction`
+			get_lv=`cat ${drv_path}/gpio${list1[cnt_pin]}/value`
+			
+			echo "*GPIO[${list1[cnt_pin]}]:" >&2
+			echo "  - Direction: [Current] ${get_dir} / [Expected] ${list2[cnt_pin]}" >&2
+			echo "  - Default Level: [Current] ${get_lv} / [Expected] ${list3[cnt_pin]}" >&2
+
+		fi
+	done
+}
+
+# ----- Common function -----#
+function quit_err_cnt() {
+	# Function description: 
+	#   Check how many times do error happen to decide quit_type
+	# Parameter:
+	#   $1=${cnt_fail}
+	
+	if [ ${1} -ne 0 ]; then
+		quit ${FAIL}
+	else 
+		quit ${PASS}
+	fi
+}
+
+# ----- Initial variable -----#
+pin_i=(6 9 10 12 13) # pin for interrupt
+pin_j=(7 8 11 18) # pin for jtag
+dir_i=(in in in in in) # spec.
+dir_j=(in out out out) # spec.
+lv_i=(1 1 1 1 1) # spec.
+lv_j=(1 0 0 0) # spec.
+get_dir=""
+get_lv=""
+cnt_fail=0
+
+# ----- Main ----- #
+# Check option length
+if [ $# -ne 1 ]; then
+	usage
+	quit ${FAIL} # [Length Error] Can only input one option
+fi
+
+# Judge option (-i, -j, -a, -h)
+if [ ${1} == "-i" ]; then
+	printf "\n"
+	echo "--- Verify the configuration of GPIO pin (interrupt) ---" >&2
+	access_drv pin_i[@] dir_i[@] lv_i[@]
+	
+	quit_err_cnt ${cnt_fail}
+elif [ ${1} == "-j" ]; then
+	printf "\n"
+	echo "--- Verify the configuration of GPIO pin (JTAG) ---" >&2
+	access_drv pin_j[@] dir_j[@] lv_j[@]
+	
+	quit_err_cnt ${cnt_fail}
+elif [ ${1} == "-a" ]; then
+	printf "\n"
+	echo "--- Verify the configuration of GPIO pin (for interrupt) ---" >&2
+	access_drv pin_i[@] dir_i[@] lv_i[@]
+	
+	printf "\n"
+	echo "--- Verify the configuration of GPIO pin (for JTAG) ---" >&2
+	access_drv pin_j[@] dir_j[@] lv_j[@]
+	
+	quit_err_cnt ${cnt_fail}
+
+elif [ ${1} == "-l" ]; then
+	printf "\n"
+	echo "--- List current status of GPIO pin (for interrupt) ---" >&2
+	list_drv pin_i[@] dir_i[@] lv_i[@]
+
+	printf "\n"
+	echo "--- List current status of GPIO pin (for JTAG) ---" >&2
+	list_drv pin_j[@] dir_j[@] lv_j[@]
+
+elif [ ${1} == "-h" ]; then
+	usage
+	quit_ok
+else
+	usage
+	quit ${FAIL} # [Option Error] Incompatible input option
+fi

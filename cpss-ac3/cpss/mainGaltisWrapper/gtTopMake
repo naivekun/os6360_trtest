@@ -1,0 +1,93 @@
+###########################################
+##                                       ##
+##    Top Make file Galtis Agent         ##
+##                                       ##
+###########################################
+PROJ_NAME = mainGaltisWrapper
+
+
+include $(USER_BASE)/gtDefsTopMake.mk
+
+##AD_CFLAGS += $(FD)CPSS_PRODUCT	       
+
+PROJECT_PATH = $(PP_DRV_PATH)     \
+               $(GALTIS_PATH)     \
+               $(CMD_PATH)        \
+               $(BASE_PATH)       \
+               $(FA_DRV_PATH)     \
+               $(XBAR_DRV_PATH)   \
+               $(OS_INCLUDE)      \
+               $(EXT_MAC_PATH)    \
+               $(EXT_UTILS_PATH)  \
+               $(UTFTOOL_PATH)    \
+               $(COMMON_PATH)     \
+			   $(FPGA_PATH)       \
+			   $(FPGA_COMMON_PATH) \
+			   $(PHY_DRV_PATH)
+
+PROJECT_PATH += $(LABSERVICE_PATH)
+AD_CFLAGS += $(FD)CONFIG_DDR3
+
+#not allowed to use next paths :
+#   because located in cpssEnabler , that real application may not have
+#   only the main cmd in the cpssEnabler is allowed
+#               $(SYSCONFIG_PATH)  
+#               $(EXT_DRV_PATH)    
+#               $(OS_PATH)         
+
+
+ifeq (EXISTS,$(RTOS_ON_SIM))
+  PROJECT_PATH += $(SIMULATION_PATH)
+endif
+
+#Shared memory requires OS_PATH
+ifeq (1,$(SHARED_MEMORY))
+  PROJECT_PATH += $(OS_PATH) \
+	      	  $(SYSCONFIG_PATH) \
+		  $(EXT_DRV_PATH)
+endif
+
+##############
+## CPSS PP  ##
+##############
+
+# check if need to use 'GM_USED'.
+#needed when 'force' image to use GM.
+#also needed for Puma2,3 where use always GM. (for simulation)
+ifeq (EXISTS, $(FORCE_GM_USE))
+  AD_CFLAGS += $(FD)GM_USED
+endif
+
+ifeq (EXISTS, $(CHX_FAMILY))
+CMD_CFLAGS += $(FD)IMPL_CPSS_DXCHX
+CMD_CFLAGS += $(FD)IMPL_TM
+CMD_CFLAGS += $(FD)CHX_FAMILY
+endif
+ifeq (EXISTS, $(CH3_FAMILY))
+CMD_CFLAGS += $(FD)IMPL_CPSS_DXCH3
+CMD_CFLAGS += $(FD)CH3_FAMILY
+endif
+ifeq (EXISTS, $(CH3P_FAMILY))
+CMD_CFLAGS += $(FD)IMPL_CPSS_DXCH3P
+CMD_CFLAGS += $(FD)CH3P_FAMILY
+endif
+
+##########
+## Fpga ##
+##########
+ifeq (RHODES, $(FPGA_TYPE))
+AD_CFLAGS += $(FD)IMPL_FPGA
+endif
+
+CFLAGS += $(CFLAGS1) $(CFLAGS2) $(CFLAGS_OPT) $(OS_DEFINE) $(CPU_FLAGS) $(LFLAGS) $(AD_CFLAGS) $(CMD_CFLAGS)
+ifeq (visual, $(TOOL))
+CFLAGS += /W3
+endif
+
+include $(USER_BASE)/gtTargetsTopMake.mk
+
+ifeq (visual,$(TOOL))
+  full: lib_in_one_step
+else
+  full: onelib
+endif

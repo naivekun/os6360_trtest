@@ -1,0 +1,201 @@
+#!/bin/bash
+# Script name: 007_cpu_id_info
+# Script version: V1.00.00
+# Author: WeiHsiang Chen
+# History: 
+#     V0.00.01 - New release - 2019.12.04
+#     V0.00.02 - (1) Modify spec and usage - 2019.12.12
+#                (2) Enhance string processing - 2019.12.23
+#####################################################################
+
+# ----- Include ----- #
+source $(dirname $0)/sh_funcs/include
+
+# ----- Path ----- #
+drv_path="/proc"
+## Select test path (in VM)
+TEST_select=0
+if [ ${TEST_select} -eq 1 ]; then
+	drv_path=/home/test/${drv_path}
+fi
+
+# ----- Declare ----- #
+prog_name=`echo $0 | awk -F / '{print $NF}'`
+
+# ----- Function ----- #
+function usage() {
+echo "
+Usage:
+NAME
+       ${prog_name} - Confirm CPU information
+
+SYNOPSIS
+       ${prog_name} [-g] [-h]
+
+DESCRIPTION
+       This command is used to confirm CPU information, including
+       model name, revision, and frequency.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+       Only one optional option will be processed at once.
+
+OPTIONAL OPTIONS
+       -g    Get and confirm CPU information
+
+       -h    Help message
+
+PASS CRITERIA
+       - Confirm the CPU information (-g) :
+           SUCCESS: CPU information is checked.
+             Display: PASS
+             Return code: 0
+
+           ERROR: CPU information does not match with specification.
+             Display: FAIL
+             Return code: 9
+
+EXAMPLE
+       ${prog_name} -g
+" >&2
+}
+
+function access_drv() {
+	# Function description: 
+	#   Access driver (cpuinfo), if DO exist, check every row of CPU information
+	# Parameter:
+	#   $1=string of g_cpu_infor
+
+	local char_spec=${1}
+    local arr_spec=("")
+	local get_current=""
+    local arr_current=("")
+    local cpu_no=""
+    local cmp_item=""
+    local row_spec=0
+    local cnt_fail=0
+
+	if [ ! -f ${drv_path}/cpuinfo ]; then
+		quit_msg ${Err_System} "File \"cpuinfo\" NOT found."
+	fi
+
+    get_current=`cat ${drv_path}/cpuinfo`
+    row_spec=`echo "${char_spec}" | grep ':' | awk -F':' 'END{print FNR}'`
+	for ((cnt=1; cnt < $((row_spec + 1)); cnt++))
+	do
+        # Saperate string into arry by grep every row which contains ':'
+        cmp_item=`echo "${char_spec}" | grep ':' | awk -F':' -v row=$cnt 'NR==row{print $1}'`
+        arr_spec[cnt]=`echo "${char_spec}" | grep ':' | awk -F':' -v row=$cnt 'NR==row{print $2}'`
+        arr_current[cnt]=`echo "${get_current}" | grep ':' | awk -F':' -v row=$cnt 'NR==row{print $2}'`
+        # Tale " " away from head and tail in string we need
+        cmp_item=`echo "${cmp_item}" | sed 's/^ *//g' | sed 's/ *$//g'`
+        arr_spec[cnt]=`echo "${arr_spec[cnt]}" | sed 's/^ *//g' | sed 's/ *$//g'`
+        arr_current[cnt]=`echo "${arr_current[cnt]}" | sed 's/^ *//g' | sed 's/ *$//g'`
+
+        if [ `echo "${cmp_item}" | grep 'processor'` ]; then
+            echo -e "\nPROCESSOR ${arr_spec[cnt]}" >&2
+        fi
+        if [ "${arr_current[cnt]}" != "${arr_spec[cnt]}" ]; then
+            echo " *[Fail Item]: ${cmp_item}" >&2
+            echo "  - [Specification]: ${arr_spec[cnt]}" >&2
+            echo "  - [Current Configuration]: ${arr_current[cnt]}" >&2
+
+            cnt_fail=$(( ${cnt_fail} +1 ))
+        fi
+    done
+
+    return ${cnt_fail}
+}
+
+# ----- Common function -----#
+## Error Code List ##
+Err_Option=1	# Option not suport
+Err_Param=2		# Incompatible format or number of parameter
+Err_System=5	# Fail to access system directory or file
+Err_Verify=9	# Common test or compare fail
+#    Err_Read=10	#
+#    Err_Write=11	#
+
+function quit_msg() {
+	# Parameter:
+	#   $1=${err_code}
+	#   $2=${err_msg}
+
+    if [ ${1} == ${Err_Option} ]; then
+		:	# Don't need to print msg
+    elif [ ${1} == ${Err_Param} ]; then
+        echo -e "\n ==> [Parameter Error] ${2}" >&2
+    elif [ ${1} == ${Err_System} ]; then
+        echo -e "\n ==> [System Error] ${2}" >&2
+#    elif [ ${1} == ${Err_Read} ]; then
+#        echo -e "\n ==> [Read Error] ${2}" >&2
+#    elif [ ${1} == ${Err_Write} ]; then
+#        echo -e "\n ==> [Write Error] ${2}" >&2
+    elif [ ${1} == ${Err_Verify} ]; then
+        echo -e "\n ==> [Verify Error] ${2}" >&2
+    fi
+    quit ${1}
+}
+
+function quit_err_cnt() {
+	# Function description: 
+	#   Check how many times do error happen to decide quit_type
+	# Parameter:
+	#   $1=${g_cnt_fail}
+
+	if [ ${1} -ne 0 ]; then
+		return ${Err_Verify}
+	else 
+		return ${PASS}
+	fi
+}
+
+# ----- Initial variable -----#
+g_cpu_infor="
+processor       : 0
+model name      : ARMv7 Processor rev 2 (v7l)
+BogoMIPS        : 50.00
+Features        : half thumb fastmult vfp edsp thumbee vfpv3 tls idiva idivt vfpd32 lpae
+CPU implementer : 0x56
+CPU architecture: 7
+CPU variant     : 0x2
+CPU part        : 0x584
+CPU revision    : 2
+
+processor       : 1
+model name      : ARMv7 Processor rev 2 (v7l)
+BogoMIPS        : 50.00
+Features        : half thumb fastmult vfp edsp thumbee vfpv3 tls idiva idivt vfpd32 lpae
+CPU implementer : 0x56
+CPU architecture: 7
+CPU variant     : 0x2
+CPU part        : 0x584
+CPU revision    : 2
+
+Hardware        : Marvell SYS (Device Tree)
+" # spec.
+g_cnt_fail=0
+
+# ----- Main ----- #
+# Check option length
+if [ $# -ne 1 ]; then
+	usage
+	quit ${FAIL} # [Option Error] Can only input one option
+fi
+
+# Judge option (-g, -h)
+if [ ${1} == "-g" ]; then
+    echo -e "--- Verify the information of CPU ---" >&2
+	access_drv "${g_cpu_infor}"
+    g_cnt_fail=${?}
+    echo -e "\n--- End of verification ---" >&2
+
+    quit_err_cnt ${g_cnt_fail}   # cnt_fail only means Err_Verify
+    quit_msg ${?} "CPU information does NOT match with specification."
+elif [ ${1} == "-h" ]; then
+	usage
+	quit_ok
+else
+	usage
+	quit ${FAIL} # [Option Error] Option not suport
+fi

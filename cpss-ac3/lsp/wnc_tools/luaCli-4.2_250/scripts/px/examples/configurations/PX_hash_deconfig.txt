@@ -1,0 +1,10 @@
+end
+configure
+packet-type-key device ${dev} ingress packet-type 0
+key-entry data source-port-profile 0
+format-entry destination constant-index 0 max-index 0 bit-field 1 byte-offset 0 start-bit 0 num-bits 0
+format-entry destination constant-index 0 max-index 0 bit-field 0 byte-offset 0 start-bit 0 num-bits 0
+end
+cpss-api call cpssPxIngressPortMapEntrySet devNum ${dev} tableType CPSS_PX_INGRESS_PORT_MAP_TABLE_TYPE_DESTINATION_E entryIndex 773 portsBmp 0 bypassLagDesignatedBitmap false
+configure
+ingress lag designated device ${dev} indexes 0-127 entry 0x11FFF

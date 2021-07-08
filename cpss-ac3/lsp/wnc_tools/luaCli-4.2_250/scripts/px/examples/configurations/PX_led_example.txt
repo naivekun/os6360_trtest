@@ -1,0 +1,50 @@
+// TAG:               LED interface;
+// Short Description: Configure LED stream interface
+// Description:       Configure LED stream interface global parameteres
+
+end
+configure
+//The order of the signals driven in the LED stream - by port
+led interface device ${dev} stream-order-by port
+//Start and end significant bit in stream - 0-100
+led interface device ${dev} stream-length start 0 end 100
+//LED blink duty cycle signal and divider of blink frequency - LED blink duty cycle is 50% and LED blink frequency divider is 2048 ms
+led interface device ${dev} blink-cfg 0 duty-cycle 50/50 duration 7
+//LED clock out frequencies - 2 MHz LED clock frequency
+led interface device ${dev} clock-freq 2
+//LED indication stretching divider - LED clock divided by 3000000
+led interface device ${dev} stretch-cfg 7
+
+interface ethernet ${dev}/${port[1]}
+//Map a port to a unique LED slot to make port indications appeared in the LED stream.
+led port-slot 2
+exit
+
+interface ethernet ${dev}/${port[2]}
+//Map a port to a unique LED slot to make port indications appeared in the LED stream.
+led port-slot 3
+exit
+
+interface ethernet ${dev}/${port[3]}
+//Map a port to a unique LED slot to make port indications appeared in the LED stream.
+led port-slot 4
+exit
+
+interface ethernet ${dev}/${port[4]}
+//Map a port to a unique LED slot to make port indications appeared in the LED stream.
+led port-slot 5
+exit
+
+interface ethernet ${dev}/${port[1]}
+//Enable an operation NOT to be done on LED class data
+led invert-classes 2-5
+exit
+
+//enable forcing for LED class 3. Ports 0,2 light up, ports 1,3-11 light down.
+led class 3 device ${dev} force 0x5
+//enable indication blinking for class 3. Use blink0 (configured above)
+led class 3 device ${dev} use-blink 0
+//disable classes if link is down
+led class 0-5 device ${dev} disable-on-link-down
+//disable a stretching of a signal for class 4. Enabled by default
+no led class 4 device ${dev} enable-stretch

@@ -1,0 +1,43 @@
+
+$(PROJ_NAME)_PROJECT_PATH := \
+        $(PATH_COMMON)       \
+        $(PATH_EXT_MAC)      \
+        $(PATH_LABSERVICE)
+
+# TODO: Weird
+$(PROJ_NAME)_PROJECT_PATH += $(PATH_PP_DRV)
+
+ifeq (EXISTS, $(ASIC_SIMULATION))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_SIM)
+endif
+
+$(PROJ_NAME)_CDEBUG := $(CDEBUG)
+
+ifdef PRESTERA_DEBUG
+        $(PROJ_NAME)_CDEBUG += $(FD)PRESTERA_DEBUG
+endif
+
+#
+#flag to allow printings from the ISR of the CPSS
+#
+ifeq (DEBUG_ON, $(INT_SCAN_DEBUG))
+  $(PROJ_NAME)_CDEBUG += $(FD)INT_SCAN_DEBUG
+endif
+
+############
+## CFLAGS ##
+############
+ifeq (EXISTS, $(CHX_FAMILY))
+    $(PROJ_NAME)_AD_CFLAGS += $(FD)CONFIG_DDR3
+endif
+
+ifeq (gnu.host_gcc, $(TOOL).$(TOOLKIT_MAKE_RULES))
+    $(PROJ_NAME)_CFLAGS2 += -Wall -Wextra
+endif
+
+ifeq (MP_ON,$(CPSS_USE_MUTEX_PROFILER))
+    $(PROJ_NAME)_AD_CFLAGS += $(FD)CPSS_USE_MUTEX_PROFILER
+endif
+
+
+$(PROJ_NAME)_AD_CFLAGS += $(FD)INCL_EXDXMX_DRIVER

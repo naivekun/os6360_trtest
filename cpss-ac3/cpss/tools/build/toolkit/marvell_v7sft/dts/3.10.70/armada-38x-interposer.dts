@@ -1,0 +1,27 @@
+/*
+ * Device Tree file for Marvell INTERPOSER card
+ * 88F6811, 88F6821 interposer card
+ * Applicable for:
+ *    * AC3X RD board
+ *
+ *  Copyright (C) 2017 Marvell
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+#include "armada-385-customer3.dts"
+
+/ {
+	model = "Marvell Armada 38x interposer card";
+
+	soc {
+		internal-regs {
+			nfc: nand@d0000 {
+				nfc,ecc-type = <0x00000001>;
+			};
+		};
+	};
+
+};

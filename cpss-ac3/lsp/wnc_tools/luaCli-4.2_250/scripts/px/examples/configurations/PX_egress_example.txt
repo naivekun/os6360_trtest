@@ -1,0 +1,61 @@
+// TAG:               PX devices(PIPE); egress-processing;
+// Short Description: PIPE device : egress-processing configuration.
+// Description:       PIPE device : egress-processing configuration.
+//                    done in 'DX system' but only as sanity since actual commands
+//                    currently only manipulate 'DB' (in the LUA)
+//
+end
+//
+// enter the config context
+configure
+// enter the ethernet context
+interface ethernet ${dev}/${port[1]}
+egress ha DSA-EU2U packetType 30 dsa-3.srcPortOrTrunk 15 dsa-4.srcIsTrunk true
+egress ha DSA-ET2U packetType 6 dsa-3.srcPortOrTrunk 21 dsa-4.srcIsTrunk false
+egress ha DSA-QCN packetType 5 mac-Sa 00:00:00:00:00:01 cnmTpid 1234
+egress ha 802.1br-E2U packetType 14 etag-5.Direction 0 etag-6.Upstream_Specific 0 etag-7.GRP 2 etag-8.E_CID_base 23 etag-10.E_CID_ext 32
+egress ha 802.1br-C2U packetType 8
+egress ha 802.1br-CPU2U packetType 1
+egress ha 802.1br-U2IPL packetType 7
+egress ha 802.1br-IPL2IPL packetType 3
+egress ha DSA-Mrr2E packetType 19
+egress ha 802.1br-U2E_M4 packetType 9 PCID1 1 PCID2 2 PCID3 3
+egress ha 802.1br-U2E_M8 packetType 10 PCID1 1 PCID2 2 PCID3 3 PCID4 4 PCID5 5 PCID6 6 PCID7 7
+egress ha 802.1br-E2U-Untagged packetType 20 vlan_tag_TPID 0x8110
+egress ha 802.1br-Drop packetType 25
+egress source-port 802.1br pcid 100 srcFilteringVector 0 upstreamPort false
+egress target-port common 1.tpid 0x1234 2.pcid 0x987 3.egressDelay 0x54321
+egress source-port 802.1br-Untagged pcid 1 vid 10 pcp 6 dei 1
+exit
+//
+// --> config context
+//
+// enter the ethernet context
+interface ethernet ${dev}/${port[4]}
+egress ha DSA-EU2U packetType 11 dsa-3.srcPortOrTrunk 15 dsa-4.srcIsTrunk true
+egress ha DSA-ET2U packetType 30 dsa-3.srcPortOrTrunk 21 dsa-4.srcIsTrunk false
+egress ha DSA-QCN packetType 4 mac-Sa 00:00:00:00:00:01 cnmTpid 1234
+egress ha 802.1br-E2U packetType 10 etag-5.Direction 0 etag-6.Upstream_Specific 0 etag-7.GRP 3 etag-8.E_CID_base 52 etag-10.E_CID_ext 24
+egress ha 802.1br-C2U packetType 6
+egress ha 802.1br-CPU2U packetType 2
+egress ha DSA-Mrr2E packetType 27
+egress source-port DSA srcPortNum 6
+egress target-port common 1.tpid 0x9875 2.pcid 0x813 3.egressDelay 0x69813
+exit
+//
+// --> config context
+//
+do show egress ha port-actionTypes ethernet ${dev}/${port[1]},${port[2]},${port[4]}
+do show egress ha port-actionTypes ethernet ${dev}/${port[1]},${port[2]},${port[4]},${port[3]} packetType 5-9
+do show egress ha port-actionType-detailed ethernet ${dev}/${port[1]}
+do show egress ha port-actionType-detailed ethernet ${dev}/${port[1]} actionType 802.1br-E2U
+do show egress ha port-actionType-detailed all actionType 802.1br-E2U
+do show egress ha port-actionType-detailed all actionType 802.1br-E2U-Untagged
+do show egress source-port all
+do show egress source-port ethernet ${dev}/${port[1]},${port[4]}
+do show egress target-port types all
+do show egress target-port types ethernet ${dev}/${port[1]},${port[4]}
+do show egress target-port-detailed all
+do show egress target-port-detailed all type common
+
+

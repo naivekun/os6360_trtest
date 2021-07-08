@@ -1,0 +1,9 @@
+// TAG:               port; ports; isolation; restore; default;
+// Short Description: Disable switchport isolation for dev#0 port#0
+// Description:       Disable switchport isolation for dev#0 port#0
+//                    (restore default mode)
+end
+configure
+interface range ethernet ${dev}/${port[1]}
+no switchport isolate
+end

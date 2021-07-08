@@ -1,0 +1,33 @@
+#!/bin/bash
+
+#i2cset -y 0 0x2e 0x40 0x05
+i2cset -y 0 0x2e 0x5c 0xE2
+i2cset -y 0 0x2e 0x5f 0xCC
+
+LOW=`i2cget -y 0 0x2e 0x28`
+#echo $LOW
+TACH_LOW=`printf "%d"  $LOW` 
+#echo $TACH_LOW
+HIGH=`i2cget -y 0 0x2e 0x29`
+#echo $HIGH
+TACH_HIGH=`printf "%d"  $HIGH` 
+#echo $TACH_HIGH
+TACH_HIGH=$(( $TACH_HIGH*256 ))
+#echo $TACH_HIGH
+
+TACH=$(( $TACH_HIGH+$TACH_LOW ))
+#echo $TACH
+
+if [ $TACH -lt 1 ];
+then
+    echo Error : Can not read TACH!
+    exit 1
+fi
+
+
+RPM=5400000
+#echo $RPM
+RPM=$(( $RPM/$TACH ))
+echo RPM = $RPM
+
+exit 0

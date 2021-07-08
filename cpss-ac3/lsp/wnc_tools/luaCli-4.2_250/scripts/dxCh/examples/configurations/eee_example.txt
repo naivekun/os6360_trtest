@@ -1,0 +1,66 @@
+// TAG:               EEE;IEEE_802_3az;
+// Short Description: Configuration for device with EEE support and PHY support EEE.
+// Description:       Set the ports into disable/auto/manual/force EEE port on different ports
+//                    Set EEE timers , and using 'show' commands to see configurations,status
+//                    Port's IEEE 802.3az Energy Efficient Ethernet (EEE) Support.
+//
+end
+//
+// enter the config context
+config
+//
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// auto mode
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//On all ports :
+//set auto mode with specific timers : tw-0x11 , li-0x6 , ts-0x13 (defaults are: 0x10,0x4,0x10)
+//
+interface range ethernet all
+eee mode auto timer-limit-tw 0x11 timer-limit-li 0x6 timer-limit-ts 0x13
+exit
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// auto /manual / force
+//set manual mode , with update timers with any combination
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+ interface range ethernet ${dev}/${port[1]},${port[2]}
+//set manual mode , no need to update timers
+eee mode manual
+//set force mode , update tw only
+eee mode force timer-limit-tw 0x10
+//set manual mode , update li only
+eee mode manual timer-limit-li 0x4
+//set force mode , update ts only
+eee mode force timer-limit-ts 0x15
+//set auto mode , update tw,li 
+eee mode auto timer-limit-tw 0x20 timer-limit-li 0x14
+//set force mode , update tw,ts
+eee mode force timer-limit-tw 0x20 timer-limit-ts 0x25
+//set manual mode , update tw,li 
+eee mode manual timer-limit-li 0x16 timer-limit-ts 0x24
+//set auto mode , no need to update timers
+eee mode auto
+exit
+//
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// disable mode (can set timers but not needed)
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+interface ethernet ${dev}/${port[3]}
+eee mode disable
+exit
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// get into 'exec' mode
+end
+//
+// show the configuration / status
+//
+// per port - all the ports
+show eee port-config all
+// per port - some of the ports
+show eee port-config ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+//
+// show the status on the ports
+//
+show eee port-status all
+//
+end

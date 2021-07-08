@@ -1,0 +1,9 @@
+#!/bin/bash
+
+rm -rf /usr/data/pingtest
+sync
+echo "Removed whole pingtest data."
+
+exit 0
+
+

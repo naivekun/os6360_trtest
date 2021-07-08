@@ -1,0 +1,142 @@
+#!/bin/bash
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/include
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+DUR="10"
+PORTS_LIST_S=""
+PORTS_LIST_E=""
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - single port traffic by loopback module for RJ45 ports
+
+SYNOPSIS
+       $prog_name [-d duration] [-h]
+
+DESCRIPTION
+       The command is a traffic tester for all RJ45 ports. It sets an environ-
+       ment to loop the same packets sent from a RJ45 port back to itself. The 
+       amount of packets sent are designed to nearly reach the line rate of the
+       port. After reaching the test timeout, the command will retrieve packets
+       for each port and check contents to determine whether they are correctly
+       delivered and received.
+
+       Parameter \"-d\" is to set the running duration of traffic flow from
+       sending out packets to capturing packets, including the environment setup
+       time. However, the execution time of the command will also include the
+       time of analyzing received packets, which is correlated to the number of
+       RJ45 ports that the DUT has and the number of packets we send.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -d    Duration between starting to send packets and stopping the traffic
+             flow. Acceptable value is from 10 to 86400 seconds.  
+
+       -h    Show this help message.
+
+PASS CRITERIA
+       - Test each RJ45 port with loopback traffic:
+           SUCCESS: all RJ45 ports send and receive packets correctly
+             Display: \"Result: PASS\" with traffic rates and Tx/Rx packet
+                      counts of ports that are tested
+             Return code : 0
+
+           ERROR: any RJ45 port fails to send, or receives packets incorrectly
+             Display: \"Result: FAIL\" with further messages like
+                      \"FAIL: Get MAC link-down on port 1!\"
+                      or
+                      \"FAIL: Get PHY link-down on port 1!\"
+                      or
+                      \"FAIL: Not got packet# 1 that CPU injects to port 1\"
+                      \"FAIL: Packet checking failed on port 1\" 
+             Return code : 1
+
+EXAMPLE
+       $prog_name -d 60
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    res=$FAIL
+    quit $res
+    echo "">&2
+fi
+
+get_all_rj45_ports() {
+    case $SKU in
+        OS6360-10 | OS6360-P10)
+            PORTS_LIST_S="1"
+            PORTS_LIST_E="10"
+            ;;
+        OS6360-P24X | OS6360-PH24)
+            PORTS_LIST_S="1"
+            PORTS_LIST_E="24"
+            ;;
+        OS6360-P48X)
+            PORTS_LIST_S="1"
+            PORTS_LIST_E="47"
+            ;;
+        *) # OS6360-10 or OS6360-P10
+            PORTS_LIST_S="1"
+            PORTS_LIST_E="10"
+            ;;
+    esac
+}
+
+while getopts "d:h" arg; do
+    case $arg in
+        d) # test duration
+            DUR=$OPTARG
+            ;;
+        h | *) # display usage
+            usage
+            quit_ok
+            ;;
+    esac
+done
+
+# To ensure in the right folder, since the relative path is used
+pushd ${dir_path} >/dev/null
+
+res=$PASS
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    print_fail "CPSS not ready!"
+    exit 1
+fi
+
+# Clean previous generated files
+rm -rf ./trtest/data
+
+# Generate a 1518B unicast packet with random pattern
+./traffic-test edit-pkt -i 1 -l 1514 -d 00:00:00:00:00:01 -s 00:00:00:00:00:02 -e 0800 -p 5
+
+# Get all RJ45 ports
+get_all_rj45_ports
+
+# Copy loop files from data_plan to trtest/data
+for ((idx=${PORTS_LIST_S}; idx<=${PORTS_LIST_E}; idx++)); do
+    cp ./cmd_cfg/data_plan/${idx}_rj45_lb ./trtest/data/${idx}_loop
+done
+
+# Run traffic tester with timeout setting (default 10 sec)
+./traffic-test run -l all -d "$DUR"
+if [ "$?" != "0" ]; then
+    res=$FAIL
+fi
+
+# Back to the folder where the command is executed
+popd >/dev/null
+
+exit $res

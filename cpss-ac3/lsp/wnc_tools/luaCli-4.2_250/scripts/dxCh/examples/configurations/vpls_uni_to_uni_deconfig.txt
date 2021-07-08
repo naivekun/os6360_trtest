@@ -1,0 +1,21 @@
+// TAG:               vpls, uni, nni;
+// Short Description: set vpls deconfiguration
+// Description:       de-configure ports 1,2
+
+end
+configure
+
+interface ethernet ${dev}/${port[1]}
+no uni vid 20 src-mac 00:00:00:24:00:02
+exit
+
+interface ethernet ${dev}/${port[2]}
+no uni vid 30 src-mac 00:00:00:24:00:03
+exit
+
+no interface vlan device ${dev} vid 20
+no interface vlan device ${dev} vid 30
+no interface vlan device ${dev} vid 220
+no interface vlan device ${dev} vid 230
+
+do clear bridge interface ${dev} all

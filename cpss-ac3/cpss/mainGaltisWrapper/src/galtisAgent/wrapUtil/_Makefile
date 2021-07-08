@@ -1,0 +1,91 @@
+# $(warning "Started") 
+#SUBDIRS = NONE
+MODULES :=
+
+ifeq (EXISTS, $(CHX_FAMILY))
+	USE_DXCH=USE
+	#SUBDIRS =
+	MODULES :=
+endif
+ifeq (EXISTS, $(PM_FAMILY))
+    USE_EXMXPM=USE
+	#SUBDIRS =
+	MODULES :=
+endif
+ifeq (EXISTS, $(SAL_FAMILY))
+    USE_DXSAL=USE
+	#SUBDIRS =
+	MODULES :=
+endif
+ifeq (EXISTS, $(EX_FAMILY))
+    USE_EXMX=USE
+	#SUBDIRS =
+	MODULES :=
+endif
+ifeq (EXISTS, $(TG_FAMILY))
+    USE_EXMX=USE
+	#SUBDIRS =
+	MODULES :=
+endif
+ifeq (EXISTS, $(TD_FAMILY))
+    USE_EXMX=USE
+	#SUBDIRS =
+	MODULES :=
+endif
+ifeq (DUNE, $(XBAR_VENDOR))
+    USE_DUNE=USE
+	#SUBDIRS =
+	MODULES :=
+endif
+ifeq (USE,$(USE_EXMX))
+    #SUBDIRS += exMx
+    MODULES += exMx
+endif
+ifeq (USE,$(USE_DXCH))
+    #SUBDIRS += dxCh
+    MODULES += dxCh
+endif
+ifeq (USE,$(USE_EXMXPM))
+    #SUBDIRS += exMxPm
+    MODULES += exMxPm
+endif
+ifeq (USE,$(USE_DXSAL))
+    #SUBDIRS += dxSal
+    MODULES += dxSal
+endif
+ifeq (USE,$(USE_DUNE))
+    #SUBDIRS += fx950
+    MODULES += fx950
+endif
+ifeq (EXISTS, $(PX_FAMILY))
+    #SUBDIRS += px
+    MODULES += px
+endif
+
+##List of subfolders to include in build
+#MODULES := \
+# dxCh 
+#
+##List of files to include in list
+FILES := \
+ cmdCpssLinkedList.c \
+ cmdCpssNetReceive.c \
+ cmdCpssPresteraUtils.c \
+ cmdCpssSysConfig.c \
+ cmdGenNetReceive.c \
+ wrapAppDemoDb.c \
+ wrapCpssSysconfig.c \
+ wrAppDemoZarlink.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINGALTISWRAPPER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

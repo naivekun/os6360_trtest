@@ -1,0 +1,39 @@
+# $(warning "Started") 
+LUA_SRCPATH=$(CURDIR)/lua/lua-5.1/src
+export LUA_SRCPATH
+CMD_LUA=yes
+export CMD_LUA
+CMD_LUA_CLI=yes
+export CMD_LUA_CLI
+CMD_FS=yes
+export CMD_FS
+LUACLI_STANDALONE_BUILD=yes
+export LUACLI_STANDALONE_BUILD
+
+
+#List of subfolders to include in build
+MODULES := \
+ FS \
+ app \
+ lua
+ #\
+ #mainLuaWrapper 
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#MAINLUAWRAPPER_SRC :=
+#Add relative path to original Makefile, to each file in the list
+LUACLI_STANDALONE_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#LUACLI_STANDALONE_SRC += $(MAKEFILEMAINLUAWRAPPER_SRC)
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

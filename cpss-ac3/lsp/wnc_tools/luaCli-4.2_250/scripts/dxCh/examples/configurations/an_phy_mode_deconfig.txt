@@ -1,0 +1,12 @@
+// TAG:               auto-negotiation; mac; phy; like;
+// Short Description: Restore default auto-negotiation mode for port 58
+// Description:       Restore default auto-negotiation mode, interface and speed for port 58
+end
+configure
+interface ethernet ${dev}/${port[4]}
+no auto-negotiation phy-mode
+end
+configure
+interface ethernet ${dev}/${port[4]}
+speed ${@@autoNegSpeedOrigGet(4)} mode ${@@autoNegModeOrigGet(4)}
+end

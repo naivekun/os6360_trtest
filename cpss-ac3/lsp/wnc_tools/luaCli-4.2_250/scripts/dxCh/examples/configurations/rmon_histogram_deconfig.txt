@@ -1,0 +1,17 @@
+// TAG:               rmon; counters; histogram; restore; default;
+// Short Description: Restore default configuration rmon histogram
+// Description:       Restore default configuration of rmon histogram counters
+//                    for dev#0/port#0 and dev#0/port#18
+//                    (to count both ingress and egress traffic)
+end
+configure
+interface ethernet ${dev}/${port[1]}
+rmon histogram rx-tx
+exit
+exit
+configure
+interface ethernet ${dev}/${port[2]}
+rmon histogram rx-tx
+exit
+exit
+end

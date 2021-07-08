@@ -1,0 +1,6 @@
+// TAG:                interfaces; ethernet; serdes; voltage; show;           
+// Short Description:  show ethernet interfaces serdes voltage on device ${@@serdes_env.devNum} for port ${@@serdes_env.PortNum}
+// Description:        show ethernet interfaces serdes voltage on device ${@@serdes_env.devNum} for port ${@@serdes_env.PortNum}
+//                    
+end
+show interfaces serdes voltage ethernet ${@@serdes_env.devNum}/${@@serdes_env.PortNum}

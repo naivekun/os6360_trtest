@@ -1,0 +1,157 @@
+#!/bin/bash
+
+prog_name=$(basename $0)
+
+usage () {
+echo "Usage:
+NAME
+       $prog_name - dd test tool
+
+SYNOPSIS
+       $prog_name -f test folder [-s test file size] [-c]
+
+DESCRIPTION
+       This command uses dd tool to execute read/write test.
+
+MANDATORY OPTIONS
+       -f    Test folder name
+       
+       -s    Test file size in KB. Default 102400 (100MB)
+       
+       -c    Clean test files only.
+             
+EXAMPLE
+       $prog_name -f \"/mnt/flash2\"
+       
+       $prog_name -f \"/mnt/flash2\" -c
+" >&2
+}  
+
+if [ $# -lt 1 ];
+then
+    usage
+    exit 1
+fi  
+
+while getopts ":cf:s:" arg
+do
+    case ${arg} in
+        c) 
+            clean_info=true
+            ;;
+        s)
+            test_size=${OPTARG}
+            size_info=true
+            ;;
+        f)
+            test_folder=${OPTARG}
+            test_info=true
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+done  
+
+get_ava_sz()
+{
+  local folder=$1
+  local tmp_file=/tmp/"$prog_name"_tmp
+  local sz=0
+  
+  df > $tmp_file 2>&1
+  sz=`cat $tmp_file | grep -w $folder | awk '{print $4}'`
+
+  echo $sz
+}
+
+get_ramdisk_folder()
+{
+  echo "/run"
+}
+
+tfile_sz=102400  #100MB (1K base)
+t_cnt=1
+ram_folder=`get_ramdisk_folder`
+ram_test_file=$ram_folder/dd_ram_file
+test_file_prefix=dd_test_file
+ret=0
+
+if [ "$size_info" == "true" ];
+then
+    tfile_sz=$test_size
+fi
+
+if [ "$test_info" == "true" ];
+then
+    if [ -d $test_folder ];
+    then
+        if [ "$clean_info" != "true" ];
+        then
+            ava_sz=`get_ava_sz $test_folder`
+            stop_sz=$(($tfile_sz*2))
+	        
+            if [ $ava_sz -lt $stop_sz ];
+            then
+                echo "Error : Available $ava_sz is less than $stop_sz."
+                exit 1
+            fi    
+            
+            device=`mount | grep " ${test_folder} " | awk '{print $1}'`
+            echo dd testing $device on $test_folder
+            echo Generating dd test file on ramdisk...
+            dd if=/dev/urandom bs=1K count=$tfile_sz 2>/dev/null > $ram_test_file
+            echo $ram_test_file $tfile_sz KB generated        
+            ram_file_chksum=`sha256sum $ram_test_file | awk '{print $1}'`
+            echo sha256sum=$ram_file_chksum
+                
+            t_cnt=1
+            while [ $ava_sz -gt $stop_sz ]
+            do
+                test_file=$test_folder/$test_file_prefix$t_cnt
+                #Write file to SSD
+                echo Starting test $t_cnt ...
+                dd if=$ram_test_file bs=1K count=$tfile_sz 2>/dev/null > $test_file
+                sync
+                test_file_chksum=`sha256sum $test_file | awk '{print $1}'`
+                    
+                if [ "$test_file_chksum" == "$ram_file_chksum" ];
+                then
+                echo "Sha256 checksum is the same $t_cnt test pass."
+                else
+                echo "Sha256 checksum is different  $t_cnt test fail."
+                ret=1
+                break
+                fi 
+                    
+                t_cnt=$(($t_cnt+1))
+                ava_sz=`get_ava_sz $test_folder`
+            done
+        fi
+    else
+        echo "Error: There is no $test_folder folder."
+        exit 1 
+    fi
+else
+   usage
+   exit 1
+fi  
+
+#Clean 
+echo "=========================="
+echo "Cleaning test files..."
+rm -f $test_folder/$test_file_prefix*
+rm -f $ram_test_file
+sync
+
+echo "=========================="
+if [ $ret -eq 0 ];
+then
+  echo "Finish dd test - PASS."
+else
+  echo "Finish dd test - FAIL."
+fi
+
+exit $ret
+

@@ -1,0 +1,399 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+source $(dirname $0)/prod_info
+
+# For option -f, if -eq 1, apply user's config-file and skip setup_system , set_loopback and set_vlan.
+export CFG_MODE=0
+
+# For option -f, a subset of CFG_MODE.
+# If the user's config-file equals to the trtest_mfg.cfg, further not check the validation of loops, and not restore either.
+export MFG_MODE=0
+
+# For option -p, 3 cases:
+# (1) == "NG"      : checking whether got NG packets
+# (2) == "CNT"     : besides case (1), checking whether Tx counter == Rx counter in the loop
+# (3) == "CONTENT" : besides case (1) and (2), checking contents of received packet, which is the default case.
+export PKT_CHK_MODE="CONTENT"
+
+# For option -r, force to restore the config set for the test.
+export CFG_RESTORE=0
+
+# For option -s, if -eq 1, skip the max port speed checking
+export SKIP_SPEED_CHECK=0
+
+prog="`echo $0 | awk -F/ '{print $NF}'`"
+
+DUR_MIN=5
+DUR_MAX=86400
+DUR_FOREVER=0
+DUR_DEF=$DUR_FOREVER # forever
+
+# Period for counter display
+PERIOD=0
+type dump_port_counter &>/dev/null && CNT_DUMP_API=1 || CNT_DUMP_API=0
+
+PROD_NAME=$(get_prod_name)
+PROD_SN=$(get_prod_sn)
+type get_log_path &>/dev/null && LOG_PATH=$(get_log_path) || LOG_PATH=$(dirname $0)
+LOG_FILE=$LOG_PATH/traffic-test_${PROD_NAME}_${PROD_SN}_`date +%Y%m%d_%H%M%S`.log
+
+S_TIME=""
+E_TIME=""
+
+function usage() {
+echo "Usage:
+NAME
+       $prog - run traffic test
+
+SYNOPSIS
+       $prog [-d duration] [-l lid-list] [-f config-file] [-p pkt-chk-mode] [-c counter-dump-period] [-r] [-s]
+       $prog -h
+
+DESCRIPTION
+       Run traffic test. Without -d option, the test will last forever until
+       user hits Ctrl+C. With -d option, the test will stop after a period of
+       time automatically. Without -l option, the test will apply to all
+       pre-configured traffic loops.
+       The whole test process will be preserved in a log file. The log file's
+       name is as below, where date is YYYYMMDD, time is HHMMSS (HH is
+       24-hour).
+       \"traffic-test_<product name>_<serial number>_<date>_<time>.log\"
+
+OPTIONS
+       -d duration
+                Determine test duration:
+                    Forever if duration=\"forever\".
+                    $DUR_MIN-$DUR_MAX seconds if duration is the decimal number.
+
+       -l lid-list
+                Determine traffic loop(s) to run the test. A loop is identified
+                by an unique ID. The convention is: '-' for a continuous ID
+                list, ',' to cascade an in-continuous ID list, and \"all\" to
+                denote all loops.
+
+       -f config-file
+                Apply user-definied configuration file. Traffic test will skip
+                setup actions but load the config-file instead.
+
+       -p pkt-chk-mode
+                Available parameters are \"NG\", \"CNT\" and \"CONTENT\". With
+                \"NG\", traffic test will check whether got NG counters. With
+                \"CNT\", besides checking NG counters, it will also check
+                whether the Tx counter equals to the Rx counter per loop. With
+                \"CONTENT\", besides checking counters, traffic test will
+                check the content of received packets. Without option \"-p\",
+                default is \"CONTENT\" mode.
+
+       -c counter-dump-period
+                Determine the period to dump TX/RX counter information for each port:
+
+       -r       Force traffic test to restore the configuration.
+
+       -s       Skip the max port speed checking.
+
+       -h       Show this help message.
+
+EXAMPLE
+       run traffic test for all traffic loops forever:
+           $prog
+
+       run traffic test for traffic loop #1,3 forever:
+           $prog -l 1,3
+
+       run traffic test for all traffic loops and last for 1 hour:
+           $prog -d 3600
+" >&2
+}
+
+function init_test() {
+    CURR_TIME=`date '+%F %H:%M:%S'`
+    S_TIME=`date '+%s'`
+    echo "======== Start Line Rate Traffic Test at $CURR_TIME ========" | tee -a $LOG_FILE
+
+    if [ $DUR -eq $DUR_FOREVER ]; then
+        echo "Duration: forever" >> $LOG_FILE
+    else
+        echo "Duration: $DUR seconds" >> $LOG_FILE
+    fi
+
+    # Parse all loops
+    if [ "$LID_LIST" == "all" ]; then
+        LID_LIST=""
+        for loop in `ls data/*_loop | cut -d '/' -f2 | sort -n 2>/dev/null`; do
+            [ -z "$loop" ] && continue
+            lid=`echo $loop | cut -d '_' -f1`
+            LID_LIST=`echo $LID_LIST $lid `
+        done
+    fi
+
+    echo "Traffic loop to be tested: $LID_LIST" >> $LOG_FILE
+
+    for lid in $LID_LIST; do
+        if [ -n "`ls data/${lid}_loop 2>/dev/null`" ]; then
+            echo "Loop $lid Parameters:" >> $LOG_FILE
+            cat data/${lid}_loop >> $LOG_FILE
+
+            # Delete PID_LIST_REMAP before parse all packets.
+            sed -i '/PID_LIST_REMAP/d' data/${lid}_loop
+
+            PID_LIST=`cat data/${lid}_loop | grep PID_LIST | cut -d '=' -f2`
+
+            # Parse all packets
+            if [ "$PID_LIST" == "all" ]; then
+                sed -i '/PID_LIST_REMAP/d' data/${lid}_loop
+                PID_LIST=""
+                for loop in `ls data/*_packet.txt 2>/dev/null`; do
+                    [ -z "$loop" ] && continue
+                    pid=`echo $loop | cut -d '/' -f2 | cut -d '_' -f1`
+                    PID_LIST=`echo $PID_LIST $pid `
+                done
+            fi
+
+            # Assign PID_LIST_REMAP for run_test() and stop_test().
+            echo "PID_LIST_REMAP=$PID_LIST" >> data/${lid}_loop
+        else
+            echo "Ignore non-existent loop $lid" >>$LOG_FILE
+        fi
+    done
+
+    echo "Packet ID: $PID_LIST" >> $LOG_FILE
+
+    echo "" >> $LOG_FILE
+
+    # Product specific check routine for link status and port type checking.
+    # Return Code #2 means the SDK failure and need to quit immediately.
+    # Return Code #3 means all loop are invalid and need to quit immediately.
+    ./prod_check $LID_LIST 2>&1 | tee -a $LOG_FILE
+
+    ret=${PIPESTATUS[0]}
+    if [ $ret -ge 1 ]; then
+        res=$FAIL
+        if [ $ret -gt 1 ]; then
+            echo "FAIL: Get critical failure and stop the test!" >> $LOG_FILE
+            quit $res
+        fi
+    fi
+}
+
+
+function post_test() {
+    CURR_TIME=`date '+%F %H:%M:%S'`
+    E_TIME=`date '+%s'`
+    echo "======== Stop Line Rate Traffic Test at $CURR_TIME ========" | tee -a $LOG_FILE
+
+    # calculate cmd execution time
+    EXEC_TIME=`expr $E_TIME - $S_TIME`
+    echo -e "\n======== Execution Time: ${EXEC_TIME} sec ========\n" >> $LOG_FILE
+    echo -e "\nExecution Time: ${EXEC_TIME} sec" >&2
+
+    echo "======== OS Information ========" >> $LOG_FILE
+    echo $(get_os_info) | sed 's/\$/\n/g' >> $LOG_FILE
+    echo "======== Kernel Information ========" >> $LOG_FILE
+    echo $(get_kernel_info) | sed 's/\$/\n/g' >> $LOG_FILE
+    echo "======== Sensor Information ========" >> $LOG_FILE
+    echo $(get_sensor_info) | sed 's/\$/\n/g' >> $LOG_FILE
+    echo "======== Fan Information ========" >> $LOG_FILE
+    echo $(get_fan_info) | sed 's/\$/\n/g' >> $LOG_FILE
+    echo "======== PSU Information ========" >> $LOG_FILE
+    echo $(get_psu_info) | sed 's/\$/\n/g' >> $LOG_FILE
+    echo "======== Port Information ========" >> $LOG_FILE
+    echo $(get_port_info) | sed 's/\$/\n/g' >> $LOG_FILE
+    echo "======== Statistic Counters ========" >> $LOG_FILE
+    echo $(get_counters) | sed 's/\$/\n/g' >> $LOG_FILE
+}
+
+function stop_test() {
+    # product specific stop routine
+    ./prod_stop $LID_LIST 2>&1 | tee -a $LOG_FILE
+
+    ret=${PIPESTATUS[0]}
+    if [ $ret -ge 1 ]; then
+        res=$FAIL
+        if [ $ret -gt 1 ]; then
+            echo "FAIL: Get critical failure and stop the test!" >> $LOG_FILE
+            quit $res
+        fi
+    fi
+
+    # post routine
+    post_test
+}
+
+function run_test() {
+    local quit=false
+    local start_time=`date +%s`
+    local expire_time=$DUR_FOREVER
+    local period_cnt=$PERIOD
+
+    # Ctrl+C hander
+    trap "quit=true" SIGINT
+
+    # init routine
+    init_test
+
+    # product specific run routine
+    # in case of low level failure, quit immediately
+    ./prod_run $LID_LIST 2>&1 | tee -a $LOG_FILE
+
+    ret=${PIPESTATUS[0]}
+    if [ $ret -ge 1 ]; then
+        res=$FAIL
+        if [ $ret -gt 1 ]; then
+            echo "FAIL: Get critical failure and stop the test!" >> $LOG_FILE
+            quit $res
+        fi
+    fi
+
+    # Assign expire time with duration variable
+    start_time=`date +%s`
+    [ $DUR -ne $DUR_FOREVER ] && expire_time=$((start_time+$DUR))
+
+    # monitor quit event (Ctrl+C or timer expiration)
+    while [ $quit != true ]; do
+        sleep 1
+
+        # Dump TX/RX counter for each port per gived period
+        if [ $PERIOD -ne 0 ] && [ $CNT_DUMP_API -ne 0 ]; then
+            [ $(( $period_cnt % $PERIOD )) == 0 ] && dump_port_counter
+            ((period_cnt++))
+        fi
+
+        # check timer expiration
+        if [ $expire_time -ne $DUR_FOREVER ] && \
+           [ `date +%s` -ge $expire_time ]; then
+            quit=true
+        fi
+    done
+}
+
+function check_arg_period() {
+    local period=$1
+
+    if [ $(is_digit $period) == true ]; then
+        echo $period
+    else
+        echo ""
+    fi
+}
+
+function check_arg_duration() {
+    local dur=$1
+
+    if [ $(is_digit $dur) == true ] && \
+       [ $dur -ge $DUR_MIN ] && [ $dur -le $DUR_MAX ]; then
+        echo $dur
+    elif [ "$dur" == "forever" ]; then
+        echo $DUR_DEF # forever
+    else
+        echo ""
+    fi
+}
+
+function check_arg_lid_list() {
+    local lid_list=$1
+
+    # 'all' is a keyword stands for all traffic loops
+    # otherwise, we need to check input list's grammar
+    if [ "$lid_list" != "all" ]; then
+        lid_list=`echo $(parse_list $lid_list)`
+    fi
+
+    echo $lid_list
+}
+
+function parse_args() {
+    while getopts "P:d:l:f:p:c:rsh" arg; do
+        case $arg in
+            P) # program prefix (hidden)
+                prog="$OPTARG "$prog
+                ;;
+            d) # test duration
+                DUR=$(check_arg_duration $OPTARG)
+                if [ -z "$DUR" ]; then
+                    echo "\"duration\" must be forever or a decimal number ranged from $DUR_MIN to $DUR_MAX" >&2
+                    res=$FAIL; quit $res
+                fi
+                ;;
+            l) # traffic loop list
+                LID_LIST=$(check_arg_lid_list $OPTARG)
+                if [ -z "$LID_LIST" ]; then
+                    echo "\"lid-list\" must be \"all\", a number, or a group of numbers linked by '-' or ','" >&2
+                    res=$FAIL; quit $res
+                fi
+                LID_LIST=$LID_LIST
+                ;;
+            f) # initial config file for test
+                CFILE=$OPTARG
+                if [ -f "$CFILE" ]; then
+                    cp -f $CFILE ./data/init.cfg
+                    export CFG_MODE=1
+
+                    if [ -e "/etc/opt/trtest/mfg_mode" ]; then
+                        # Has mfg_mode flag
+                        if [ -e "/etc/opt/trtest/mfg_cfg/trtest_mfg_init.cfg" ]; then
+                            if [ -z "`diff /etc/opt/trtest/mfg_cfg/trtest_mfg_init.cfg $(dirname $0)/data/init.cfg`" ]; then
+                                # In MFG mode
+                                # Specific config file to be applied is the same as the config file for MFG mode.
+                                # Run traffic test with MFG mode to skip some init/restore processes.
+                                export MFG_MODE=1
+                            else
+                                # In CFG mode
+                                rm -f /etc/opt/trtest/mfg_mode
+                                echo "Specific config file is not the same as the config file for MFG mode!"
+                                echo "Traffic test will exit the MFG mode and run normal mode with the specific config file."
+                                echo "If you want to run traffic test with MFG mode, please reboot the system."
+                            fi
+                        fi
+                    else
+                        # In non-MFG mode
+                        echo "Traffic test will run normal mode with the specific config file!"
+                    fi
+                else
+                    echo "File $CFILE not found! Please check!" >&2
+                    res=$FAIL; quit $res
+                fi
+                ;;
+            p) # packet mode for checking CPU received packets in stop stage
+                if [ "$OPTARG" != "NG" ] && [ "$OPTARG" != "CNT" ] && [ "$OPTARG" != "CONTENT" ]; then
+                    echo "Illegal parameter \"$OPTARG\" with option -p, please check or see help." >&2
+                    res=$FAIL; quit $res
+                fi
+                export PKT_CHK_MODE="`echo $OPTARG`"
+                ;;
+            c) # period to dump all counter
+                PERIOD=$(check_arg_period $OPTARG)
+                if [ -z "$PERIOD" ]; then
+                    echo "\"period\" must be a decimal number." >&2
+                    res=$FAIL; quit $res
+                fi
+                ;;
+            r) # force traffic test to restore the configuration
+                export CFG_RESTORE=1
+                ;;
+            s) # Skip the max port speed checking
+                export SKIP_SPEED_CHECK=1
+                ;;
+            h | *)
+                usage
+                quit_ok
+                ;;
+        esac
+    done
+}
+
+DUR=$DUR_DEF
+LID_LIST="all"
+res=$PASS
+
+# parse incoming arguments
+parse_args $*
+
+# run traffic test
+run_test
+
+# stop traffic test
+stop_test
+
+# show test result
+quit $res

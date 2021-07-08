@@ -1,0 +1,85 @@
+#!/bin/bash
+
+function sysinfo_get_lport_nums() {
+    local sysinfo_file=$1
+    local lport_num
+
+    lport_num="`cat $sysinfo_file | grep -w "LPORT_NUM" | cut -d '=' -f 2`"
+    if [ -z "$lport_num" ]; then
+        echo "Lack of port number inforation, please check!"
+        lport_num=0
+    fi
+
+    echo $lport_num
+}
+
+function sysinfo_get_mac_units() {
+    local sysinfo_file=$1
+    local unit_cnt
+
+    unit_cnt="`cat $sysinfo_file | grep -w "UNIT_CNT" | cut -d '=' -f 2`"
+    if [ -z "$unit_cnt" ]; then
+        # Default one ASIC
+        unit_cnt=1
+    fi
+
+    echo $unit_cnt
+}
+
+# function sysinfo_get_portinfo(index_type, index_value, field, file_path)
+# @brief    Get port info recoreded in the file sysinfo via lport or pport
+# @param[in] index_type     - to get via lport or pport:
+#                             lport: use the first column of the table to find.
+#                             pport: use the second column of the table to find.
+# @param[in] index_value    - port index value of lport or pport.
+# @param[in] field          - which column of the table to get.
+# @param[in] file_path      - the path of the file to parse.
+function sysinfo_get_portinfo() {
+    local index_type=$1
+    local index_value=$2
+    local field=$3          # PhyType, PortType or PortSpeed
+    local sysinfo_file=$4
+    local port_info
+    
+    if [ "$index_type" == "lport" ]; then
+        port_info=`cat $sysinfo_file | grep -w "^$index_value "`
+    elif [ "$index_type" == "pport" ]; then
+        port_info=`cat $sysinfo_file | grep -w " $index_value "`    # Need to match with spaces in front and after
+    fi
+
+    case $field in
+        LPort)
+            value=`echo $port_info | awk '{print $1}'`
+            ;;
+        PPort)
+            value=`echo $port_info | awk '{print $2}'`
+            ;;
+        PhyType)
+            value=`echo $port_info | awk '{print $3}'`
+            ;;
+        PortType)
+            value=`echo $port_info | awk '{print $4}'`
+            ;;
+        PortSpeed)
+            value=`echo $port_info | awk '{print $5}'`
+            ;;
+        SupportedSpeed)
+            value=`echo $port_info | awk '{print $6}'`
+            ;;
+        PhyAddr)
+            value=`echo $port_info | awk '{print $7}'`
+            ;;
+        MasterAddr)
+            value=`echo $port_info | awk '{print $8}'`
+            ;;
+        PLPName)
+            value=`echo $port_info | awk '{print $9}'`
+            ;;
+        *)
+            echo "Wrong filed to get port info, please check!"
+            value="error"
+            ;;
+    esac
+
+    echo $value
+}

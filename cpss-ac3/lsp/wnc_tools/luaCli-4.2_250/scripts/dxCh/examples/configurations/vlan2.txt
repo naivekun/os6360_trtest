@@ -1,0 +1,10 @@
+// TAG:               vlan; untagged;
+// Short Description: Create vlan#2 on dev#0 for ports #0 and #18
+// Description:       Create untagged vlan#2 on dev#0 for port#0 and port#18
+end
+configure
+interface vlan device ${dev} vid 2
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]}
+switchport allowed vlan add 2 untagged
+end

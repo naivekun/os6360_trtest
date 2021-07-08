@@ -1,0 +1,105 @@
+// TAG:               PX devices(PIPE); ingress-processing;
+// Short Description: PIPE device : ingress-processing configuration.
+// Description:       PIPE device : ingress-processing configuration.
+//                    done in 'DX system' but only as sanity since actual commands 
+//                    currently only manipulate 'DB' (in the LUA)
+//
+end
+//
+
+// Reset TPID table to default values
+configure
+no ingress tpid device all index 0
+no ingress tpid device all index 1
+no ingress tpid device all index 2
+end
+
+// Reset Port Packet Type Key Table to default values
+configure
+interface ethernet ${dev}/${port[4]}
+ingress port-packet-type-key profile ${port[4]} udbp 0 anchor L2 byte-offset 0
+exit
+
+interface ethernet ${dev}/${port[1]}
+ingress port-packet-type-key profile ${port[1]}
+exit
+
+interface ethernet ${dev}/${port[2]}
+ingress port-packet-type-key profile ${port[2]}
+exit
+
+interface ethernet ${dev}/${port[3]}
+ingress port-packet-type-key profile ${port[3]}
+end
+
+// Reset Packet Type Key Table to default values
+configure
+packet-type-key device ${dev} ingress packet-type 10
+key-entry data ethertype 0x0000 source-port-profile 10  udbp-0 0x0000
+key-entry mask ethertype 0x0000 source-port-profile 127 udbp-0 0x0000
+exit
+packet-type-key device ${dev} ingress packet-type 11
+key-entry data ethertype 0x0000 source-port-profile 11
+key-entry mask ethertype 0x0000 source-port-profile 127
+exit
+packet-type-key device ${dev} ingress packet-type 12
+key-entry data source-port-profile 12
+key-entry mask source-port-profile 127
+exit
+packet-type-key device ${dev} ingress packet-type 13
+key-entry data source-port-profile 13
+key-entry mask source-port-profile 127
+exit
+packet-type-key device ${dev} ingress packet-type 14
+key-entry data source-port-profile 14
+key-entry mask source-port-profile 127
+exit
+end
+
+// Reset Packet Type Destination Format to default values
+configure
+packet-type-key device ${dev} ingress packet-type 10
+format-entry destination constant-index 10 max-index 4095 bit-field 1 byte-offset 0 start-bit 0 num-bits 0
+format-entry destination constant-index 10 max-index 4095 bit-field 0 byte-offset 0 start-bit 0 num-bits 0
+exit
+packet-type-key device ${dev} ingress packet-type 11
+format-entry destination constant-index 11 max-index 4095 bit-field 1 byte-offset 0 start-bit 0 num-bits 0
+format-entry destination constant-index 11 max-index 4095 bit-field 0 byte-offset 0 start-bit 0 num-bits 0
+exit
+packet-type-key device ${dev} ingress packet-type 12
+format-entry destination constant-index 12 max-index 4095
+exit
+packet-type-key device ${dev} ingress packet-type 13
+format-entry destination constant-index 13 max-index 4095
+exit
+packet-type-key device ${dev} ingress packet-type 14
+format-entry destination constant-index 14 max-index 4095
+exit
+packet-type-key device ${dev} ingress packet-type 15
+format-entry destination constant-index 15 max-index 4095
+exit
+packet-type-key device ${dev} ingress packet-type 16
+format-entry destination constant-index 16 max-index 4095
+exit
+packet-type-key device ${dev} ingress packet-type 17
+format-entry destination constant-index 17 max-index 4095
+exit
+
+// Packet Type Destination Format
+packet-type-key device ${dev} ingress packet-type 11
+format-entry source constant-index 176 max-index 0 bit-field 1 byte-offset 0 start-bit 0 num-bits 0
+format-entry source constant-index 176 max-index 0 bit-field 0 byte-offset 0 start-bit 0 num-bits 0
+
+// Show commands after test
+do show ingress tpid device ${dev}
+do show ingress port-packet-type-key device all
+do show ingress packet-type-key device all packet-type all
+do show ingress packet-type-format destination device all packet-type all
+do show ingress packet-type-format source device all packet-type all
+do show ingress packet-type-error device all
+
+//Port map entry
+exit
+ingress port-map-entry source device ${dev} indexes 0 entry 0x0FFFE
+ingress port-map-entry source device ${dev} indexes 16 entry 0x0FFFD
+ingress port-map-entry destination device ${dev} indexes 0-20 entry 0x1FFFF

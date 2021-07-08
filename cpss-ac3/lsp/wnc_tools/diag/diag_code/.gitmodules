@@ -1,0 +1,6 @@
+[submodule "funcs"]
+	path = funcs
+	url = git@172.16.201.49:9503893/funcs.git
+[submodule "cmdd"]
+	path = cmdd
+	url = git@172.16.201.49:20000135/cmdd.git

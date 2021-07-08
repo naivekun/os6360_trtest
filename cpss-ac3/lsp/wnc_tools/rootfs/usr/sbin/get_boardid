@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#This command to get board id from Aikido
+
+A_TOOL=/usr/bin/aikido_tool
+REG_FILE=/tmp/aikido_reg
+
+if [ ! -f $A_TOOL ];
+then
+   echo Error: There is no aikido_tool command. 
+fi
+
+aikido_tool -r 0x08 -b 2 > $REG_FILE
+aikido_tool -r 0x08 -b 3 >> $REG_FILE
+aikido_tool -r 0x08 -b 4 >> $REG_FILE
+
+BIT2=`grep "bit 2" $REG_FILE | awk '{print $7}'`
+BIT3=`grep "bit 3" $REG_FILE | awk '{print $7}'`
+BIT4=`grep "bit 4" $REG_FILE | awk '{print $7}'`
+
+B_ID=$BIT4$BIT3$BIT2
+
+case $B_ID in
+  "011")
+    M_NAME="Quagga 24"
+  ;;
+  "100")
+    M_NAME="Quagga 24P"
+  ;;
+  "101")
+    M_NAME="Quagga 48"
+  ;;
+  "110")
+    M_NAME="Quagga 48LP"
+  ;;
+  "111")
+    M_NAME="Quagga 48FP"
+  ;;
+  *)
+    echo Error: Undefined Board Id $B_ID.
+    exit 1
+  ;;
+esac
+
+echo BOARD ID from Aikido $B_ID = $M_NAME 
+
+rm -f $REG_FILE
+sync
+
+exit 0

@@ -1,0 +1,30 @@
+# $(warning "Started") 
+#LIB_NAME = gtStack
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ osVxSelect.c \
+ osVxSocket.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := gtStack.lib
+    cpssEnabler_gtStack_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

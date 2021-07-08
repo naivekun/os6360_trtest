@@ -1,0 +1,231 @@
+#!/bin/bash
+
+PID=$$
+prog="`echo $0 | awk -F/ '{print $NF}'`"
+NETSTAT="/bin/netstat"
+IPC_TO_CPSS="/usr/bin/ipc_to_cpss"
+LOCAL_HOST="127.0.0.1"
+PORT="54321"
+TIMEOUT="300"   # wait 300 sec
+SEND_RETRY="3"  # retry 3 times for nc command
+CMD=""
+STDOUT=0
+VERBOSE=0
+QUIET=0
+STDOUT_FILE="/tmp/appDemo_stdout"
+
+# Bind NC due to different platform
+nc -h 2>/tmp/help_nc_$PID
+if [ $? -eq 0 ] && [ -n `grep "netcat" "/tmp/help_nc_$PID"` ]; then
+    # On ONL platform, nc is from netcat and supports option "q"
+    NC="/bin/nc"
+    NC_OPTION="-q 300"
+else
+    # Assume from busybox, default case
+    NC="/usr/bin/nc"
+fi
+rm -f /tmp/help_nc_$PID
+
+function is_cpss_running() {
+    local rtn="no"      # default CPSS is not ready
+
+    $NETSTAT -ln | grep -q "0.0.0.0:54321"
+    if [ $? == 0 ]; then
+        echo "do show version" | "$NC" "$LOCAL_HOST" "$PORT" $NC_OPTION | grep "CPSS version"
+        if [ $? == 0 ]; then
+            rtn="yes"   # CPSS is ready
+        fi
+    fi
+
+    echo $rtn
+}
+
+function wait_cpss() {
+    local TOUT=$1
+    local cnt=0
+    local ret=0
+
+    # wait for CPSS init
+    while [ "`is_cpss_running`" == "no"  ]; do
+        sleep 1
+        cnt=$(($cnt + 1))
+        if [ $cnt -gt $TOUT ]; then
+            ret=1
+            break
+        fi
+    done
+
+    echo $ret
+}
+
+function cpss_chk_alive() {
+    # Only called after CPSS init is done. It is assumed CPSS is running and to check CPSS alive or not
+    local param_show="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"0\"}" # not print result
+    local api_cmd="{\"func\":\"WNC_CheckCpssAlive\",\"params\":[$param_show]}"
+
+    $IPC_TO_CPSS -m "$api_cmd"
+    if [ $? -ne 0 ]; then
+        echo "mrvl_luash: CPSS not alive through IPC!"
+        exit 1
+    fi
+}
+
+function usage() {
+echo "Usage:
+NAME
+    $prog - To issue commands to LUA shell
+
+SYNOPSIS
+    $prog [-c <command>] [-s] [-v] [-q] [-h]
+
+DESCRIPTION
+    This command is to send CLI command to LUA CLI shell. Default is to output
+    the log from LUA shell. Option \"-s\" is to show log from standard output
+    file only, and \"-v\" is to show all logs. Option \"-q\" is to suppress all
+    output logs. Option \"-e\" is to enter CPSS CLI.
+
+MANDATORY OPTIONS
+    -c      To send command to LUA shell, and get response.
+
+OPTIONAL OPTIONS
+    -s      Only display logs from standard output file.
+
+    -v      Verbose mode, to get both logs from LUA shell and standard output.
+
+    -q      To suppress all output.
+
+    -e      Enter CPSS CLI.
+
+EXAMPLE
+    $prog -c \"do show version\"
+        : issue command to get CPSS version, and display the result from
+          LUA shell.
+
+    $prog -c \"do show version\" -r
+        : check CPSS is ready or not, and then issue command to get CPSS
+          version, and display the result from LUA shell. Option \"-r\" is
+          needed if not sure the init of CPSS is done or not.
+
+    $prog -c \"do show version\" -s
+        : issue command to get CPSS version, and display the result from
+          standard output file.
+
+    $prog -c \"do show version\" -v
+        : issue command to get CPSS version, and show logs both from LUA shell
+          and standard output file.
+" >&2
+}
+
+#echo "num of args = [$#]"
+if [ $# -gt 4 ]; then
+    usage
+    exit 1
+fi
+
+#parsing arguments
+TMP=`getopt -o c:svqeh -n "$prog" -- "$@"`
+if [ $? != 0 ]; then
+    usage
+    exit 1
+fi
+
+#echo "TMP = [$TMP]"
+eval set -- "$TMP"
+while true
+do
+    #echo "args[0] = [$1]"
+    case "$1" in
+        -c )
+            #CMD="${2#* }"
+            CMD="$2"
+            shift 2
+            ;;
+        -s )
+            STDOUT=1
+            shift
+            ;;
+        -v )
+            VERBOSE=1
+            shift
+            ;;
+        -q )
+            QUIET=1
+            shift
+            ;;
+        -e )
+            telnet $LOCAL_HOST $PORT
+            exit 0
+            ;;
+        -h )
+            usage
+            exit 0
+            ;;
+        -- )
+            shift
+            break
+            ;;
+    esac
+done
+
+#echo "CMD = [$CMD]"
+if [ "$CMD" == "" ]; then
+    usage
+    exit 1
+fi
+
+if [ $QUIET -eq 1 ] && [ $STDOUT -eq 1 -o $VERBOSE -eq 1 ]; then
+    usage
+    exit 1
+fi
+
+
+if [ ! -f "/tmp/cpss_sdk_ready" ]; then
+    ret=`wait_cpss $TIMEOUT`
+    if [ $ret -eq 1 ]; then
+       echo "mrvl_luash: CPSS init failed!"
+       exit 1
+    else
+       touch "/tmp/cpss_sdk_ready"
+    fi
+fi
+
+if [ $STDOUT -eq 1 ] || [ $VERBOSE -eq 1 ]; then
+    endLineBefore=`wc -l $STDOUT_FILE`
+    endLineBefore=${endLineBefore% *}
+fi
+
+# Check CPSS alive first
+cpss_chk_alive
+
+ret=1
+CNT=0
+while [ $ret -ne 0 ] && [ $CNT -ne $SEND_RETRY ]; do
+    echo "$CMD" | "$NC" "$LOCAL_HOST" "$PORT" $NC_OPTION > /tmp/luash_res_$PID
+    ret=$?
+    CNT=$((CNT + 1))
+done
+if [ $ret -ne 0 ] && [ $CNT -eq $SEND_RETRY ]; then
+    echo "mrvl_luash: send commands failed!"
+    rm -f /tmp/luash_res_$PID
+    exit 1
+fi
+
+if [ $QUIET -ne 1 ] && [ $STDOUT -ne 1 ]; then
+    cat /tmp/luash_res_$PID | sed '$s/# /#\n/g' | tr -d '\r' | tail -n +9
+fi
+rm -f /tmp/luash_res_$PID
+
+if [ $STDOUT -eq 1 ] || [ $VERBOSE -eq 1 ]; then
+    endLineAfter=`wc -l $STDOUT_FILE`
+    endLineAfter=${endLineAfter% *}
+
+    echo -e "\nLog from appDemo stdout file:"
+    if [ $endLineBefore -eq $endLineAfter ]; then
+        echo " no output log."
+    else
+        StartLine=$((endLineBefore + 1))
+        sed -n "${StartLine},${endLineAfter}p" $STDOUT_FILE
+    fi
+fi
+
+exit 0

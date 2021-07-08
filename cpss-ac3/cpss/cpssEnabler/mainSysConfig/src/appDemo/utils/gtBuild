@@ -1,0 +1,25 @@
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+SUBDIRS = NONE
+
+#List of subfolders to include in build
+ifeq (EXISTS, $(CHX_FAMILY))
+  SUBDIRS = \
+   fastBoot \
+   hsu \
+   port 
+endif
+
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake
+

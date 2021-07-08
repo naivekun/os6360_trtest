@@ -1,0 +1,53 @@
+#!/bin/bash
+
+function is_valid_mac_address() {
+	local mac_addr=$1
+
+	# 1. format: XX:XX:XX:XX:XX:XX, where X is hexadecimal
+	# 2. cannot be 00:00:00:00:00:00
+	if [ -n "`echo $mac_addr | egrep '^([0-9,a-f,A-F]{2}:){5}[0-9,a-f,A-F]{2}$'`" ] && \
+	   [ "$mac_addr" != "00:00:00:00:00:00" ]; then
+		echo true
+	else
+		echo false
+	fi
+}
+
+function is_broadcast_mac_address() {
+	local mac_addr=$1
+
+	# format: XX:XX:XX:XX:XX:XX, where X is f or F
+	if [ -n "`echo $mac_addr | \
+	egrep '^([f,F]{2}:){5}[f,F]{2}$'`" ]; then
+		echo true
+	else
+		echo false
+	fi
+}
+
+function is_multicast_mac_address() {
+	local mac_addr=$1
+
+	# 1. is a valid MAC address
+	# 2. 1st bit is 1 (1st character is 8-F)
+	# broadcast MAC address is also multicast MAC address
+	if [ $(is_valid_mac_address $mac_addr) == true ] && \
+	   [ -n "`echo ${mac_addr:0:1} | egrep '^[8-9,a-f,A-F]$'`" ]; then
+		echo true
+	else
+		echo false
+	fi
+}
+
+function is_unicast_mac_address() {
+	local mac_addr=$1
+
+	# 1. a valid MAC address
+	# 2. 1st bit is 0 (1st character is 0-7)
+	if [ $(is_valid_mac_address $mac_addr) == true ] && \
+	   [ -n "`echo ${mac_addr:0:1} | egrep '^[0-7]$'`" ]; then
+		echo true
+	else
+		echo false
+	fi
+}

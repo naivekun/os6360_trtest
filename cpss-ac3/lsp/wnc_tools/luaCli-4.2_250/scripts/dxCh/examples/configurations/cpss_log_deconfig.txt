@@ -1,0 +1,13 @@
+// TAG:               cpss-log
+// Short Description: deconfigure settings of cpss-log
+// Description:       - set stack size to be one
+//					  - disable cpss log for specific lib all for all kinds of log
+//                    - disable cpss log (globally)
+
+
+end
+debug
+trace cpss-log stack size 1
+no trace cpss-log lib all log-type all
+no trace cpss-log
+end

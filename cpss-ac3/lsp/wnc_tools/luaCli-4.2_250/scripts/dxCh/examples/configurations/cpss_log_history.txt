@@ -1,0 +1,10 @@
+// TAG:               cpss-log; history
+// Short Description: configure cpss-log-history
+// Description:       - enable cpss log for all libs for error type of log
+//					  - set stack size to be 3
+end
+debug-mode
+trace cpss-log lib all log-type error
+trace cpss-log stack size 3
+exit
+end

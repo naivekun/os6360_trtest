@@ -1,0 +1,198 @@
+#! /bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=$(basename $0)
+
+usage () {
+echo "Usage:
+NAME
+       012_spi_id_info - SPI flash info test command
+
+SYNOPSIS
+       012_spi_id_info [-g]
+                       [-i ID] [-c size]
+                       [-h]
+
+DESCRIPTION
+       This command is used to display SPI flash info which
+       include chip ID and size, and verify whether info match
+       with input value which user expected or not. The flash
+       size unit is KB.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -g    Display SPI flash info
+
+       -i    Verify chip ID with user input value
+
+       -c    Verify flash size with user input value(KB)
+
+       -h    Help message
+
+PASS CRITERIA
+       - Display SPI flash info (-g) :
+           SUCCESS: could get spi ID and size info
+             Display: PASS
+             Return code : 0
+
+           ERROR: couldn't get spi ID and size info
+               Display: FAIL
+               Return code : 2
+
+       - Verify chip ID with input value (-i) :
+           SUCCESS: chip ID is match with user expected
+             Display: PASS
+             Return code : 0
+
+           ERROR: chip ID is not match with user expected
+             Display: FAIL
+             Return code : 3
+
+       - Verify memory size with input value (-c) :
+           SUCCESS: memory size is match with user expected
+             Display: PASS
+             Return code : 0
+
+           ERROR: memory size is not match with user expected
+             Display: FAIL
+             Return code : 3
+
+           ERROR: invalid argument
+             Display: FAIL
+             Return code : 4
+
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS
+             Display: FAIL
+             Return code : 1
+EXAMPLE
+       012_spi_id_info -g
+       012_spi_id_info -i s25f1064k -c 8192
+       012_spi_id_info -c 8192
+" >&2
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result=${PASS}
+result_id=${PASS}
+result_size=${PASS}
+
+#spi_info=`dmesg | grep spi | cut -d : -f 2`
+spi_info=`cat /usr/local/spi_info`
+
+# spi id.
+spi_id=`echo ${spi_info} | cut -d " " -f 1`
+
+#spi flash size.
+spi_size=`echo ${spi_info} | cut -d "(" -f 2 | cut -d " " -f 1`
+
+# test_mode status.
+test_id_mode=false
+test_size_mode=false
+disp_mode=false
+#====================================================================
+
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":gi:c:h" arg
+do
+    case ${arg} in
+        g)
+            disp_mode=true
+            ;;
+        i)
+            input_id=${OPTARG}
+            test_id_mode=true
+            ;;
+        c)
+            input_size=${OPTARG}
+            test_size_mode=true
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    quit 1
+elif [ -z ${spi_id} ] || [ -z ${spi_size} ]; then
+    echo
+    echo "===================================="
+    print_fail "No spi info get"
+    echo "===================================="
+    quit 2
+fi
+
+# display info.
+if [ ${disp_mode} = true ]; then
+    echo
+    echo "Display SPI flash info:"
+    echo "==============================="
+    echo "spi ID: ${spi_id}"
+    echo "spi size: ${spi_size} KB"
+    echo "==============================="
+fi
+
+# test spi id.
+if [ ${test_id_mode} = true ]; then
+    echo
+    echo "Verify spi ID: ${spi_id}"
+    echo "==============================="
+    if [ ${spi_id} = ${input_id} ]; then
+        print_pass "Match with input"
+        result_id=${PASS}
+    else
+        print_fail "Not match with input"
+        result_id=3
+    fi
+    echo "==============================="
+fi
+
+# test spi size.
+if [ ${test_size_mode} = true ]; then
+    echo
+    echo "Verify spi size: ${spi_size} KB"
+    echo "==============================="
+
+    # check if arg is integer.
+    check_arg=`echo ${input_size} | grep '^[0-9]*$'`
+    if [ -z ${check_arg} ]; then
+        print_fail "Invalid argument"
+        result_size=4
+    else
+        if [ ${spi_size} -eq ${input_size} ]; then
+            print_pass "Match with input"
+            result_size=${PASS}
+        else
+            print_fail "Not match with input"
+            result_size=3
+        fi
+    fi
+    echo "==============================="
+fi
+
+if
+[ ${result_size} -ne ${PASS} ]; then
+    result=${result_size}
+elif [ ${result_id} -ne ${PASS} ]; then
+    result=3
+else
+    result=${PASS}
+fi
+
+quit ${result}

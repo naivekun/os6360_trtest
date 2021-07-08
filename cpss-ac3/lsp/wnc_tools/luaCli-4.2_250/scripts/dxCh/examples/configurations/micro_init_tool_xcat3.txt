@@ -1,0 +1,38 @@
+// TAG:               micro-init
+// Short Description: Create configuration file by using the micro-init tool
+// Description:       Use the micro-init tool commands to create configuration files:
+//                    device-config command creates config-device.txt
+//                    port-map command creates config-map.txt
+//                    port-pizza-resources command creates config-pizza.txt
+//                    port-smi command creates config-smi.txt
+//                    other user defined configurations saved to config-other.txt
+
+end
+micro-init file config-xcat3-${@@tid}
+device-config deviceId CPSS_98DX3336_CNS mngInterfaceType CPSS_CHANNEL_PEX_MBUS_E coreClock 290Mhz features-list EXTENDED_DSA_BYPASS_BRIDGE_RM
+port-pizza-resources
+range 0/0-23 ifMode QSGMII speed 1000
+range 0/24-27 ifMode KR speed 10000
+exit
+port-smi
+range 0/0-23 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+range 0/24-27 inband-auto-neg-enable false smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+phy-port-smi-init
+exit
+end
+debug-mode
+trace hw-access
+end
+// user configurations
+configure
+interface vlan device 0 vid 2
+exit
+interface range ethernet 0/0-27
+switchport pvid 2
+switchport allowed vlan add 2 tagged
+exit
+end
+debug-mode
+trace save file config-other-xcat3-${@@tid}.txt as micro-init saveToHd
+no trace hw-access mode write
+end

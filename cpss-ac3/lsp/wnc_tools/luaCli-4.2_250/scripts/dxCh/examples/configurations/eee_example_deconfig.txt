@@ -1,0 +1,32 @@
+// TAG:               EEE;IEEE_802_3az;
+// Short Description: deconfig for device with EEE support and PHY support EEE.
+// Description:       Set the ports into disable EEE port on all ports
+//                    Using 'show' commands to see configurations,status
+//                    Port's IEEE 802.3az Energy Efficient Ethernet (EEE) Support.
+//
+end
+//
+// enter the config context
+config
+//
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// disable mode (restore also 'default' timers)
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+interface range ethernet all
+eee mode disable timer-limit-tw 0x10 timer-limit-li 0x4 timer-limit-ts 0x10
+exit
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// get into 'exec' mode
+end
+//
+// show the configuration / status
+//
+// per port - all the ports
+show eee port-config all
+//
+// show the status on the ports
+//
+show eee port-status all
+//
+end

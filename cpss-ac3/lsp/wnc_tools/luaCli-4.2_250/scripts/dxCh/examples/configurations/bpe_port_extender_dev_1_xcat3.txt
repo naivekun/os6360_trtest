@@ -1,0 +1,150 @@
+// TAG:               BPE; IEEE8021br; PortExtender; xcat3
+// Short Description: set configuration for 'Port Extender' in BPE IEEE 802.1br system (device PE1 in the system)
+// Description:       Configures the 'Port Extender' PE1 device in the next system :
+//                      station_1
+//                            &
+//                            &
+//                            &
+//              ******************************************
+//              *            port 54                     *
+//              *                                        *
+//              *        Contrlo bridge (CB)      port 0 *&&&&&& station_7 (not tested)
+//              *                                        *
+//              *       port 36             port 18      *
+//              ******************************************
+//                     #                         #
+//                     #                         #
+//                     #                         #
+//       ***********************      ***********************
+//       *          port 18    *      *       port  8       *
+//       *       (xcat3)       *      *      (xcat3)        *
+//       *        PE3          *      *        PE2   port 0 *&&&&&&   station_2
+//       *                     *      *                     *         pcid=1004
+//       *    port 0           *      *    port  18         *         eport=1004
+//       ***********************      ***********************
+//              &                              # station_6
+//              &                              # pcid=1005
+//              &                              # eport=1005
+//        station_5                   ***********************
+//        pcid=1001                   *     port 23         *
+//        eport=1101                  *      (xcat3)        *
+//                                    *        PE1  port  8 *&&&&&& station_8 (not tested)
+//                                    *                     *       pcid=1003
+//                                    * port 0      port 18 *       eport=1003
+//                                    ***********************
+//                                       &              &
+//                                       &              &
+//                                       &              &
+//                                   station_4
+//                                   station_9       station_3
+//                                   pcid=1001       pcid=1002
+//                                   eport=1001      eport=1002
+end
+
+// enter the config context
+config
+
+// set TPID global config to add 0x8100 (standard vlan tag ethertype) - for ingress,egress
+// set TPID global config to add 0x893f (BPE 802.1br ethertype)  - for ingress,egress
+tpid device ${dev} direction ingress index 0 etherType 0x8100
+tpid device ${dev} direction ingress index 7 etherType 0x893f
+tpid device ${dev} direction egress index 0 etherType 0x8100
+tpid device ${dev} direction egress index 7 etherType 0x893f
+
+// state that the device is 'Port Extender' in BPE 802.1br system
+bpe-802-1-br my-info role pe
+
+// 'upstream port'
+// state that port 23 connected to :
+//	1. 'control bridge' named "main_cb" directly 
+interface ethernet ${dev}/${port[4]}
+bpe-802-1-br neighbor-info role cb name "main_cb" my-connection indirect 
+exit
+
+//
+// bind <GRP>,<ECID> to vlans:
+//			
+// 	to vlan 1 : GRP = 3 , ECID = 0xf01
+// 	to vlan 5 : GRP = 1 , ECID = 0xf05
+// 	to vlan 6 : GRP = 2 , ECID = 0xf06
+//
+interface vlan device ${dev} vid 1
+bpe-802-1-br flood-etag-info grp 3 e-cid-base 0xf01
+exit
+interface vlan device ${dev} vid 5
+bpe-802-1-br flood-etag-info grp 1 e-cid-base 0xf05
+exit
+interface vlan device ${dev} vid 6
+bpe-802-1-br flood-etag-info grp 2 e-cid-base 0xf06
+exit
+//
+// add ports to vlan : 
+// need to add the 'cascade ports' and 'upstream port' to all vlans (in our case : 23)
+//
+// NOTE: the cascade ports MUST be configured : 'outer_tag1_inner_tag0'
+//
+//
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]}
+switchport allowed vlan add 1 tagged
+switchport allowed vlan add 5 tagged
+switchport allowed vlan add 6 tagged
+exit
+
+interface range ethernet ${dev}/${port[4]}
+switchport allowed vlan add 1 outer_tag1_inner_tag0
+switchport allowed vlan add 5 outer_tag1_inner_tag0
+switchport allowed vlan add 6 outer_tag1_inner_tag0
+exit
+
+//state that next 'local' physical ports are 'Extended Ports' (need pcid) :
+//	represent 'Extended port' locally that uses value of 'pcid'
+//
+//state that 'pcid' 1001 : on port 0
+//state that 'pcid' 1002 : on port 18
+//state that 'pcid' 1003 : on port 8
+interface ethernet ${dev}/${port[1]}
+bpe-802-1-br pcid-on-me pcid 1001 pvid0 1
+exit
+interface ethernet ${dev}/${port[3]}
+bpe-802-1-br pcid-on-me pcid 1002 pvid0 1
+exit
+interface ethernet ${dev}/${port[2]}
+bpe-802-1-br pcid-on-me pcid 1003 pvid0 1
+exit
+
+//-------  define registered mac-multicast groups
+
+// define group with the cascade ports (needed in CB and in PE device)
+// NOTE: 'upstream ports' not needed in PE devices
+// in vlan 5 : bind 01:02:03:55:55:55 to <GRP> = 3 , <ecid-base> = 0x550
+// in addition to 'cascade ports' added also the needed ports
+
+// the eports are : 1001(station_4) , 1003 (station_8) , 1004 (station_2) , 1101 (station_5)
+interface vlan device ${dev} vid 5
+bridge multicast mac address group 01:02:03:55:55:55 ethernet ${dev}/${port[1]},${port[2]}
+bpe-802-1-br mc-etag-info grp 3 e-cid-base 0x550 mac 01:02:03:55:55:55
+exit
+
+// in vlan 6 : bind 01:02:03:55:55:55 to <GRP> = 2 , <ecid-base> = 0x660
+// in addition to 'cascade ports' added also the needed ports
+// in vlan 6 : bind 01:02:03:66:66:66 to <GRP> = 3 , <ecid-base> = 0x661
+// in addition to 'cascade ports' added also the needed ports
+
+// the eports are :  1003 (station_8) , 1004 (station_2) , 1101 (station_5)
+interface vlan device ${dev} vid 6
+bridge multicast mac address group 01:02:03:55:55:55 ethernet ${dev}/${port[2]}
+bpe-802-1-br mc-etag-info grp 2 e-cid-base 0x660 mac 01:02:03:55:55:55
+
+// the eports are :  1002 (station_3) , 1101 (station_5)
+bridge multicast mac address group 01:02:03:66:66:66 ethernet ${dev}/${port[3]}
+bpe-802-1-br mc-etag-info grp 3 e-cid-base 0x661 mac 01:02:03:66:66:66
+exit
+
+// command to show only neighbors info
+do show bpe-802-1-br neighbor-info
+
+// command to show 'ALL' BPE 802.1br info
+do show bpe-802-1-br info
+
+// show the registered mac-multicast groups
+do show bridge multicast address-table device ${dev}

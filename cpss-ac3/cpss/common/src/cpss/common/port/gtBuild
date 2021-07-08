@@ -1,0 +1,19 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+## CPSS compilation environment #################
+#INCLUDE_PATH += \
+#		$(FIS)$(SW_ROOT)/common/src/cpss/common/labServices/port/gop/h$(FIE)
+ 
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

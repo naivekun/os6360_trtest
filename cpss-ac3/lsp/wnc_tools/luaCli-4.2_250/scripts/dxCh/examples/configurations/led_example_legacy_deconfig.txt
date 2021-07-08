@@ -1,0 +1,30 @@
+// TAG:               LED interface;
+// Short Description: De-configure LED stream interface
+// Description:       De-configure LED stream interface global parameteres
+
+end
+configure
+//Restore the order of the signals driven in the LED stream - by port
+no led interface 0 device ${dev} stream-order-by
+//Reset start and end significant bit in stream - 0-255
+no led interface 0 device ${dev} stream-length
+//Restore LED blink duty cycle signal and divider of blink frequency - LED blink duty cycle is 25% and LED blink frequency divider is 16.2 ms
+no led interface 0 device ${dev} blink-cfg 0
+//Restore LED indication stretching divider - LED clock stretching: 4-8.1 msec
+no led interface 0 device ${dev} stretch-cfg
+//Restore inversion of LEDCLK signal - no invertion
+no led interface 0 device ${dev} clock-invert
+//Restore LED interface indications when physical link is down - no effect
+no led interface 0 device ${dev} disable-on-link-down
+//Restore configuration of class 13 indication - link down
+no led interface 0 device ${dev} dual-media-class-13
+//Restore configuration of class 5 indication - half duplex
+no led interface 0 device ${dev} dual-media-class-5
+
+// Disable forcing for LED class 3
+no led class 3 device ${dev} led-if 0 force port-type tri-speed
+//disablee indication blinking.
+no led class 3 device ${dev} led-if 0 use-blink
+//disable invertion
+no led class 3 device ${dev} led-if 0 invert port-type xg
+exit

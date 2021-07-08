@@ -1,0 +1,13 @@
+// TAG:               policer; vlan;
+// Short Description: Drop packets because of policer configuration
+// Description:       Sending a burst tagged (vid20) packet to port 0; all packets were dropped
+end
+configure
+policy-id 1 device ${dev} police 3 burst 3000 exceed-action drop
+interface vlan device ${dev} vid 20
+policy-id 1
+exit
+interface range ethernet ${dev}/${port[1]}
+switchport allowed vlan add 20 tagged
+do show policy device ${dev}
+end

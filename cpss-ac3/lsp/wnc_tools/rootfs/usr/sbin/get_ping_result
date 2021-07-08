@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#This command to get ping test result
+
+PING_IP_FILE=/usr/data/wnc_ping_ip
+
+PING_IP=192.168.8.8
+
+if [ -f $PING_IP_FILE ];
+then
+   PING_IP=`cat $PING_IP_FILE` 
+fi
+
+#echo $PING_IP
+
+PING_RET=/tmp/ping.tmp
+
+ping $PING_IP -c 3  > $PING_RET
+
+RET=`cat $PING_RET | grep "packet loss" | awk '{print $7}'`
+
+#echo $RET
+
+if [ "$RET" == "0%" ]
+then
+  echo yes #PING OK
+else
+  echo no #PING FAIL
+fi
+
+exit 0
+

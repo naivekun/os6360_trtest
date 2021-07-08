@@ -1,0 +1,228 @@
+#!/bin/bash
+
+cmd_dir=$(dirname $0)
+
+source $cmd_dir/sh_funcs/sdkutils_bcm
+source $cmd_dir/sh_funcs/sdkutils_mrvl
+
+function Output_message() {
+	local msg_file=$1
+	local log_file=$2
+
+	# output and log message by mutex protection
+	(
+		flock -x 9
+		cat $msg_file >>$log_file
+		cat $msg_file
+		rm -f $msg_file
+	) 9>/var/lock/burn_in
+}
+
+function Output_result() {
+    local ret_tmp_file=$1
+    local ret_file=$2
+
+    # output result log message by mutex protection
+    (
+        flock -x 9
+        cat $ret_tmp_file >>$ret_file
+        rm -f $ret_tmp_file
+    ) 9>/var/lock/ret_lock
+}
+
+#
+# [PURPOSE]
+#   check error code of previous command. if the error code is not 0, output
+#   and log error message then exit.
+# [PARAMETERS]
+#   errno               - error code of previous command
+#   msg_file            - message file
+#   log_file            - log file
+# [NOTES]
+#   msg_file will be removed before returning from the function.
+#
+function Exit_on_error() {
+	local errno=$1
+	local msg_file=$2
+	local log_file=$3
+
+	# output message and exit in case of error
+	if [ $errno -ne 0 ]; then
+		Output_message $msg_file $log_file
+		exit 1
+	fi
+}
+
+#
+# [PURPOSE]
+#   check error code of previous command. if the error code is not 0, run
+#   customerized process (defined in err_handler).
+# [PARAMETERS]
+#   errno               - error code of previous command
+#   msg_file            - message file
+#   log_file            - log file
+# [NOTES]
+#   msg_file will be removed before returning from the function.
+function Handle_error() {
+	local errno=$1
+	local msg_file=$2
+	local log_file=$3
+
+	if [ $errno -ne 0 ]; then
+		${DIR}/err_handler $errno $log_file &>$msg_file
+		Output_message $msg_file $log_file
+	fi
+}
+
+#
+# [PURPOSE]
+#   mount tmpfs
+# [PARAMETERS]
+#   None
+# [NOTES]
+#   below configurations could be found in conf:
+#     CFG_LOG_TMPFS_MNT: tmpfs mount point
+#     CFG_LOG_TMPFS_SIZE: tmpfs size
+#
+function Tmpfs_mount() {
+	local mnt=$CFG_LOG_TMPFS_MNT
+	local size=$CFG_LOG_TMPFS_SIZE
+
+	if [ -z "`mount | grep \"$mnt type tmpfs\"`" ]; then
+		mkdir -p $mnt
+		mount -t tmpfs -o size=$size tmpfs $mnt
+	fi
+}
+
+#
+# [PURPOSE]
+#   unmount tmpfs
+# [PARAMETERS]
+#   none
+# [NOTES]
+#   below configurations could be found in conf:
+#     CFG_LOG_TMPFS_MNT: tmpfs mount point
+#
+function Tmpfs_unmount() {
+	local mnt=$CFG_LOG_TMPFS_MNT
+	umount $mnt
+}
+
+#
+# [PURPOSE]
+#   mount persistent media (denoted by CFG_PERSISTENT_MEDIA).
+# [PARAMETERS]
+#   is_mounted            - persistent media is mounted or not
+#   is_writable           - persistent media is writable or not
+# [NOTES]
+#   below configurations could be found in conf:
+#     CFG_PERSISTENT_MEDIA: persistent media
+#     CFG_PERSISTENT_MNT: persistent mount point
+#
+function Preserve_mount() {
+	local dev=$CFG_PERSISTENT_MEDIA
+	local mnt=$CFG_PERSISTENT_MNT
+	local is_mounted=0
+	local is_writable=0
+	
+	if [ -z "$CFG_PERSISTENT_MEDIA" ]; then
+		# media can not mount 
+		is_mounted=2
+	else
+		# check if persistent media has been mounted and privilege
+		if [ -n "`mount | grep $dev`" ]; then
+			mnt=`mount | grep $dev | cut -d ' ' -f 3`
+			is_mounted=1
+			if [ -n "`mount | grep $dev | grep rw,`" ];then
+				is_writable=1
+			fi
+		fi
+
+		# create dir
+		mkdir -p $mnt
+
+		# mount persistent media
+		if [ $is_mounted -eq 0 ]; then
+			mount $dev $mnt
+		# remount persistent media to be writable
+		elif [ $is_writable -eq 0 ]; then
+			mount -o remount,rw $dev
+		fi
+
+		# check mount persistent media status
+		if [ -z "`mount | grep $dev`" ]; then
+			is_mounted=2
+		fi
+	fi
+
+	# if persistent media can not mount, mount on tmpfs 
+	if [ $is_mounted -eq 2 ]; then
+		if [ -z "`mount | grep \"$mnt type tmpfs\"`" ]; then
+			mkdir -p $mnt
+			mount -t tmpfs -o size=20m tmpfs $mnt
+		fi
+	fi
+
+	# set mounte state
+	if [ $is_mounted -eq 0 ]; then
+		# media new mount 
+		echo $MNT_NEW_MOUNTED
+	elif [ $is_mounted -eq 1 ]; then
+		# media has been mounted
+		if [ $is_writable -eq 0 ]; then
+			echo $MNT_MOUNTED_NOT_WRITABLE
+		else
+			echo $MNT_MOUNTED_WRITABLE
+		fi
+	else
+		# media can not mount 
+		echo $MNT_CANT_MOUNTED
+	fi
+}
+
+#
+# [PURPOSE]
+#   unmount persistent media (denoted by CFG_PERSISTENT_MEDIA).
+# [PARAMETERS]
+#   mount_stat            - persistent media mounte state
+# [NOTES]
+#   below configurations could be found in conf:
+#     CFG_PERSISTENT_MEDIA: persistent media
+#     CFG_PERSISTENT_MNT: persistent mount point
+#
+function Preserve_unmount() {
+	local dev=$CFG_PERSISTENT_MEDIA
+	local mnt=$CFG_PERSISTENT_MNT
+	local mount_stat=$1
+
+	case ${mount_stat} in
+        $MNT_CANT_MOUNTED)
+            is_mounted=2
+			is_writable=1
+            ;;
+        $MNT_NEW_MOUNTED)
+            is_mounted=0
+			is_writable=1
+            ;;
+        $MNT_MOUNTED_NOT_WRITABLE)
+            is_mounted=1
+			is_writable=0
+            ;;
+        $MNT_MOUNTED_WRITABLE)
+            is_mounted=1
+			is_writable=1
+            ;;
+        *)
+            is_mounted=2
+			is_writable=1
+            ;;
+    esac
+
+	# unmount persistent media if it was not mount
+	if [ $is_mounted -eq 0 ]; then
+		umount $dev
+	# restore persistent media's access privilege
+	elif [ $is_writable -eq 0 ]; then
+		mount -o remount,ro $dev
+	fi
+}

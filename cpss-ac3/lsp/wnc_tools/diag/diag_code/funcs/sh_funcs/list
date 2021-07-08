@@ -1,0 +1,62 @@
+#!/bin/bash
+
+function parse_list() {
+	local segs=`echo $1 | tr ',' ' '`
+	local start=''
+	local end=''
+	local index=''
+	local result=''
+
+	# parse segment iterately
+	for seg in $segs; do
+		# get start
+		start=`echo $seg | cut -d '-' -f1 | tr -d [:alpha:]`  
+		if [ -z "$start" ]; then
+			echo "Error: invalid list $1" >&2
+			exit 1
+		fi
+
+		# get end
+		end=`echo $seg | cut -d '-' -f2 | tr -d [:alpha:]`
+		if [ -z "$end" ]; then
+			echo "Error: invalid list $1" >&2
+			exit 1
+		fi
+
+		# if start doesn't equal to end, it means segment exists
+		if [ ${start} -ne ${end} ]; then
+			if [ ${end} -lt ${start} ]; then
+				echo "Error: invalid list $1" >&2
+				exit 1
+			fi
+
+			index=${start}
+			while [ ${index} -le ${end} ]; do
+				result="$result ${index}"
+				index=`expr ${index} + 1`
+			done
+		else
+			result="$result $start"
+		fi
+	done
+
+	# remove redundance(s)
+	result=`echo $(printf '%s\n' $result | sort -u -n)`
+
+	echo $result
+}
+
+function is_in_list() {
+	local entry=$1
+	shift
+	local list=$@
+
+	for ent in $list; do
+		if [ "$entry" == "$ent" ]; then
+			echo true
+			return
+		fi
+	done
+
+	echo false
+}

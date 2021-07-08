@@ -1,0 +1,32 @@
+// TAG:               NAPT44; tunnel; vlan; restore; NAT
+// Short Description: Restore configurations
+// Description:       Disable (restore default) vlans 5,6,7
+
+//REMOVING CONFIGURATIONS
+
+end
+clear bridge type ${dev} all
+configure
+
+interface range ethernet ${dev}/${port[2]},${port[3]}
+switchport allowed vlan remove 5,6,7
+exit
+
+no interface range vlan device ${dev} vid 5,6,7
+
+interface ethernet ${dev}/${port[3]}
+no mpls all
+exit
+
+do show mpls
+
+no mac address
+
+no nat44 all
+
+do show nat44
+
+end
+
+
+

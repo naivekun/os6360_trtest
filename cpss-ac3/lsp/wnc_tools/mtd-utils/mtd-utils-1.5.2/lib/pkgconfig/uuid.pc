@@ -1,0 +1,11 @@
+prefix=/mnt/ac3/quagga-48/cpss-ac3/lsp/wnc_tools/mtd-utils/mtd-utils-1.5.2
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: uuid
+Description: Universally unique id library
+Version: 1.44.2
+Requires: 
+Cflags: -I${includedir}/uuid -I${includedir}
+Libs: -L${libdir} -luuid

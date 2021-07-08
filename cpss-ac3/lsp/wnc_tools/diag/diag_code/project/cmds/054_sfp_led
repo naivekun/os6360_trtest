@@ -1,0 +1,142 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+STAT="on"
+COLOR="green"
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - LEDs test for SFP/SFP+ ports
+
+SYNOPSIS
+       $prog_name [-c color] [-q] [-h]
+
+DESCRIPTION
+       The command is to test LEDs (color green or amber) of all SFP/SFP+
+       ports. Under the diag test mode, the behavior of LEDs won't depend on 
+       port status, such as link up/down, but can be controlled by the diag 
+       command.
+
+       Parameter \"-c\" is to enter the diag test mode, and used to choose the
+       color of LEDs.
+
+       Once the test is done and the user wants to rollback the behavior of
+       LEDs, parameter \"-q\" is to quit the diag test mode and restore the MAC
+       LED interface configuration register.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -c    To enter the diag test mode and choose the color of LED.
+             Available option is \"0\" (green) and \"1\" (amber).
+
+       -q    To quit the diag test mode and restore the MAC LED interface
+             configuration register to default.
+
+       -h    Show this help message.
+
+PASS CRITERIA
+       - Control LEDs of all SFP/SFP+ ports with correct behavior:
+           SUCCESS: green (or amber) LEDs of SFP/SFP+ ports on or off correctly
+             Display: \"=== Set all green LEDs of SFP/SFP+ ports [ON] ===\"
+             or
+             Display: \"=== Set all amber LEDs of SFP/SFP+ ports [ON] ===\"
+             Return code : 0
+
+       - Quit the diag test mode:
+           SUCCESS: restore the MAC configuration register to default
+             Display: \"=== Quit the diag test mode ===\" 
+             Return code : 0
+
+EXAMPLE
+       $prog_name -c 0
+       $prog_name -c 1
+       $prog_name -q
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    res=$FAIL
+    exit $res
+fi
+
+while getopts "c:qh" arg; do
+    case $arg in
+        c) # LED color
+            if [ "$OPTARG" != "0" ] && [ "$OPTARG" != "1" ]; then
+                usage
+                res=$FAIL
+                exit $res
+            fi
+            if [ "$OPTARG" == "1" ]; then
+                COLOR="amber"
+            else
+                COLOR="green"
+            fi
+            ;;
+        q) # to quit diag test mode, set $STAT to "quit" for simplicity 
+            STAT="quit"
+            ;;
+        h | *) # display usage
+            usage
+            quit_ok
+            ;;
+    esac
+done
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    print_fail "CPSS not ready!"
+    exit 1
+fi
+
+APICMD="do cpss-api call cpssDrvPpHwRegBitMaskWrite"
+
+rm -f ./tmp_sfp_port_led
+
+if [ "$COLOR" == "amber" ]; then
+    CPLD_VALUE="0x0"
+else    # default green
+    CPLD_VALUE="0x1"
+fi
+echo "$CPLD_VALUE" > /sys/bus/i2c/devices/0-007f/sfp_plus_2_stack_up
+echo "$CPLD_VALUE" > /sys/bus/i2c/devices/0-007f/sfp_plus_3_stack_up
+
+LED_DIRECT_MODE="0x1"   # enable LED indications
+if [ "$STAT" == "quit" ]; then
+    LED_INF_0_CONFIG="0xaa99aa99"
+else	# default LEDs on
+    LED_INF_0_CONFIG="0x55555555"
+fi
+
+if [ "$SKU" == "OS6360-P10" ] || [ "$SKU" == "OS6360-10"  ]; then
+    echo "$APICMD devNum 0 portGroupId 0xFFFFFFFF regAddr 0x07005114 mask 0xFFFFFFFF value $LED_DIRECT_MODE" > tmp_sfp_port_led
+    echo "$APICMD devNum 0 portGroupId 0xFFFFFFFF regAddr 0x08005104 mask 0xFFFFFFFF value $LED_INF_0_CONFIG" >> tmp_sfp_port_led
+else    # SKU: OS6360-P24X, OS6360-PH24 and OS6360-P48X
+    # GPIO_LED_SFP2 <- LED1_STB
+    echo "$APICMD devNum 0 portGroupId 0xFFFFFFFF regAddr 0x09005114 mask 0xFFFFFFFF value $LED_DIRECT_MODE" > tmp_sfp_port_led
+    echo "$APICMD devNum 0 portGroupId 0xFFFFFFFF regAddr 0x0a005104 mask 0xFFFFFFFF value $LED_INF_0_CONFIG" >> tmp_sfp_port_led
+    # GPIO_LED_SFP3 <- LED0_STB
+    echo "$APICMD devNum 0 portGroupId 0xFFFFFFFF regAddr 0x07005114 mask 0xFFFFFFFF value $LED_DIRECT_MODE" >> tmp_sfp_port_led
+    echo "$APICMD devNum 0 portGroupId 0xFFFFFFFF regAddr 0x08005104 mask 0xFFFFFFFF value $LED_INF_0_CONFIG" >> tmp_sfp_port_led
+fi
+
+cpss_load_config_file "tmp_sfp_port_led" "no_show"
+
+# Display log
+if [ "$STAT" == "quit" ]; then
+    echo -e "=== Quit the diag test mode ===\n"
+else
+    echo -e "=== Set all $COLOR LEDs of SFP/SFP+ ports [ON] ===\n"
+fi
+
+quit_ok

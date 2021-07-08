@@ -1,0 +1,20 @@
+// TAG:               Jumbo-frame;vlan; tagged;
+// Short Description: Create vlan#2 on dev#0 for 4 ports allow Jumbo 9000 bytes (ports,vlan)
+// Description:       Create tagged vlan#2 on for 4 ports
+//                    allow Jumbo 9K (ports,vlan)
+//                    3 ports egress as tagged (1 as untagged)
+end
+configure
+interface vlan device ${dev} vid 2
+jumbo-frame ${@@jumboSize(9000)} 
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]}
+switchport allowed vlan add 2 tagged
+exit
+interface range ethernet ${dev}/${port[4]}
+switchport allowed vlan add 2 untagged
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+jumbo-frame ${@@jumboSize(9000)} 
+exit
+end

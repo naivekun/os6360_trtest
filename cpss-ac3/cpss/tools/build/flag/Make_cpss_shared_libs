@@ -1,0 +1,70 @@
+
+cpssEnabler_confi_OBJ                   :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_confi_SRC1))
+cpssEnabler_dragonite_OBJ               :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_dragonite_SRC1))
+cpssEnabler_extPhyM_OBJ                 :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_extPhyM_SRC1))
+cpssEnabler_gtOs_OBJ                    :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_gtOs_SRC1))
+cpssEnabler_gtStack_OBJ                 :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_gtStack_SRC1))
+cpssEnabler_gtUtil_OBJ                  :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_gtUtil_SRC1))
+cpssEnabler_luaCLI_OBJ                  :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_luaCLI_SRC1))
+cpssEnabler_mainCmd_OBJ                 :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_mainCmd_SRC1))
+cpssEnabler_mainExtDrv_OBJ              :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_mainExtDrv_SRC1))
+cpssEnabler_mainExtDrvShared_OBJ        :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_mainExtDrvShared_SRC1))
+cpssEnabler_mainPhy_OBJ                 :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_mainPhy_SRC1))
+cpssEnabler_mainSysConfig_OBJ           :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_mainSysConfig_SRC1))
+cpssEnabler_shrMemIntraCPSSdata_OBJ     :=$(patsubst %.c,$(OUT_DIR)/%.o,$(cpssEnabler_shrMemIntraCPSSdata_SRC1))
+
+cpssEnabler_confi_LIB_A                 :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/confi.a
+cpssEnabler_dragonite_LIB_A             :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/dragonite.a
+cpssEnabler_extPhyM_LIB_A               :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/extPhyM.a
+cpssEnabler_gtOs_LIB_A                  :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/gtOs.a
+cpssEnabler_gtStack_LIB_A               :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/gtStack.a
+cpssEnabler_gtUtil_LIB_A                :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/gtUtil.a
+cpssEnabler_luaCLI_LIB_A                :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/luaCLI.a
+cpssEnabler_mainCmd_LIB_A               :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/mainCmd.a
+cpssEnabler_mainExtDrv_LIB_A            :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/mainExtDrv.a
+cpssEnabler_mainExtDrvShared_LIB_A      :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/mainExtDrvShared.a
+cpssEnabler_mainPhy_LIB_A               :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/mainPhy.a
+cpssEnabler_mainSysConfig_LIB_A         :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/mainSysConfig.a
+cpssEnabler_shrMemIntraCPSSdata_LIB_A   :=$(OUT_DIR)/cpssEnabler/libs/$(CPSS_ARCH)/shrMemIntraCPSSdata.a
+
+LIBS_SHARED = \
+    $(cpssEnabler_confi_LIB_A) \
+    $(cpssEnabler_dragonite_LIB_A) \
+    $(cpssEnabler_extPhyM_LIB_A) \
+    $(cpssEnabler_gtOs_LIB_A) \
+    $(cpssEnabler_gtStack_LIB_A) \
+    $(cpssEnabler_gtUtil_LIB_A) \
+    $(cpssEnabler_luaCLI_LIB_A) \
+    $(cpssEnabler_mainCmd_LIB_A) \
+    $(cpssEnabler_mainExtDrv_LIB_A) \
+    $(cpssEnabler_mainExtDrvShared_LIB_A) \
+    $(cpssEnabler_mainPhy_LIB_A) \
+    $(cpssEnabler_mainSysConfig_LIB_A) \
+    $(cpssEnabler_shrMemIntraCPSSdata_LIB_A)
+
+$(cpssEnabler_confi_LIB_A): $(cpssEnabler_confi_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_confi_LIB_A)               $(cpssEnabler_confi_OBJ)
+$(cpssEnabler_dragonite_LIB_A): $(cpssEnabler_dragonite_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_dragonite_LIB_A)           $(cpssEnabler_dragonite_OBJ)
+$(cpssEnabler_extPhyM_LIB_A): $(cpssEnabler_extPhyM_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_extPhyM_LIB_A)             $(cpssEnabler_extPhyM_OBJ)
+$(cpssEnabler_gtOs_LIB_A): $(cpssEnabler_gtOs_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_gtOs_LIB_A)                $(cpssEnabler_gtOs_OBJ)
+$(cpssEnabler_gtStack_LIB_A): $(cpssEnabler_gtStack_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_gtStack_LIB_A)             $(cpssEnabler_gtStack_OBJ)
+$(cpssEnabler_gtUtil_LIB_A): $(cpssEnabler_gtUtil_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_gtUtil_LIB_A)              $(cpssEnabler_gtUtil_OBJ)
+$(cpssEnabler_luaCLI_LIB_A): $(cpssEnabler_luaCLI_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_luaCLI_LIB_A)              $(cpssEnabler_luaCLI_OBJ)
+$(cpssEnabler_mainCmd_LIB_A): $(cpssEnabler_mainCmd_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_mainCmd_LIB_A)             $(cpssEnabler_mainCmd_OBJ)
+$(cpssEnabler_mainExtDrv_LIB_A): $(cpssEnabler_mainExtDrv_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_mainExtDrv_LIB_A)          $(cpssEnabler_mainExtDrv_OBJ)
+$(cpssEnabler_mainExtDrvShared_LIB_A): $(cpssEnabler_mainExtDrvShared_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_mainExtDrvShared_LIB_A)          $(cpssEnabler_mainExtDrvShared_OBJ)
+$(cpssEnabler_mainPhy_LIB_A): $(cpssEnabler_mainPhy_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_mainPhy_LIB_A)             $(cpssEnabler_mainPhy_OBJ)
+$(cpssEnabler_mainSysConfig_LIB_A): $(cpssEnabler_mainSysConfig_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_mainSysConfig_LIB_A)       $(cpssEnabler_mainSysConfig_OBJ)
+$(cpssEnabler_shrMemIntraCPSSdata_LIB_A): $(cpssEnabler_shrMemIntraCPSSdata_OBJ)
+	@ $(AR) $(ARFLAGS) $(cpssEnabler_shrMemIntraCPSSdata_LIB_A) $(cpssEnabler_shrMemIntraCPSSdata_OBJ)

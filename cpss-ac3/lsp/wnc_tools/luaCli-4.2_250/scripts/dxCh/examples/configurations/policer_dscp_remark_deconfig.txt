@@ -1,0 +1,23 @@
+// TAG:               mac; qos map; policer; pcl-ID
+// Short Description: Disable remarking dscp by policer
+// Description:       delete mac, delete qos mapping, delete policy 7
+//                    delete rule-id 18, delete the binding of port[3] to pcl-ID 11
+//                    and delete pcl-ID 11 in access-list
+end
+configure
+
+no mac address-table static 00:11:22:33:44:55 device ${dev} vlan 101 ethernet ${dev}/${port[1]}
+no mac address-table dynamic 00:AA:BB:CC:DD:EE device ${dev} vlan 101 ethernet ${dev}/${port[3]}
+no qos map policed-dscp device ${dev} dscp-list 15
+no policy device ${dev} id 7
+
+access-list device ${dev} pcl-ID 11 
+delete rule-id 18
+exit
+
+interface ethernet ${dev}/${port[3]} 
+no service-acl pcl-ID 11 
+exit
+
+delete access-list device ${dev} pcl-id 11 
+end

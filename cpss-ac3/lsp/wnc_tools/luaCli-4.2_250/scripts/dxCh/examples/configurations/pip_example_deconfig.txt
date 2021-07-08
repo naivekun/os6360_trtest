@@ -1,0 +1,109 @@
+// TAG:               deconfig; PIP; Pre-Ingress Prioritization ;
+// Short Description: de-configuration for device with PIP support.
+// Description:       de-configuration for device with PIP support.
+//
+end
+//
+// enter the config context
+config
+//
+//Globalremove the 4 different PIP "tpid+vid" :
+//1.	Tpid = 8100 , vid = 1
+//2.	Tpid = 8100 , vid = 5
+//3.	Tpid = 9100 , vid = 5
+//4.	Tpid = 9100 , vid = 4094
+// remove the 4 entries
+no pip vid-ethertype device ${dev} etherType 8100 vid 1
+no pip vid-ethertype device ${dev} etherType 8100 vid 5
+no pip vid-ethertype device ${dev} etherType 9100 vid 5
+no pip vid-ethertype device ${dev} etherType 9100 vid 4094
+//
+// restore 'regular' TPID configurations
+//
+tpid device ${dev} direction ingress index 1 etherType 0x8100
+tpid device ${dev} direction egress  index 1 etherType 0x8100
+//
+//Global set 4 different udes:
+//1.	6789 --> index 0
+//2.	789a --> index 1
+//3.	abcd --> index 2
+//4.	fedc --> index 3
+no pip user-defined-ethertype "ude0x6789"
+no pip user-defined-ethertype "ude0x789a"
+no pip user-defined-ethertype "ude0xabcd"
+no pip user-defined-ethertype "ude0xfedc"
+//mac-da {pattern,mask}
+//Global set 4 different udes:
+//1.	01:80:C1:00:00:00 , FF:FF:FF:FF:00:00
+//2.	01:80:C2:00:00:00 , FF:FF:FF:00:00:00
+//3.	01:80:C3:00:00:00 , FF:00:FF:00:00:00
+//4.	01:00:0C:00:00:00 , FF:FF:FF:00:00:00 --> Cisco macs
+no pip mac-da "mac-mc-IEEE-c1"
+no pip mac-da "mac-mc-IEEE-c2"
+no pip mac-da "mac-mc-IEEE-c3"
+no pip mac-da "mac-mc-CISCO"
+//thresholds
+//set the 3 default thresholds 
+pip threshold ${defaultThreshold} device ${dev} priority high
+pip threshold ${defaultThreshold} device ${dev} priority medium
+pip threshold ${defaultThreshold} device ${dev} priority low
+//
+//pip-priority --> general
+//On all 4 profiles , set high priority :
+//on all : dsa-qos,dsa-up,vlan-up,mpls-exp,ipv4-tos,ipv6-tc,ude-index,mac-da-index
+pip profile all device ${dev} type all field all priority high
+//
+//On all ports :
+//1.	set default-priority --> high priority
+//2.	set priority for "tpid+vid" classification --> high priority
+interface range ethernet all
+pip priority-default high
+pip priority-vid-ethertype-classification high
+exit
+//
+// the cpu port was not included in "range ethernet all" so
+// duplicate the same configurations to it too.
+//
+interface ethernet ${dev}/63
+pip priority-default high
+pip priority-vid-ethertype-classification high
+exit
+//
+//pip-priority --> for ingress port
+//
+//For ingress port :
+//1.	Set pip-profile  = 0
+//
+interface ethernet ${dev}/${port[2]}
+pip profile 0
+exit
+//
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan remove 5,15,4093,4094,4095
+exit
+//
+//FDB config:
+//mac-Da-UC , vid = 5,15,4093,4094,4095	--> egress port
+//
+no mac address-table static 00:00:00:00:00:58 device ${dev} vlan 5,15,4093,4094,4095
+//
+//
+//remove vlan config:
+//vid = 5,15,4093,4094,4095		--> un-define
+//
+no interface range vlan device ${dev} vid 5,15,4093,4094,4095
+//
+//
+// show the configuration
+//
+// per device
+do show pip info-global device ${dev}
+// per port - all the ports
+do show pip info-port ethernet all
+//
+// show the counters
+//
+// per device
+do show pip drop-global device ${dev}
+// per port - all the ports
+do show pip drop-port ethernet all

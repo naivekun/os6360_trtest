@@ -1,0 +1,44 @@
+# $(warning "Started") 
+#      C_EXCLUDE_FILE_LIST = osLinuxSimEther.c  
+
+
+# osLinuxSimEther.c 
+#List of files to include in list
+FILES := \
+ miiInf.c \
+ stubs.c 
+
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+	LIB_NAME = gtOs.lib
+endif
+ifeq (EXISTS, $(RTOS_ON_SIM))
+      #C_EXCLUDE_FILE_LIST = osLinuxSimEther.c  
+        FILES := \
+         miiInf.c \
+         stubs.c 
+
+endif
+
+#List of subfolders to include in build
+MODULES := 
+
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := gtOs.lib
+    cpssEnabler_gtOs_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

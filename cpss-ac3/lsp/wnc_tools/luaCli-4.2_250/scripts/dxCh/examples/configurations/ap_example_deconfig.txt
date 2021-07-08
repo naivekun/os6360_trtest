@@ -1,0 +1,23 @@
+// TAG:               ap;
+// Short Description: De-configuration for AP port.
+// Description:       De-configuration for AP port.
+//
+end
+//
+// set values
+config
+interface range ethernet ${dev}/${port[3]},${port[2]}
+no ap-port
+exit
+//
+interface range ethernet ${dev}/${port[1]},${port[4]}
+no ap-port
+exit
+//
+// 
+// display ap port information
+exit
+show interfaces ap ethernet ${dev}/${port[3]},${port[2]}
+show interfaces ap ethernet ${dev}/${port[1]},${port[4]}
+show interfaces ap all
+end

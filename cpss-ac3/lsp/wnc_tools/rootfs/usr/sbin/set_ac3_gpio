@@ -1,0 +1,69 @@
+#!/bin/bash
+
+#Set ac3 gpio 
+
+Usage()
+{
+   echo Usage: set_ac3_gpio [pin 0-31] [value 0/1] : Pull high/low of pin number
+}
+
+if [ $# -lt 2 ] || [ $# -gt 3 ];
+then
+   Usage
+   exit 1
+fi
+
+#NOT print
+if [ $# -eq 2 ];
+then
+  NP=0
+else
+  NP=$3
+fi
+
+#Pin number
+PIN=$1
+
+#Status
+ST=$2
+
+if [ $PIN -lt 0 ] || [ $PIN -gt 31 ];
+then
+   Usage
+   exit 1
+fi 
+
+if [ $ST -lt 0 ] || [ $ST -gt 1 ];
+then
+   Usage
+   exit 1
+fi 
+
+GPIO_DIR=/sys/class/gpio
+#AC3 PIN
+AC3_PIN=$GPIO_DIR/gpio$PIN
+
+if [ ! -d $AC3_PIN ];
+then
+    echo $PIN > $GPIO_DIR/export
+fi
+
+if [ ! -d $AC3_PIN ];
+then
+    echo "Error: PIN $PIN can't be set."
+    exit 1
+fi
+
+#set gpio for output  
+echo out > $AC3_PIN/direction
+
+#write gpio output value
+echo $ST > $AC3_PIN/value
+
+if [ $NP -ne 1 ];
+then
+echo PIN $PIN to $ST.
+fi
+
+exit 0
+

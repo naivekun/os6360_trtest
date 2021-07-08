@@ -1,0 +1,32 @@
+// TAG:               SLAN; connect;
+// Short Description: Create vlan10 on dev0 for ports 0,64,66,80 and connect SLAN
+// Description:       Create vlan10 on dev0 for ports 0,64,66,80 and connect SLAN
+//                    Configure ports 49, 64, 66 to be 1G SGMII
+end
+configure
+interface vlan device ${dev} vid 10
+exit
+interface ethernet ${dev}/${ext_port4}
+speed 1000 mode SGMII
+exit
+interface ethernet ${dev}/${port[1]}
+switchport allowed vlan add 10 untagged
+exit
+interface ethernet ${dev}/${ext_port1}
+switchport allowed vlan add 10 untagged
+speed 1000 mode SGMII
+exit
+interface ethernet ${dev}/${ext_port2}
+switchport allowed vlan add 10 untagged
+speed 1000 mode SGMII
+exit
+interface ethernet ${dev}/${ext_port3}
+switchport allowed vlan add 10 untagged
+end
+debug
+simulation slan connect ethernet ${dev}/${ext_port1} slan64
+simulation slan connect ethernet ${dev}/${ext_port2} slan66
+simulation slan connect ethernet ${dev}/${ext_port3} slan80
+end
+show simulation slan all
+end

@@ -1,0 +1,288 @@
+#! /bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=$(basename $0)
+
+usage () {
+echo "Usage:
+NAME
+       014_nand_os_info - Display NAND flash info
+
+SYNOPSIS
+       014_nand_os_info [-g]
+                        [-i Chip-Manufacturer ID] [-c size]
+                        [-k kernel version] [-w SW version]
+                        [-h]
+
+DESCRIPTION
+       This command is used to display NAND flash info which include
+       NAND ID, size, kernel version and SW version, and verify whether
+       info match with input value which user expected or not. The unit
+       of flash size is MB.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -g    Display NAND flash info and OS version
+
+       -i    Verify NAND ID with user input value
+
+       -c    Verify flash size with user input value(MB)
+
+       -k    Verify Linux kernel version
+
+       -w    Verify SW version
+
+       -h    Help message
+
+PASS CRITERIA
+       - Display NAND flash info (-g) :
+          SUCCESS: could get nand id and size
+            Display: PASS
+            Return code : 0
+
+          ERROR: couldn't get nand id and size
+            Display: FAIL
+            Return code : 2
+
+       - Verify chip ID with input value (-i) :
+           SUCCESS: chip ID is match with user expected
+             Display: PASS
+             Return code : 0
+
+           ERROR: chip ID is not match with user expected
+             Display: FAIL
+             Return code : 3
+
+       - Verify memory size with input value (-c) :
+           SUCCESS: memory size is match with user expected
+             Display: PASS
+             Return code : 0
+
+           ERROR: memory size is not match with user expected
+             Display: FAIL
+             Return code : 3
+
+           ERROR: invalid argument
+             Display: FAIL
+             Return code : 4
+
+       - Verify version with input value (-k, -w) :
+           SUCCESS: version is match with user expected
+             Display: PASS
+             Return code : 0
+
+           ERROR: version is not match with user expected
+             Display: FAIL
+             Return code : 3
+
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS
+             Display: FAIL
+             Return code : 1
+EXAMPLE
+       014_nand_os_info -g
+       014_nand_os_info -i d3-98
+       014_nand_os_info -c 1024
+       014_nand_os_info -k 4.4.120-armada-18.09.2
+       014_nand_os_info -w OS6360-0.1.0-201911201737
+" >&2
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result=${PASS}
+result_id=${PASS}
+result_size=${PASS}
+result_linux_ver=${PASS}
+result_SW_ver=${PASS}
+
+# nand id.
+#mesg | grep nand.*Manufacturer | awk -F", " '{print $2}'
+#mesg | grep nand.*Manufacturer | awk -F", " '{print $3}'
+nand_mfg_id=`awk 'NR==1{print}' /usr/local/nand_info \
+| awk -F"0x" '{print $2}'`
+
+nand_chip_id=`awk 'NR==2{print}' /usr/local/nand_info \
+| awk -F"0x" '{print $2}'`
+
+# nand flash size.
+#nand_size=`dmesg | grep "nand.*MiB" | cut -d ":" -f 2`
+#nand_size=`echo ${nand_size} | cut -d " " -f 1`
+nand_size=`awk 'NR==3{print}' /usr/local/nand_info`
+
+# Linux kernel version.
+linux_ver=`uname -a | cut -d " " -f 3`
+
+# SW version.
+SW_ver=`cat /etc/welcome | grep "SW VERSION" | cut -d " " -f 3`
+
+# test_mode status.
+test_id_mode=false
+test_size_mode=false
+test_linux_mode=false
+test_SW_mode=false
+disp_mode=false
+#====================================================================
+
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":gi:c:k:w:h" arg
+do
+    case ${arg} in
+        g)
+            disp_mode=true
+            ;;
+        i)
+            input_id=${OPTARG}
+            test_id_mode=true
+            ;;
+        c)
+            input_size=${OPTARG}
+            test_size_mode=true
+            ;;
+        k)
+            input_linux_ver=${OPTARG}
+            test_linux_mode=true
+            ;;
+        w)
+            input_SW_ver=${OPTARG}
+            test_SW_mode=true
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    quit 1
+elif [ -z "${nand_mfg_id}" ] || [ -z "${nand_chip_id}" ] || \
+[ -z ${nand_size} ]; then
+    echo
+    echo "===================================="
+    print_fail "No nand info get"
+    echo "===================================="
+    quit 2
+elif [ -z ${linux_ver} ] || [ -z ${SW_ver} ]; then
+    echo
+    echo "===================================="
+    print_fail "No OS version get"
+    echo "===================================="
+    quit 2
+fi
+
+# display info.
+if [ ${disp_mode} = true ]; then
+    echo
+    echo "Display NAND flash info:"
+    echo "======================================"
+    echo "Chip ID: 0x${nand_chip_id}"
+    echo "Manufacturer ID: 0x${nand_mfg_id}"
+    echo "nand size: ${nand_size} MB"
+    echo "Linux version: ${linux_ver}"
+    echo "SW version: ${SW_ver}"
+    echo "======================================"
+fi
+
+# test nand id.
+if [ ${test_id_mode} = true ]; then
+    input_chip_id=`echo ${input_id} | awk -F"-" '{print $1}'`
+    input_mfg_id=`echo ${input_id} | awk -F"-" '{print $2}'`
+
+    echo
+    echo "Verify Chip ID: 0x${nand_chip_id}"
+    echo "Verify Manufacturer ID: 0x${nand_mfg_id}"
+    echo "======================================"
+    if [ -z ${input_chip_id} ] || [ -z ${input_mfg_id} ];then
+        print_fail "Invalid argument"
+        result_id=4
+    else
+         if [ ${nand_chip_id} = ${input_chip_id} ] && \
+[ ${nand_mfg_id} = ${input_mfg_id} ]; then
+            print_pass "Match with input"
+            result_id=${PASS}
+        else
+            print_fail "Not match with input"
+            result_id=3
+        fi
+    fi
+    echo "======================================"
+fi
+
+# test nand size.
+if [ ${test_size_mode} = true ]; then
+    echo
+    echo "Verify nand size: ${nand_size} MB"
+    echo "======================================"
+
+    # check if arg is integer.
+    check_arg=`echo ${input_size} | grep '^[0-9]*$'`
+    if [ -z ${check_arg} ]; then
+        print_fail "Invalid argument"
+        result_size=4
+    else
+        if [ ${nand_size} -eq ${input_size} ]; then
+            print_pass "Match with input"
+            result_size=${PASS}
+        else
+            print_fail "Not match with input"
+            result_size=3
+        fi
+    fi
+    echo "======================================"
+fi
+
+# test linux version.
+if [ ${test_linux_mode} = true ]; then
+    echo
+    echo "Verify Linux version: ${linux_ver}"
+    echo "======================================"
+    if [ ${linux_ver} = ${input_linux_ver} ]; then
+        print_pass "Match with input"
+        result_linux_ver=${PASS}
+    else
+        print_fail "Not match with input"
+        result_linux_ver=3
+    fi
+    echo "======================================"
+fi
+
+# test SW version.
+if [ ${test_SW_mode} = true ]; then
+    echo
+    echo "Verify SW version: ${SW_ver}"
+    echo "======================================"
+    if [ ${SW_ver} = ${input_SW_ver} ]; then
+        print_pass "Match with input"
+        result_SW_ver=${PASS}
+    else
+        print_fail "Not match with input"
+        result_SW_ver=3
+    fi
+    echo "======================================"
+fi
+
+if [ ${result_size} -ne ${PASS} ]; then
+    result=${result_size}
+elif [ ${result_id} -ne ${PASS} ] || \
+[ ${result_linux_ver} -ne ${PASS} ] || \
+[ ${result_SW_ver} -ne ${PASS} ]; then
+    result=3
+else
+    result=${PASS}
+fi
+
+quit ${result}

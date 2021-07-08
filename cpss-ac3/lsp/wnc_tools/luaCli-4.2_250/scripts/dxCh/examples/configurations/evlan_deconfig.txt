@@ -1,0 +1,29 @@
+// TAG:               vlan, evlan
+// Short Description: set evlan deconfiguration
+// Description:       de-configure ports 1,2
+end
+
+configure
+
+interface ethernet ${dev}/${port[1]}
+no switchport pvid
+no port-mac learning
+//restore mac learning because this is the 'default'
+// keep the 'no port-mac learning' for the 'example'
+port-mac learning
+exit
+
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan remove 4097
+no port-mac learning
+//restore mac learning because this is the 'default'
+// keep the 'no port-mac learning' for the 'example'
+port-mac learning
+exit
+
+no interface vlan device ${dev} vid 4097
+no mac address
+exit
+
+exit
+clear bridge interface ${dev} all

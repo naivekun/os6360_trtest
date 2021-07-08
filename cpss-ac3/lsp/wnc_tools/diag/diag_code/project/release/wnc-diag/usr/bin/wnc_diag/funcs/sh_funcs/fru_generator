@@ -1,0 +1,777 @@
+#!/bin/bash
+
+set -e
+
+# ## Include ## #
+
+dir_path=$(dirname ${0})
+source ${dir_path}/defines
+source ${dir_path}/print
+
+# ## Default Consts ## #
+
+NAME=`basename $0`
+
+# decimal
+
+VERSION=1 
+
+SIZE=1024
+
+BOARD_LANGUAGE=0
+
+PRODUCT_LANGUAGE=0
+
+# hexadecimal
+
+TYPE_CODE=c0
+
+NO_MORE_FIELDS=c1
+
+PADDING_FILL=00
+
+SIZE_FILL=ff
+
+CHASSIS_TYPE=17
+
+BOARD_DATE=000000
+
+# ## Functions ## #
+
+function quit() {
+
+	local rc=${1}
+
+	if [ "${rc}" = "${PASS}" ]; then
+		echo -e "\nResult: PASS\n"
+	else
+		echo -e "\nResult: FAIL\n" >&2
+	fi
+
+	exit ${rc}
+}
+
+function error_msg() {
+
+    local error_code=${1}
+    local message=${2}
+    
+    case ${error_code} in
+        1)  # Input error
+            message="\n[Input error] "${message} 
+            ;;
+        2)  # Read   error
+            message="\n[Read error] "${message} 
+            ;;
+        3)  # Write  error
+            message="\n[Write error] "${message} 
+            ;;
+        6)  # Test   error
+            print_fail $'\n'${message}
+            ;;
+        *)  # Unkown error
+            print_fail $'\n'${message}
+            ;;
+    esac
+    echo -e ${message} >&2
+    quit ${error_code}
+}
+
+function check_valid_int() {
+
+    local integer=${1}
+    [[ ! ${integer} =~ ^[0-9]+$ ]] && error_msg 2 "Variable '${1}' isn't a integer" || :
+}
+
+function check_valid_hex() {
+
+    local hexadecimal=${1}
+    [[ ! ${hexadecimal} =~ ^[0-9a-fA-F]+$ ]] && error_msg 2 "Variable \"${1}\" isn't a hexadecimal" || :
+}
+
+function dec2hex_without0x() {  
+    local dec=${1}
+    echo -n ${dec} | xargs -0 printf '%.2x'
+}
+
+function hex2dec_without0x() {
+    local hex=${1}
+    echo $((0x${hex}))
+}
+
+function str2hex() {
+
+    local str=${1:-""}
+    local format="%x"
+    local char
+    local -i i
+    for ((i = 0 ; i <= $((${#str}-1)); i++)); do
+        char=${str:i:1}
+        printf "${format}" "'${char}"
+    done
+}
+
+function string_encode() {
+
+    local string=${1}
+    
+    if [ ! -z "${string}" ]; then
+    
+        local string_len_hex=`dec2hex_without0x ${#string}`
+        local string_type_len=`dec2hex_without0x $((0x${string_len_hex} | 0x${TYPE_CODE}))`
+        local string_hex=`str2hex "${string}"`
+        
+        echo "${string_type_len}" "${string_hex}"
+    else
+        echo "00" ""
+    fi
+}
+
+function calculate_zero_checksum() {
+
+    local hex_sequence=${1}  # like: 0103ff4e002c
+    local sum_format=`echo -n ${1} | sed 's/../ 0x&/g'`
+    
+    local total=0
+    for i in ${sum_format}; do
+        total=$((${total} + ${i}))
+    done
+
+    echo -n `dec2hex_without0x $(( (0 - ${total}) & 0xff ))`
+}
+
+function date2min() {
+    # Number of minutes from 0:00 hrs 1/1/96.
+    # date --date="1996-1-1 0:00" +%s -> 820425600
+    # max_date -> Wed Nov 24 20:15 2027
+    # Input date format like "2019/6/12 10:03"
+
+    local reference_sec=820425600
+    local max_date=0xFFFFFF
+    
+    local dt=${1}
+
+    # date "+%Y/%m/%d %H:%M" -d "${dt}" > /dev/null  2>&1
+    if [[ ${dt} =~ ^[0-9]+\/[0-9]+\/[0-9]+\ [0-9]+\:[0-9]+$ ]]; then
+
+        dt=`echo ${dt} | sed 's/\//-/g'`
+        local mfg_sec=`date -d "${dt}" +%s 2>&1` 
+        check_valid_int "${mfg_sec}"
+        if [ ${mfg_sec} -lt ${reference_sec} ]; then
+
+            error_msg 2 "Date is out of range"
+        else
+            local mfg_sec_adjust=$((${mfg_sec} - ${reference_sec}))
+            local mfg_min_adjust=$((${mfg_sec_adjust}/60))
+            local mfg_min_adjust_hex=`dec2hex_without0x ${mfg_min_adjust}`
+            
+            if [[ 0x${mfg_min_adjust_hex} -gt ${max_date} ]]; then
+
+                error_msg 2 "Date is out of range"
+            else
+                echo ${mfg_min_adjust_hex}
+            fi
+        fi
+    else
+        error_msg 2 "Date format is 'year/month/day hour:minute', like '2019/6/12 10:03'" >&2
+    fi
+}
+
+function get_field_value() {
+
+    local area=${1}
+    local field_name=${2}
+    local container=${3}
+
+    local area_line_number
+    local field_value
+
+    area_line_number=`echo "${container}" | grep -n "^\[${area}" | awk -F : '{print $1}'`
+
+    if [ -z ${area_line_number} ]; then
+        echo "" 
+    else
+        field_value=`echo "${container}" | sed -n ''"${area_line_number}"',$p' | grep "^${field_name}" | head -n 1 | awk -F = '{print $2}'`
+        echo "${field_value}" | sed 's/^ *//g' | sed 's/ *$//g'
+    fi
+}
+
+function section_encode() {
+    
+    local section=${1}
+    local encode_mode=${2}
+
+    local output_list
+
+    if [ ${encode_mode} -eq 0 ]; then  # binary
+    
+        local section_hex=${section}
+        
+        local bit_len=`echo -n ${section} | wc -m`
+        if [ $(( ${bit_len} % 2 )) -eq 0 ]; then
+            local section_len=$((${bit_len}/2))
+            local section_type_len=`dec2hex_without0x ${section_len}`
+        else
+            error_msg 3 "Wrong section: ${section}"
+        fi
+    
+    elif [ ${encode_mode} -eq 1 ]; then  # 8-bit ASCII
+    
+        local section_len=${#section}
+        local section_type_len; local section_hex
+        output_list=( `string_encode "${section}"` )
+        section_type_len=${output_list[0]}
+        section_hex=${output_list[1]}
+    
+    else
+        error_msg 3 "Wrong section mode: ${encode_mode}"
+    fi
+    
+    echo "${section_type_len}" "${section_len}" "${section_hex}"
+}
+
+function padding() {
+
+    local output=${1}
+    local length=${2}
+    local remainder=${3}
+
+    local output_list
+    
+    while [ $((${length} % 8)) -ne ${remainder} ]; do
+
+        output=${output}${PADDING_FILL}
+        length=$((length+1))
+    done
+
+    echo "${output}" "${length}"
+}
+
+function make_internal() {
+
+    local list=("${!1}")
+    
+    local version="${list[0]}"
+    local data="${list[1]}"
+    local internal_file="${list[2]}"
+
+    local version_hex
+    local data_hex
+    
+    local output
+    local length
+
+    if [ ! -z "${internal_file}" ]; then
+        if [ -f "${internal_file}" ]; then
+            data=`cat "${internal_file}"`
+        else
+            error_msg 3 "'${internal_file}' internal file not found"  
+        fi
+    fi
+    
+    version_hex=`dec2hex_without0x ${version}`
+    data_hex=`str2hex "${data}"`
+
+    output=${version_hex}${data_hex}
+    length=$((1+${#data})) # data + version
+    
+    padding ${output} ${length} 0
+}
+
+function make_chassis() {
+
+    local list=("${!1}")
+    
+    local version=${list[0]}
+    local type=${list[1]}
+    local part=${list[2]}
+    local serial=${list[3]}
+    
+    local output_list
+    local output
+    local length
+    
+    local version_hex
+    local area_len_hex
+    local checksum
+
+    # part
+
+    local part_type_len; local part_len; local part_hex;
+    output_list=( `section_encode "${part}" 1` )
+    part_type_len=${output_list[0]}
+    part_len=${output_list[1]}
+    part_hex=${output_list[2]}
+
+    # serial
+
+    local serial_type_len; local serial_len; local serial_hex; 
+    output_list=( `section_encode "${serial}" 1` )
+    serial_type_len=${output_list[0]}
+    serial_len=${output_list[1]}
+    serial_hex=${output_list[2]}
+    
+    # no more fields
+    
+    output=${type}${part_type_len}${part_hex}${serial_type_len}${serial_hex}${NO_MORE_FIELDS}
+
+    # padding
+    
+    length=$((1 + 1 + ${part_len} + 1 + ${serial_len} + 1)) # type + (part_type_len + part) + (serial_type_len + serial) + NO_MORE_FIELDS
+    output_list=( `padding ${output} ${length} 5` )
+    output=${output_list[0]}
+    length=${output_list[1]}
+    
+    # header version and length
+    
+    length=$((${length} + 3)) # length + (version + area_len + checksum)
+    
+    version_hex=`dec2hex_without0x ${version}`
+    area_len_hex=`dec2hex_without0x $((${length} /8))`
+    output=${version_hex}${area_len_hex}${output}
+    
+    # checksum
+    
+    checksum=`calculate_zero_checksum ${output}`
+    output=${output}${checksum}
+    
+    # return
+    
+    echo ${output} ${length}
+}
+
+function make_board() {
+
+    local list=("${!1}")
+    
+    # board_list 0: version, 1: language, 2: date, 3: manufacturer, 4: product, 5: serial, 6: part, 7: fileid, 8: pcb
+    
+    local version=${list[0]}
+    local language=${list[1]}
+    local board_date=${list[2]}
+    local manufacturer=${list[3]}
+    local product=${list[4]}
+    local serial=${list[5]}
+    local part=${list[6]}
+    local fileid=${list[7]}
+    local pcb=${list[8]}
+
+    local output_list
+    local output
+    local length
+
+    local version_hex
+    local area_len_hex
+    local checksum
+    
+    # language
+    
+    language=`dec2hex_without0x ${language}`
+    
+    # date 
+    
+    local date_list=(
+        "`dec2hex_without0x $(( 0x${board_date} & 0xFF ))`"
+        "`dec2hex_without0x $(( (0x${board_date} & 0xFF00) >> 8 ))`"
+        "`dec2hex_without0x $(( (0x${board_date} & 0xFF0000) >> 16 ))`"
+    )
+    
+    # manufacturer
+    
+    local manufacturer_type_len; local manufacturer_len; local manufacturer_hex
+    output_list=( `section_encode "${manufacturer}" 1` )
+    manufacturer_type_len=${output_list[0]}
+    manufacturer_len=${output_list[1]}
+    manufacturer_hex=${output_list[2]}
+    
+    # product
+    
+    local product_type_len; local product_len; local product_hex
+    output_list=( `section_encode "${product}" 1` )
+    product_type_len=${output_list[0]}
+    product_len=${output_list[1]}
+    product_hex=${output_list[2]}
+    
+    # serial
+    
+    local serial_type_len; local serial_len; local serial_hex
+    output_list=( `section_encode "${serial}" 1` )
+    serial_type_len=${output_list[0]}
+    serial_len=${output_list[1]}
+    serial_hex=${output_list[2]}
+
+    # part
+    
+    local part_type_len; local part_len; local part_hex
+    output_list=( `section_encode "${part}" 1` )
+    part_type_len=${output_list[0]}
+    part_len=${output_list[1]}
+    part_hex=${output_list[2]}
+    
+    # fileid  
+    
+    check_valid_hex ${fileid}  ## For WNC
+    local fileid_type_len; local fileid_len; local fileid_hex
+    output_list=( `section_encode "${fileid}" 0` )  ## For WNC
+    # output_list=( `section_encode "${fileid}" 1` )
+    fileid_type_len=${output_list[0]}
+    fileid_len=${output_list[1]}
+    fileid_hex=${output_list[2]}
+
+    # PCB  ## For WNC
+    
+    local pcb_type_len; local pcb_len; local pcb_hex
+    output_list=( `section_encode "${pcb}" 1` )
+    pcb_type_len=${output_list[0]}
+    pcb_len=${output_list[1]}
+    pcb_hex=${output_list[2]}
+    
+    # no more fields
+    
+    output=${language}${date_list[0]}${date_list[1]}${date_list[2]}${manufacturer_type_len}${manufacturer_hex}${product_type_len}${product_hex}${serial_type_len}${serial_hex}${part_type_len}${part_hex}${fileid_type_len}${fileid_hex}${pcb_type_len}${pcb_hex}${NO_MORE_FIELDS}
+
+    # padding
+    
+    length=$((1 + 3 + 1 + ${manufacturer_len} + 1 + ${product_len} + 1 + ${serial_len} + 1 + ${part_len} + 1 + ${fileid_len} + 1 + ${pcb_len} + 1)) 
+    # language + date(3) + (manufacturer_type_len + manufacturer) + (product_type_len + product) + (serial_type_len + serial) + (part_type_len + part) + (fileid_type_len + fileid) + (pcb_type_len + pcb) + NO_MORE_FIELDS
+    
+    output_list=( `padding ${output} ${length} 5` )
+    output=${output_list[0]}
+    length=${output_list[1]}
+
+    # header version and length
+    
+    length=$((${length} + 3)) # length + (version + area_len + checksum)
+    
+    version_hex=`dec2hex_without0x ${version}`
+    area_len_hex=`dec2hex_without0x $((${length}/8))`
+    output=${version_hex}${area_len_hex}${output}
+    
+    # checksum
+    
+    checksum=`calculate_zero_checksum ${output}`
+    output=${output}${checksum}
+    
+    # return
+    
+    echo ${output} ${length}
+}
+
+function make_product() {
+
+    local list=("${!1}")
+    
+    # product_list 0: version, 1: language, 2: manufacturer, 3: product, 4: part, 5: version, 6: serial, 7: asset, 8: fileid
+    
+    local version="${list[0]}"
+    local language="${list[1]}"
+    local manufacturer="${list[2]}"
+    local product="${list[3]}"
+    local part="${list[4]}"
+    local product_version="${list[5]}"
+    local serial="${list[6]}"
+    local asset="${list[7]}"
+    local fileid="${list[8]}"
+
+    local output_list
+    local output
+    local length
+
+    local version_hex
+    local area_len_hex
+    local checksum
+    
+    # language
+    
+    language=`dec2hex_without0x ${language}`
+    
+    # manufacturer
+    
+    local manufacturer_type_len; local manufacturer_len; local manufacturer_hex
+    output_list=( `section_encode "${manufacturer}" 1` )
+    manufacturer_type_len=${output_list[0]}
+    manufacturer_len=${output_list[1]}
+    manufacturer_hex=${output_list[2]}
+    
+    # product
+    
+    local product_type_len; local product_len; local product_hex
+    output_list=( `section_encode "${product}" 1` )
+    product_type_len=${output_list[0]}
+    product_len=${output_list[1]}
+    product_hex=${output_list[2]}
+
+    # part
+    
+    local part_type_len; local part_len; local part_hex
+    output_list=( `section_encode "${part}" 1` )
+    part_type_len=${output_list[0]}
+    part_len=${output_list[1]}
+    part_hex=${output_list[2]}
+    
+    # product version
+    
+    local product_version_type_len; local product_version_len; local product_version_hex
+    output_list=( `section_encode "${product_version}" 1` )
+    product_version_type_len=${output_list[0]}
+    product_version_len=${output_list[1]}
+    product_version_hex=${output_list[2]}
+
+    # serial
+    
+    local serial_type_len; local serial_len; local serial_hex
+    output_list=( `section_encode "${serial}" 1` )
+    serial_type_len=${output_list[0]}
+    serial_len=${output_list[1]}
+    serial_hex=${output_list[2]}
+    
+    # asset
+    
+    local asset_type_len; local asset_len; local asset_hex
+    output_list=( `section_encode "${asset}" 1` )
+    asset_type_len=${output_list[0]}
+    asset_len=${output_list[1]}
+    asset_hex=${output_list[2]}
+    
+    # fileid
+    
+    # check_valid_hex ${fileid}
+    local fileid_type_len; local fileid_len; local fileid_hex
+    # output_list=( `section_encode "${fileid}" 0` )
+    output_list=( `section_encode "${fileid}" 1` )
+    fileid_type_len=${output_list[0]}
+    fileid_len=${output_list[1]}
+    fileid_hex=${output_list[2]}
+
+    # no more fields
+    
+    output=${language}${manufacturer_type_len}${manufacturer_hex}${product_type_len}${product_hex}${part_type_len}${part_hex}${product_version_type_len}${product_version_hex}${serial_type_len}${serial_hex}${asset_type_len}${asset_hex}${fileid_type_len}${fileid_hex}${NO_MORE_FIELDS}
+
+    # padding
+    
+    length=$((1 + 1 + ${manufacturer_len} + 1 + ${product_len} + 1 + ${part_len} + 1 + ${product_version_len} + 1 + ${serial_len} + 1 + ${asset_len} + 1 + ${fileid_len} + 1))
+    # language + (manufacturer_type_len + manufacturer) + (product_type_len + product) + (part_type_len + part) + (product_version_type_len + product_version) + (serial_type_len + serial) + (asset_type_len + asset) + (fileid_type_len + fileid) + NO_MORE_FIELDS
+    
+    output_list=( `padding ${output} ${length} 5` )
+    output=${output_list[0]}
+    length=${output_list[1]}
+
+    # header version and length
+    
+    length=$((${length} + 3)) # length + (version + area_len + checksum)
+    
+    version_hex=`dec2hex_without0x ${version}`
+    area_len_hex=`dec2hex_without0x $((${length} /8))`
+    output=${version_hex}${area_len_hex}${output}
+    
+    # checksum
+    
+    checksum=`calculate_zero_checksum ${output}`
+    output=${output}${checksum}
+    
+    # return
+    
+    echo ${output} ${length}
+}
+
+# ## Check sys argvs ## #
+
+[ $# -ne 2 ]  && error_msg 1 "${NAME} input.ini output.bin"
+[ ! -f "${1}" ] && error_msg 1 "'${1}' file not found" || ini_file_path="${1}"
+[ -f "${2}" ]   && error_msg 1 "'${2}' file already exists" || bin_file_path="${2}"
+
+[ ! -s "${ini_file_path}" ] && error_msg 1 "'${ini_file_path}' file is empty" || container=`cat ${ini_file_path}`
+
+# ## Read config file ## #
+
+common_version="$(get_field_value "common" "version" "${container}")"
+
+common_version=${common_version:-${VERSION}}
+check_valid_int ${common_version}
+
+common_size="$(get_field_value "common" "size" "${container}")"
+common_size=${common_size:-${SIZE}}
+check_valid_int ${common_size}
+
+# 0: internal, 1: chassis, 2: board, 3: product, 4: multirecord
+areas_condition[0]="$(get_field_value "common" "internal" "${container}")"
+areas_condition[0]=${areas_condition[0]:-"0"}
+areas_condition[1]="$(get_field_value "common" "chassis" "${container}")"
+areas_condition[1]=${areas_condition[1]:-"0"}
+areas_condition[2]="$(get_field_value "common" "board" "${container}")"
+areas_condition[2]=${areas_condition[2]:-"0"}
+areas_condition[3]="$(get_field_value "common" "product" "${container}")"
+areas_condition[3]=${areas_condition[3]:-"0"}
+areas_condition[4]="$(get_field_value "common" "multirecord" "${container}")"
+areas_condition[4]=${areas_condition[4]:-"0"}
+
+[[ ! " ${areas_condition[@]} " =~ " 1 " ]] && error_msg 2 "Illegal configuration file" || :
+
+declare -a output_list
+
+# ## Internal section ## #
+
+internal_output="" ; internal_len=0
+if [ ${areas_condition[0]} -eq 1 ]; then
+    internal_data="$(get_field_value "internal" "data" "${container}")"
+    internal_file="$(get_field_value "internal" "file" "${container}")"
+    
+    if [ ! -z ${internal_data} ] || [ ! -z ${internal_file} ]; then
+
+        # 0: version, 1: data, 2: file
+        internal_list=(
+            "${common_version}"
+            "${internal_data}"
+            "${internal_file}"
+        )
+
+        output_list=( `make_internal internal_list[@]` )
+        internal_output=${output_list[0]}
+        internal_len=${output_list[1]}
+    fi
+fi
+# echo ${internal_output}, ${internal_len}
+
+# ## Chassis section ## #
+
+chassis_output="" ; chassis_len=0
+if [ ${areas_condition[1]} -eq 1 ]; then
+
+    chassis_type="$(get_field_value "chassis" "type" "${container}")"
+    chassis_type=${chassis_type:-${CHASSIS_TYPE}}
+    check_valid_hex ${chassis_type}
+
+    # 0: version, 1: type, 2: part, 3: serial
+    chassis_list=(
+        "${common_version}"
+        "${chassis_type}"
+        "$(get_field_value "chassis" "part" "${container}")"
+        "$(get_field_value "chassis" "serial" "${container}")"
+    )
+
+    output_list=( `make_chassis chassis_list[@]` )
+    chassis_output=${output_list[0]}
+    chassis_len=${output_list[1]}
+fi
+# echo ${chassis_output}, ${chassis_len}
+
+# # ## Board section ## #
+
+board_output="" ; board_len=0
+if [ ${areas_condition[2]} -eq 1 ]; then
+
+    board_language="$(get_field_value "board" "language" "${container}")"
+    board_language=${board_language:-${BOARD_LANGUAGE}}
+    check_valid_int ${board_language}
+    
+    board_date="$(get_field_value "board" "date" "${container}")"
+    board_date_hex=`date2min "${board_date}"`
+    [ $? -ne 0 ] && exit 1
+    
+    # 0: version, 1: language, 2: date, 3: manufacturer, 4: product, 5: serial, 6: part, 7: fileid
+    board_list=(
+        "${common_version}"
+        "${board_language}"
+        "${board_date_hex}"
+        "$(get_field_value "board" "manufacturer" "${container}")"
+        "$(get_field_value "board" "product" "${container}")"
+        "$(get_field_value "board" "serial" "${container}")"
+        "$(get_field_value "board" "part" "${container}")"
+        "$(get_field_value "board" "fileid" "${container}")"  ## For WNC
+        "$(get_field_value "board" "pcb" "${container}")"     ## For WNC
+    )
+
+    output_list=( `make_board board_list[@]` )
+    board_output=${output_list[0]}
+    board_len=${output_list[1]}
+fi
+# echo ${board_output}, ${board_len}
+
+# ## Product section ## #
+
+product_output="" ; product_len=0
+if [ ${areas_condition[3]} -eq 1 ]; then
+
+    product_language="$(get_field_value "product" "language" "${container}")"
+    product_language=${product_language:-${PRODUCT_LANGUAGE}}
+    check_valid_int ${product_language}
+    
+    # 0: version, 1: language, 2: manufacturer, 3: product, 4: part, 5: version, 6: serial, 7: asset, 8: fileid
+    product_list=(
+        "${common_version}"
+        "${product_language}"
+        "$(get_field_value "product" "manufacturer" "${container}")"
+        "$(get_field_value "product" "product" "${container}")"
+        "$(get_field_value "product" "part" "${container}")"
+        "$(get_field_value "product" "version" "${container}")"
+        "$(get_field_value "product" "serial" "${container}")"
+        "$(get_field_value "product" "asset" "${container}")"
+        "$(get_field_value "product" "fileid" "${container}")"
+    )
+
+    output_list=( `make_product product_list[@]` )
+    product_output=${output_list[0]}
+    product_len=${output_list[1]}
+fi
+# echo ${product_output}, ${product_len}
+
+# ## MultiRecord section ## #
+
+multirecord_output="" ; multirecord_len=0
+if [ ${areas_condition[4]} -eq 1 ]; then
+    :
+fi
+
+# ## Common header section ## #
+
+common_output=""
+
+# offset
+
+pos=1
+
+area_len_list=("${internal_len}" "${chassis_len}" "${board_len}" "${product_len}" "${multirecord_len}")
+
+for i in ${area_len_list[@]}; do 
+
+    if [ $i -ne 0 ]; then
+    
+        common_output=${common_output}`dec2hex_without0x ${pos}`
+        pos=$(( ${pos} + ${i}/8 ))
+    else
+        common_output=${common_output}"00"
+    fi
+done
+
+# version + PAD
+
+common_output=`dec2hex_without0x ${common_version}`${common_output}"00"
+
+# checksum
+
+common_output=${common_output}`calculate_zero_checksum ${common_output}`
+
+# ## Consist of all areas ## #
+
+blob=${common_output}${internal_output}${chassis_output}${board_output}${product_output}${multirecord_output}
+blob_len=$(( 8 + ${internal_len} + ${chassis_len} + ${board_len} + ${product_len} + ${multirecord_len} ))
+
+size_difference=$(( ${common_size} - ${blob_len} ))
+
+if [ ${size_difference} -lt 0 ]; then
+
+    error_msg 3 "Out of size: ${blob_len} > ${common_size}"
+else
+
+    for ((i = 0 ; i < ${size_difference} ; i++)); do
+        blob=${blob}${SIZE_FILL}
+    done
+fi
+
+binfomat=`echo -n $blob | sed 's/../\\\x&/g'`
+
+echo -n -e $binfomat > $bin_file_path
+sync
+
+# hexdump -C $bin_file_path
+# rm -rf $bin_file_path

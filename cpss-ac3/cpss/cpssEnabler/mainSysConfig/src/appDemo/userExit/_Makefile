@@ -1,0 +1,80 @@
+# $(warning "Started") 
+#SUBDIRS = NONE
+LIB_NAME = mainSysConfig.lib
+
+MODULES :=
+ifeq (EXISTS, $(CHX_FAMILY))
+    USE_DXCH=USE
+    #SUBDIRS =
+endif
+ifeq (EXISTS, $(SAL_FAMILY))
+    USE_DXSAL=USE
+    #SUBDIRS =
+endif
+ifeq (EXISTS, $(EX_FAMILY))
+    USE_EXMX=USE
+    #SUBDIRS =
+endif
+ifeq (EXISTS, $(TG_FAMILY))
+    USE_EXMX=USE
+    #SUBDIRS =
+endif
+ifeq (EXISTS, $(TD_FAMILY))
+    USE_EXMX=USE
+    #SUBDIRS =
+endif
+ifeq (EXISTS, $(PM_FAMILY))
+    USE_EXMXPM=USE
+    #SUBDIRS =
+endif
+ifeq (USE,$(USE_EXMX))
+    #SUBDIRS += exMx
+endif
+ifeq (USE,$(USE_DXCH))
+    #SUBDIRS += dxCh
+    MODULES += dxCh
+endif
+ifeq (USE,$(USE_DXSAL))
+    #SUBDIRS += dxSal
+    MODULES += dxSal
+endif
+ifeq (USE,$(USE_EXMXPM))
+    #SUBDIRS += exMxPm
+    MODULES += exMxPm
+endif
+
+ifeq (EXISTS, $(PX_FAMILY))
+    MODULES += px
+endif
+
+
+##List of subfolders to include in build
+#MODULES :=
+#ifeq (EXISTS, $(DX_FAMILY))
+#MODULES := \
+# dxCh
+#endif
+
+#List of files to include in list
+FILES := \
+ appDemoGenEventHandle.c \
+ userEventHandler.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainSysConfig.lib
+    cpssEnabler_mainSysConfig_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

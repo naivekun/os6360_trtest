@@ -1,0 +1,21 @@
+// TAG:               delete; pcl-ID; redirect; access-list; trunk
+// Short Description: disable acl redirect to port-channel/trunk
+// Description:       delete rule-id 18, delete the binding of port 36 to pcl-ID 11,
+//		              delete pcl-ID 11 in access-list and delete port-channel 56.
+end
+configure
+
+access-list device ${dev} pcl-ID 11
+delete rule-id 18
+exit
+
+interface ethernet ${dev}/${port[3]}
+no service-acl pcl-ID 11
+exit
+
+interface ethernet ${dev}/${port[1]}
+no channel-group 56
+exit
+
+delete access-list device ${dev} pcl-id 11
+end

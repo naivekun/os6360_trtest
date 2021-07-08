@@ -1,0 +1,121 @@
+#!/usr/bin/env expect
+
+######################################################################
+# run_Cider_UT.exp
+#
+# DESCRIPTION:
+#       Expect script that
+#
+# INPUTS:
+#      none
+#
+# OUTPUTS:
+#       none
+#
+# RETURNS:
+#       none
+#
+# COMMENTS:
+#
+# FILE REVISION NUMBER:
+#       $Revision: 1 $
+#####################################################################
+
+if { $argc < 1 } {
+    send_user "Usage $argv0 board_ip\n"
+    exit
+}
+
+############################
+# set parameters
+############################
+set board_ip [lindex $argv 0]
+set board_logfile "logfile_Cider.txt"
+
+############################
+# run tests
+############################
+set report_errors_file [ open "logfile_Cider_errors.txt" w ]
+fconfigure $report_errors_file -buffering none
+
+#enable logging
+system rm "-f" $board_logfile
+log_user 0
+log_file -a $board_logfile
+
+# connect to board
+#spawn telnet $board_ip 12345
+spawn -open [socket $board_ip 12345]
+
+set tooldir [ file dirname $argv0 ]
+send_user "source [ file join $tooldir cider_UT_engine.exp ]\n"
+source [ file join $tooldir cider_UT_engine.exp ]
+
+set cider_testfile [open "| python [file join $tooldir gen_cider_test.py] [file join $tooldir cider.xml]"]
+
+# process input
+set t_mode "do"
+set t_unit ""
+set t_cmd ""
+set t_result ""
+
+while {[gets $cider_testfile line] >= 0} {
+    if { [string range $line 0 0] == "+" } {
+        set t_mode "do"
+        set t_unit ""
+        send_user "*** [string range $line 1 end]\n"
+    }
+    if { [string range $line 0 0] == "\*" } {
+        set t_mode "do"
+        set t_unit [string range $line 1 end]
+    }
+    if { [string range $line 0 0] == ">" } {
+        set t_cmd [string range $line 1 end]
+    }
+    if { [string range $line 0 0] == "<" } {
+        set t_result [string range $line 1 end]
+        if { $t_mode == "do" } {
+            # execute command
+            UT_do_command $t_cmd
+            
+            # check status
+            set err ""
+            if { $UT_command_execution_status == false } {
+                set err "failed to execute"
+            }
+            set found false
+            set found_valid false
+            if { $UT_addr != "" } {
+                set found true
+                if { $UT_addr != $t_result } {
+                    set err "failed: expected '$t_result' got '$UT_addr'"
+                } else {
+                    set found_valid true
+                }
+            }
+            foreach found_str $UT_found {
+                set found true
+                if { $found_str == $t_result } {
+                    set found_valid true
+                } else {
+                    set err "failed: expected '$t_result' got '$found_str'"
+                }
+            }
+            if { $found_valid == true } {
+                set err ""
+            }
+            # check for register name
+
+            if { $found == false } {
+                set err "nothing returned, expected '$t_result'"
+            }
+            if { $err != "" } {
+                puts $report_errors_file "\n**** $t_unit failed: $err"
+                puts $report_errors_file $UT_current_test_log
+                set t_mode "skip"
+            }
+        }
+    }
+}
+
+send_user "\n\n*** test finished\n"

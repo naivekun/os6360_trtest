@@ -1,0 +1,25 @@
+// TAG:               delete; pcl-ID; redirect; access-list
+// Short Description: disable acl redirect to port
+// Description:       delete rule-id 18, delete the binding of port 36 to pcl-ID 11
+//		      and delete pcl-ID 11 in access-list
+end
+configure
+access-list device ${dev} pcl-ID 11
+delete rule-id 18
+exit
+
+interface ethernet ${dev}/${port[1]}
+no service-acl pcl-ID 11
+exit
+
+delete access-list device ${dev} pcl-id 11
+end
+
+//Delete vidx2
+callCpssAPI cpssDxChBrgMcGroupDelete
+<<<PARAMS
+{
+    { "IN", "GT_U8", "devNum", ${dev} },
+    { "IN", "GT_U16", "vidx", 1 }
+}
+>>>

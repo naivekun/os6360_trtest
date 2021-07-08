@@ -1,0 +1,50 @@
+// TAG:               LED interface;
+// Short Description: De-configure LED stream interface
+// Description:       De-configure LED stream interface global parameteres
+
+end
+configure
+//Restore the order of the signals driven in the LED stream - by port
+no led interface ${ledIf} device ${dev} stream-order-by
+//Reset start and end significant bit in stream - 0-255
+no led interface ${ledIf} device ${dev} stream-length
+//Restore LED blink duty cycle signal and divider of blink frequency - LED blink duty cycle is 50% and LED blink frequency divider is 64 ms
+no led interface ${ledIf} device ${dev} blink-cfg 0
+//Restore LED clock out frequencies - 1 MHz LED clock frequency
+no led interface ${ledIf} device ${dev} clock-freq
+//Reset divider for a system clock frequency - LED clock divided by 10000
+no led interface ${ledIf} device ${dev} stretch-cfg
+
+interface ethernet ${dev}/${port[1]}
+//Reset LED classes to default - not inverted
+no led invert-classes 2-5
+exit
+
+interface ethernet ${dev}/${port[1]}
+//Reset port to default slot number - 0x3f
+no led port-slot
+exit
+
+interface ethernet ${dev}/${port[2]}
+//Reset port to default slot number - 0x3f
+no led port-slot
+exit
+
+interface ethernet ${dev}/${port[3]}
+//Reset port to default slot number - 0x3f
+no led port-slot
+exit
+
+interface ethernet ${dev}/${port[4]}
+//Reset port to default slot number - 0x3f
+no led port-slot
+exit
+
+//disable forcing for LED class 3
+no led class 3 device ${dev} led-if ${ledIf} force
+//disable indication blinking for class 3.
+no led class 3 device ${dev} led-if ${ledIf} use-blink
+//disable affect of a "link is down" event on class indications
+no led class 0-5 device ${dev} led-if ${ledIf} disable-on-link-down
+//enable a stretching of a signal for class 4 (configured above)
+led class 4 device ${dev} led-if ${ledIf} enable-stretch

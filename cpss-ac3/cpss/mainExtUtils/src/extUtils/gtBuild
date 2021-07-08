@@ -1,0 +1,38 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+#LIB_NAME = mainExtUtils.lib
+ifeq (YES, $(CPSS_BLOB))
+SUBDIRS=IOStream luaCLI
+endif
+
+SUBDIRS = \
+ IOStream \
+ iterators \
+ luaCLI \
+ osNetworkStack \
+ rxEventHandler \
+ mxml
+
+ifeq (EXISTS, $(IMPL_TGF))
+  SUBDIRS += \
+    tgf \
+    trafficEngine
+endif
+ifeq (EXISTS, $(CHX_FAMILY))
+  SUBDIRS += \
+    auEventHandler \
+    cpssEnabler 
+endif
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

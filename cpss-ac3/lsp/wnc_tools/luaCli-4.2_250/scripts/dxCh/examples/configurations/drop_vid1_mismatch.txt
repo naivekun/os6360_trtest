@@ -1,0 +1,11 @@
+// TAG:               egress filtering; drop VID1 mismatch;
+// Short Description: enable "drop VID1 mismatch" feature
+// Description:       enable "drop VID1 mismatch" feature on the port 0/18. All
+//                    outgoing packets with a vlan id tag1 different than 2
+//                    will be filtered on the port 0/18.
+
+end
+configure
+interface ethernet ${dev}/${port[2]}
+switchport egress-filtering vid1 2
+end

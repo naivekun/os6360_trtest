@@ -1,0 +1,314 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+###  Global variables
+# Assign any content to print debug message
+DBG_PRINTF=
+DBG_PRINTF_TIME=
+
+# System information parsed from DB (sysinfo file)
+UNIT_CNT=`sysinfo_get_mac_units $(dirname $0)/prod_sysinfo`
+CPU_PORT=`grep -w "CPU_PORT" $(dirname $0)/prod_sysinfo | cut -d '=' -f2`
+
+# Used to setup VLAN for each loop
+FIRST_VLAN=2
+VID=`echo $FIRST_VLAN`
+
+# Used for packet sending by once or by loop
+PKT_INFO_IS_SAME=false
+
+# Skip the basic checking for loop ID that had checked in check stage
+SKIP_LID_CHECK=false
+
+### Local functions ###
+# Get system information from SDK
+function get_sys_info()
+{
+    local sdk_cpu_port sdk_unit_cnt
+
+    sdk_cpu_port=`rtk_get_cpu_portidx 0`
+    [ -n "$DBG_PRINTF" ] && echo "INFO: The CPU port from SDK is $sdk_cpu_port."
+    if [ "$CPU_PORT" != "$sdk_cpu_port" ]; then
+        echo "WARNING: The CPU port parsed from SDK is $sdk_cpu_port and is different from sysinfo file ($CPU_PORT)!"
+        CPU_PORT="$sdk_cpu_port"
+    fi
+
+    sdk_unit_cnt=`rtk_get_switch_info | grep -o "Unit ID:" | wc -l | sed "s/ //g"`
+    [ -n "$DBG_PRINTF" ] && echo "INFO: The MAC unit count from SDK is $sdk_unit_cnt."
+    if [ "$UNIT_CNT" != "$sdk_unit_cnt" ]; then
+        echo "FAIL: The SDK MAC unit count ($sdk_unit_cnt) is different from sysinfo file ($UNIT_CNT)!"
+        exit 3
+    fi
+}
+
+# Send packet from CPU
+function send_packet()
+{
+    local unit=$1
+    local portlist=$2
+    local pidlist=$3
+    local pidnum=$4
+    local pid pktfile
+
+    for pid in $pidlist; do
+        if [ -z "`ls $(dirname $0)/data/${pid}_packet* 2>/dev/null`" ]; then
+            echo "WARNING: The packet $pid is not exist in data folder ($(dirname $0)/data/)!"
+            continue
+        fi
+        [ -n "$DBG_PRINTF" ] && echo "Info: TX $pidnum packet#$pid with VLAN $FIRST_VLAN for unit($unit), portlist($portlist)."
+        pktfile=$(pwd)/data/${pid}_packet.txt
+        [ -n "$DBG_PRINTF" ] && echo "Info: pktfile=$pktfile."
+        rtk_tx_packet "$unit" "$FIRST_VLAN" "$portlist" $pidnum "$pktfile"
+    done
+}
+
+# Setup ACL rule
+function setup_acl () {
+    local unit=$1
+    local index=$2 # pport
+    local field="spm"
+    local data mask data_hex mask_hex
+
+    # Assign data and mask per port index
+    data=$((1 << $index))
+    if [ "$CPU_PORT" == "28" ]; then # 9301
+        mask=$((0xffffffff ^ $data))
+    else
+        mask=$((0xffffffffffffff ^ $data))
+    fi
+    data_hex=`printf "%x\n" ${data}`
+    mask_hex=`printf "%x\n" ${mask}`
+
+    # Wait RTK ready
+    wait_rtk
+
+    # Setup ACL entry
+    [ -n "$DBG_PRINTF" ] && echo "Info: Setup ACL rule with index $index, field $field, data 0x$data_hex and mask 0x$mask_hex."
+    rtksh -c "acl set entry phase 0 entry $index field template-id data 0x0 mask 0x1"
+    rtksh -c "acl set entry phase 0 entry $index field $field data 0x$data_hex mask 0x$mask_hex"
+    rtksh -c "acl set entry phase 0 entry $index action forward state enable"
+    rtksh -c "acl set entry phase 0 entry $index action redirect dev 0 port $CPU_PORT"
+    rtksh -c "acl set entry phase 0 entry $index state invalid"
+}
+
+# Setup VLAN for each inter segment pair
+function set_vlan () {
+    local seglist=$@
+    local seg unit_port1 unit_port2 port1 port2 ports
+    local iport_cnt=`echo $seglist | grep -o 'i' | wc -l`
+
+    # Setup VLAN for each inter segment
+    # Two intra segments between two switch chips (Snake-like traffic loop)
+    #   +---------------------------------------------------------+
+    #   |   +--------------+                 +---------------+    |
+    #   |   |   MAC #0     |   Inter-link    |    MAC #1     |    |
+    #   |   |          hg0 +-----------------+ hg0           |    |
+    #   |   | Intra seg /  |                 |   \ Intra seg |    |
+    #   |   |        ge23  |                 |    ge0        |    |
+    #   |   +---------|----+                 +-----|---------+    |
+    #   +-------------|----------------------------|--------------+
+    #                 +============================+  Loop wtih external cable      
+    # A loop with two front ports cross different MACs, like: "0:23,0:26i 1:26i,1:0" ==> seg# = "i"#
+    if [ "$iport_cnt" -eq 2 ]; then
+        [ -n "$DBG_PRINTF" ] && echo "Info: Setup VLAN for each inter segment pair."
+        for ((seg_idx=1;seg_idx<="$iport_cnt";seg_idx=seg_idx+1)); do
+            # Process for each internal segment pairs (seg1 & seg2)
+            # Parse unit/port information
+            seg=${seglist% *}
+            unit_port1=${seg%,*}
+            unit_port2=${seg#*,}
+            unit1=${unit_port1%:*}
+            unit2=${unit_port2%:*}
+            port1=${unit_port1#*:}
+            port2=${unit_port2#*:}
+
+            [ -n "$DBG_PRINTF" ] && echo "Info: Create vlan $VID for seg_pair[$seg_idx]=$seg, unit=$unit, port1=$port1, port2=$port2."
+            if echo "$port1" | grep -q 'hg'; then # Port1 is internal port. FIXME: How to distinguish the internal port in RTK platform?
+                rtk_create_vlan "$unit2" $VID $port2
+                rtk_add_vlan_tag_port "$unit1" $VID $port1
+            else                                        # Port2 is internal port. FIXME: How to distinguish the internal port in RTK platform?
+                rtk_create_vlan "$unit1" $VID $port1
+                rtk_add_vlan_tag_port "$unit2" $VID $port2
+            fi
+    
+            # Remove the assigned segment
+            seglist="`echo $seglist | sed "s/$seg //g"`"
+    
+            # For next segment pair
+            if [ `expr $seg_idx % 2` -ne 0 ]; then
+                VID=`expr $VID + 1`
+            fi
+        done
+    fi
+
+    # Setup VLAN for each intra segment (front port)
+    for seg in $seglist; do
+        # Parse unit/port information
+        unit_port1=${seg%,*}
+        unit_port2=${seg#*,}
+        unit1=${unit_port1%:*}
+        unit2=${unit_port2%:*}
+        port1=${unit_port1#*:}
+        port2=${unit_port2#*:}
+        port1=${port1%i*}        # Discard "i" if got one
+        port2=${port2%i*}        # Discard "i" if got one
+        [ "$unit_port1" == "$unit_port2" ] && ports="$port1" || ports="$port1,$port2"
+
+        # Create VLAN and set PVID for each pair
+        [ -n "$DBG_PRINTF" ] && echo "Info: Create vlan $VID for ports $ports on unit $unit1."
+        rtk_create_vlan "$unit1" $VID $ports
+        rtk_add_vlan_port "$unit1" $VID $ports
+        # FIXME: setup vlan for internal HG port between two chips
+        if [ "$unit1" != "$unit2" ]; then
+            rtk_create_vlan "$unit2" $VID $port2
+            rtk_add_vlan_port "$unit2" $VID $port2
+        fi
+
+        VID=`expr $VID + 1`
+    done
+
+    # Dump VLAN settings for debug
+    [ -n "$DBG_PRINTF" ] && rtksh -c 'vlan get pvid inner port all'
+}
+
+function setup_system()
+{
+    local unit
+
+    # Clear counter for CPU port
+    rtk_clear_counter 0 "$CPU_PORT"
+    [ -n "$DBG_PRINTF" ] && echo "[INFO] Reset CPU's counter on port $CPU_PORT."
+
+    # Get the packet information check result that compare in check stage.
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        if [ -f $(dirname $0)/metadata/tx_pkt_info_${unit} ]; then
+            if [ `grep -c "PKT_INFO_NOT_SAME" $(dirname $0)/metadata/tx_pkt_info_${unit}` -eq 0 ]; then
+                PKT_INFO_IS_SAME=true
+                [ -n "$DBG_PRINTF" ] && echo "Info: Packet inforation for all test loops on unit $unit are same."
+            fi
+        else
+            [ -n "$DBG_PRINTF" ] && echo "The file - tx_pkt_info_${unit} does not exist."
+        fi
+    done
+}
+
+function gen_pkt()
+{
+    local lidlist=$@
+    local lid seg segment_cnt
+    local unit_port1 unit_port2 unit1 unit2 port1 port2
+    local stime=`date +%s`
+
+    echo -n "Setup and generate packets for valid loops."  # Show the action in frontend
+    for lid in $lidlist; do
+        echo -n "."    # Generate process bar in frontend
+        if [ $SKIP_LID_CHECK == false ]; then
+            [ -z "`ls $(dirname $0)/data/${lid}_loop 2>/dev/null`" ] && continue
+            [ `grep -c "INVALID_SEGMENT" $(dirname $0)/metadata/${lid}_loop` -ne 0 ] && continue
+        fi
+
+        # Parse parameters from loop file in metadata that genearted from prod_check
+        pair_int_seglist=`grep -w "SEG_LIST_PAIR_INT_REMAP" $(dirname $0)/metadata/${lid}_loop | cut -d '=' -f2`
+        single_seglist=`grep -w "SEG_LIST_SINGLE_REMAP" $(dirname $0)/metadata/${lid}_loop | cut -d '=' -f2`
+        pair_seglist=`grep -w "SEG_LIST_PAIR_REMAP" $(dirname $0)/metadata/${lid}_loop | cut -d '=' -f2`
+        seglist=`grep -w "SEG_LIST_REMAP" $(dirname $0)/metadata/${lid}_loop | cut -d '=' -f2`
+
+        # Count the number of total segment
+        segment_cnt=`echo $seglist | awk '{print NF}'`
+
+        [ -n "$DBG_PRINTF" ] && echo "Info: seglist=$seglist."
+
+        # Setup VLAN for each segment
+        set_vlan $seglist
+
+        # TX both side traffic at the first segment only of each loop.
+        # Parse unit/port information
+        seg=${seglist% *}
+        unit_port1=${seg%,*}
+        unit_port2=${seg#*,}
+        unit1=${unit_port1%:*}
+        unit2=${unit_port2%:*}
+        port1=${unit_port1#*:}
+        port2=${unit_port2#*:}
+        ports="$port1,$port2"
+
+        [ -n "$DBG_PRINTF" ] && echo "Info: TX segment = $ports on unit $unit1."
+
+        # Make the traffic looping
+        if [ "$seglist" == "$single_seglist" ]; then # single segment.
+            # Set OAM loopback mode for traffic loop in single port loopback
+            [ -n "$DBG_PRINTF" ] && echo "Info: Set OAM loopback mode for pport $ports."
+            rtk_set_oam_port "$unit1" "$port1" "2"
+        elif [ "$seglist" == "$pair_seglist" ]; then # pair segment
+            # Invalidate ACL run for port-pair loopback
+            [ -n "$DBG_PRINTF" ] && echo "Info: Setup ACL rule for pport $ports."
+            setup_acl "$unit1" "$port1"
+            setup_acl "$unit2" "$port2"
+        fi
+
+        # Transmit packet for each loop with first segment
+        if [ $PKT_INFO_IS_SAME == false ]; then
+            pidlist=`grep -w "PID_LIST_REMAP" $(dirname $0)/data/${lid}_loop | cut -d '=' -f2`
+            pidnum=`grep -w "PKT_NUM" $(dirname $0)/data/${lid}_loop | cut -d '=' -f2`
+            send_packet "$unit1" "$ports" "$pidlist" "$pidnum"
+        fi
+    done
+
+}
+
+### MAIN ###
+STIME_RUN=`date +%s` # For execution time calculation
+STIME=$STIME_RUN
+
+# Get system information from SDK
+get_sys_info
+
+# Setup system related information and settings
+setup_system
+print_exec_time_debug "$DBG_PRINTF_TIME" "system setup in run stage" "$STIME"; STIME=`date +%s`;
+
+# Record loop list
+if [ -f $(dirname $0)/metadata/test_looplist ];then
+    lidlist=`grep -w "LIDLIST_VALID" $(dirname $0)/metadata/valid_lidlist | cut -d '=' -f2`
+    SKIP_LID_CHECK=true
+else
+    lidlist=$@
+fi
+
+# Setup and generate packets for each loop
+gen_pkt $lidlist
+
+# Transmit packet once with portlist
+if [ $PKT_INFO_IS_SAME == true ]; then
+    # Calculate execution time
+    [ -n "$DBG_PRINTF_TIME" ] && echo ""
+    print_exec_time_debug "$DBG_PRINTF_TIME" "VLAN setup" "$STIME";STIME=`date +%s`
+
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        tx_plist=`grep -w "TX_PLIST" $(dirname $0)/metadata/tx_pkt_info_${unit} | cut -d '=' -f2`
+        pidlist=`grep -w "PID_LIST" $(dirname $0)/metadata/tx_pkt_info_${unit} | cut -d '=' -f2`
+        pidnum=`grep -w "PKT_NUM" $(dirname $0)/metadata/tx_pkt_info_${unit} | cut -d '=' -f2`
+        send_packet "$unit" "$tx_plist" "$pidlist" "$pidnum"
+    done
+
+    # Calculate execution time
+    print_exec_time_debug "$DBG_PRINTF_TIME" "Packet transmission once with portlist" "$STIME"
+else
+    # Calculate execution time
+    [ -n "$DBG_PRINTF_TIME" ] && echo ""
+    print_exec_time_debug "$DBG_PRINTF_TIME" "VLAN setup and packet transmission with each test loop" "$STIME"
+fi
+
+# Start the counter watcher and enable high resolution mode to monitor the traffic rate
+for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+    rtk_cw_start "$unit" all
+    rtk_cw_hr_start "$unit" all
+done
+
+# For execution time calculation
+ETIME_RUN=`date +%s`
+EXEC_TIME=$(($ETIME_RUN - $STIME_RUN))
+[ -n "$DBG_PRINTF_TIME" ] && echo "Done(${EXEC_TIME}s)" || echo "Done"
+
+exit 0

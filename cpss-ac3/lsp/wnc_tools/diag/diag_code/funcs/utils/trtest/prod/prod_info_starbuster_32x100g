@@ -1,0 +1,169 @@
+#!/bin/bash
+
+# CPLD sysfs path
+folder=$(find /sys/devices -name fan_tach_1_1)
+CPLD_SYSFS_PATH=$(dirname $folder)
+
+function get_prod_name() {
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	echo "PROD_NA"
+}
+
+function get_prod_sn() {
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	echo "SN_NA"
+}
+
+function get_os_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	cat -E /etc/*-release
+}
+
+function get_kernel_info() {
+	uname -a
+}
+
+function get_sensor_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# various data from "sensors" command, that requires lm-sensors
+	# package installed, plus extra sensor points in switch chip or
+	# somewhere else
+	#sensors > tmp.log
+	#cat -E tmp.log; rm -f tmp.log
+	
+	echo "CPU temperature:" > tmp.log
+	sensors coretemp-isa-0000 >> tmp.log
+	echo "Memory temperature:" >> tmp.log
+	bus_path="/sys/bus/i2c/devices"
+
+if [ -d "SKIPP" ]; then #FIXME
+	if [ ! -d "$bus_path/0-0018" ]; then
+            echo "SODIMM_1 = not present" >> tmp.log
+	else
+       	    temp_sensor_string="jc42-i2c-0-18"
+            temp=$(sensors $temp_sensor_string | grep temp1 | cut -d '+' -f 2 | cut -d '.' -f 1)
+	    echo "SODIMM_1 = $temp deg C" >> tmp.log
+	fi
+
+	if [ ! -d "$bus_path/0-001a" ]; then
+        echo "SODIMM_2 = not present" >> tmp.log
+	else
+		temp_sensor_string="jc42-i2c-0-1a"
+    	temp=$(sensors $temp_sensor_string | grep temp1 | cut -d '+' -f 2 | cut -d '.' -f 1)
+	    echo "SODIMM_2 = $temp deg C" >> tmp.log
+	fi
+fi	
+	echo "" >> tmp.log
+	echo "ASIC temperature:" >> tmp.log
+	asic_temp=$(bcmsh -c "show temp")
+	echo "$asic_temp" >> tmp.log
+	cat -E tmp.log; rm -f tmp.log
+}
+
+function get_fan_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return present status, RPM
+if [ -d "SKIPP" ]; then #FIXME
+	for ((i=1; i<=6; i++)); do
+		echo "TACH_${i}_1 RPM : $(cat $CPLD_SYSFS_PATH/fan_tach_${i}_1)" >> tmp.log
+		echo "TACH_${i}_2 RPM : $(cat $CPLD_SYSFS_PATH/fan_tach_${i}_2)" >> tmp.log
+	done                                             	
+	cat -E tmp.log; rm -f tmp.log
+fi
+}
+
+
+function get_psu_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return present status, power good, etc
+if [ -d "SKIPP" ]; then #FIXME
+	for ((psu_index=1; psu_index<=2; psu_index++)); do
+		# PSU present
+		echo "PSU ${psu_index}" >> tmp.log
+		s_psu_present="psu_present_lt_"${psu_index}
+		if [ $(cat $CPLD_SYSFS_PATH/${s_psu_present}) == "0x1" ]; then
+			echo "Present : disconnect" >> tmp.log
+			echo "ON      : N/A" >> tmp.log
+			echo "OK      : N/A" >> tmp.log
+			echo "Alarm   : N/A" >> tmp.log
+		else
+			echo "Present : present" >> tmp.log
+			# PSU enable
+			s_psu_ps_on="psu_ps_on_lt_"${psu_index}
+			if [ $(cat $CPLD_SYSFS_PATH/${s_psu_ps_on}) == "0x1" ]; then
+				echo "On : turn off" >> tmp.log
+			else
+				echo "On : turn on" >> tmp.log
+			fi
+			# PSU ok
+			s_psu_ps_ok="psu_ps_ok_lt_"${psu_index}
+			if [ $(cat $CPLD_SYSFS_PATH/${s_psu_ps_ok}) = "0x1" ]; then
+				echo "Ok : power ok" >> tmp.log
+			else
+				echo "Ok : power not ok" >> tmp.log
+			fi
+			# PSU alarm
+			s_psu_smb_alert="psu_smb_alert_lt_"${psu_index}
+			if [ $(cat $CPLD_SYSFS_PATH/${s_psu_smb_alert}) = "0x1" ]; then
+				echo "Alarm : normal" >> tmp.log
+			else
+				echo "Alarm : alarm occur" >> tmp.log
+			fi
+		fi # s_psu_present
+	done
+	cat -E tmp.log; rm -f tmp.log
+fi
+}
+
+
+function get_port_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return MAC+PHY status from switch driver, plus transceiver EEPROM
+	# and DMI data
+	echo "Phy Diag DSC status:" > tmp.log
+	bcmsh -c "phy diag all dsc" >> tmp.log
+    sed -i 's/\*/\=/g' tmp.log
+	echo "" >> tmp.log
+	echo "Port status:" >> tmp.log
+    bcmsh -c "ps" >> tmp.log
+	cat -E tmp.log; rm -f tmp.log
+}
+
+function get_counters() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return all counters from switch driver
+
+	echo "All counters:" >> tmp.log
+	cnt=$(bcmsh -c "show counter all")
+	echo "$cnt" >> tmp.log
+	echo -e "\n" >> tmp.log	
+
+    # Test result with traffic rate and counters (Mark it because the information was shown before)
+    #cat metadata/trtest_pkt.log >> tmp.log
+
+	cat -E tmp.log; rm -f tmp.log
+}
+
+function get_prod_lb_modes() {
+	# return all available loopbck modes of the product
+	echo "mac phy"
+}
+

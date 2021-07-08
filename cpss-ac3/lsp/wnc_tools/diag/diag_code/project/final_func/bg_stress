@@ -1,0 +1,28 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+
+FLOWSET_DIR=${DIR}/flowset
+STRESS_FLOWS=`ls ${FLOWSET_DIR}/bg_flow* 2>/dev/null`
+if [ -n "${STRESS_FLOWS}" ] && [ -n "${FLOW_FILTER}" ]; then
+	STRESS_FLOWS=`echo ${STRESS_FLOWS} ${FLOW_FILTER} | \
+		sed 's/ /\n/g' | sort | uniq -d`
+fi
+
+case "$1" in
+start)
+	for flow in $STRESS_FLOWS; do
+		$flow &
+	done
+	;;
+stop)
+	for flow in $STRESS_FLOWS; do
+		kill `ps aux | grep $flow | grep -v grep | awk '{print $2}'`
+	done
+	;;
+*)
+	# do nothing
+	;;
+esac
+
+exit 0

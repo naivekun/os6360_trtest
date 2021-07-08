@@ -1,0 +1,10 @@
+// TAG:               PX devices(PIPE); ingress port redirect;
+// Short Description: PIPE device : Ingress port redirect configuration.
+// Description:       PIPE device : Ingress port redirect configuration.
+//
+end
+//
+configure
+interface ethernet ${dev}/${@@ingressPort}
+ingress port-redirect to egress bitmap ${@@portsBitmap}
+end

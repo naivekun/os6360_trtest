@@ -1,0 +1,8 @@
+// TAG:               loopback; mode; internal; restore; default;
+// Short Description: Reset internal loopback mode
+// Description:       Reset internal loopback mode for dev#0 port#0
+//                    (restore default state)
+configure
+interface ethernet ${dev}/${port[1]}
+no loopback
+end

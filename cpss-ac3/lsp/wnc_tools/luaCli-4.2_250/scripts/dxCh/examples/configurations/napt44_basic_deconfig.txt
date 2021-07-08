@@ -1,0 +1,44 @@
+// TAG:               NAPT44; vlan; restore
+// Short Description: Restore configurations
+// Description:       Disable (restore default) vlans 5,6,7
+
+//REMOVING CONFIGURATIONS
+
+end
+clear bridge type ${dev} all
+configure
+
+no ip route 192.168.1.1 255.255.255.255 vrf-id 1
+no ip next-hop 101
+
+no ip route 192.168.2.3 255.255.255.255 vrf-id 1
+no ip next-hop 102
+
+no ip vrf-id 1
+
+interface range ethernet ${dev}/${port[1]},${port[2]}
+no ip routing
+exit
+
+interface range vlan device ${dev} vid 5,7
+no ip routing
+exit
+
+interface range ethernet ${dev}/${port[2]},${port[4]}
+switchport allowed vlan remove 5
+exit
+interface ethernet ${dev}/${port[3]}
+switchport allowed vlan remove 6
+exit
+interface ethernet ${dev}/${port[1]}
+switchport allowed vlan remove 7
+exit
+
+no interface range vlan device ${dev} vid 5,6,7
+
+no mac address
+
+no nat44 all
+do show nat44
+
+end

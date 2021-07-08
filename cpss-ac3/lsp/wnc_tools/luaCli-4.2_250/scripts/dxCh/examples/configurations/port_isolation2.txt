@@ -1,0 +1,18 @@
+// TAG:               port; ports; isolation;
+// Short Description: Configure port isolation for ports #18:#54
+// Description:       Configure port isolation for ports #18:#54
+//                    disable port isolation for #18:#36
+end
+configure
+interface vlan device ${dev} vid 20
+exit
+interface range ethernet ${dev}/${port[1]},${port[3]},${port[4]}
+switchport allowed vlan add 20 tagged
+exit
+interface ethernet ${dev}/${port[1]}
+switchport isolate ${dev}/${port[3]},${dev}/${port[4]}
+no switchport isolate
+do show interfaces switchport isolate
+switchport isolate ${dev}/${port[3]}
+do show interfaces switchport isolate
+end

@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Variable
+filepath_prodinfo="/etc/opt/trtest/prod_info"
+filepath_sysinfo="/etc/opt/asic/sysinfo"
+
+#  Link product related files only once.
+if [ ! -f ./prod_check ]; then
+	# Product information file
+	if [ -f "$filepath_prodinfo" ]; then
+		ln -fs /etc/opt/trtest/prod_info prod_info
+	else
+		echo "Lack of product information and use the default prod_info!"
+		ln -fs prod/prod_info prod_info
+	fi
+
+	# System information file
+	if [ -f "$filepath_sysinfo" ]; then
+		ln -fs /etc/opt/asic/sysinfo prod_sysinfo
+	else
+		echo "Lack of system information and use the default sysinfo!"
+		ln -fs prod/sysinfo prod_sysinfo
+	fi
+
+	# Program files ( prod_xxx - check/run/stop ) per switch vendor
+	vendor=`grep -w 'SDK_VENDOR' prod_info | cut -d '=' -f2`
+	ln -fs prod/check_${vendor} prod_check
+	ln -fs prod/run_${vendor} prod_run
+	ln -fs prod/stop_${vendor} prod_stop
+
+	# Shell and python function
+	ln -fs ../../sh_funcs .
+	ln -fs ../../py_funcs .
+fi

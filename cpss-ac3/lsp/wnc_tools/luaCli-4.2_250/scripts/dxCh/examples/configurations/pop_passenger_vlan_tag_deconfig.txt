@@ -1,0 +1,60 @@
+// TAG:               pop; restore; default; tpid; mpls
+// Short Description: Restore default pop passenger vlan tag
+// Description:       Disable (restore default) pop passenger vlan tag
+
+//REMOVING CONFIGURATIONS
+
+end
+configure
+
+//remove vlans from physical port
+interface range ethernet ${dev}/${port[2]},${port[3]}
+switchport allowed vlan remove 5,6
+exit
+
+// unset TPIDs from  global config table
+tpid device ${dev} direction ingress index 0 etherType 0x8100
+tpid device ${dev} direction ingress index 7 etherType 0x8100
+tpid device ${dev} direction egress  index 0 etherType 0x8100
+tpid device ${dev} direction egress  index 7 etherType 0x8100
+
+// for tag 0,1 recognition restore tpid-range:
+tpid ingress profile 0 device ${dev} ether_type_index 0 tpid-range 0,1,2,3,4,5,6,7
+tpid ingress profile 0 device ${dev} ether_type_index 1 tpid-range 0,1,2,3,4,5,6,7
+interface range ethernet ${dev}/${port[2]},${port[3]}
+tpid egress bind 0 ether_type_index 0
+tpid egress bind 0 ether_type_index 1
+exit
+
+// The outer tag is popped
+interface eport ${dev}/0x200
+no pop-vlan-tag
+exit
+
+// delete MPLS configuration
+interface ethernet ${dev}/${port[2]}
+no mpls assign-eport 0x200
+end
+
+// delete vlans 4,5,6,7
+configure
+no interface range vlan device ${dev} vid 4,5,6,7
+exit
+
+// command to show MPLS configuration
+do show mpls
+end
+
+// delete PCL configuration
+configure
+access-list device ${dev} pcl-ID 0x124
+delete rule-id 6
+exit
+access-list device ${dev} pcl-ID 0x124
+delete rule-id 2100
+exit
+interface eport ${dev}/0x200
+no service-acl pcl-ID 0x124
+exit
+delete access-list device ${dev} pcl-id 0x124
+end

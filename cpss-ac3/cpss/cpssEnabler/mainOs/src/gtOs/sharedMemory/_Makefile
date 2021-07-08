@@ -1,0 +1,71 @@
+# $(warning "Started")
+
+#SUBDIRS = NONE
+MODULES :=
+FILES :=
+
+ifeq (linux, $(OS_RUN))
+  FILES := \
+    shrMemCommonMem.c
+
+
+  ifeq (1,$(SHARED_MEMORY))
+    # NAMED_SEM_TYPE = NO_NAMED_SEM
+	# Because ELDK toolchain is no more used
+	# we can use POSIX_SEM option unless
+	# we decide to renew support for legacy system
+	NAMED_SEM_TYPE = POSIX_SEM
+    cpssEnabler_AD_CFLAGS += -D$(NAMED_SEM_TYPE)
+
+    MODULES := intraCPSSdata
+
+	FILES := \
+			shrMemCommonMem.c \
+			shrMemRemapper.c \
+			shrMemSharedLibraryInit.c \
+			shrMemFunctionsPointers.c \
+			shrMemSharedMalloc.c
+    ifeq (1,$(LINUX_SIM))
+        #add wrappers for libc functions
+        # required for simulation
+        FILES += \
+                libcWrappers.c \
+                libcWrappersOs.c
+
+    endif
+  endif
+  ifneq (1,$(LINUX_SIM))
+    FILES += shrMemPpInit.c
+  endif
+endif
+
+ifeq (FreeBSD, $(OS_RUN))
+  ifeq (1,$(LINUX_SIM))
+      FILES :=
+  else
+      FILES := \
+             shrMemCommonMem.c \
+             shrMemPpInit.c
+  endif
+endif
+
+ifneq (,$(filter VXWORKS uClinux win32, $(OS_RUN)))
+  FILES :=
+endif
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+    cpssEnabler_gtOs_SRC1 += $(patsubst %,$(CWD)%,$(FILES))
+endif
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

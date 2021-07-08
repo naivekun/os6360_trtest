@@ -1,0 +1,408 @@
+#!/bin/bash
+
+source /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+INF="fiber"
+mode=0
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - command for EMS test
+
+SYNOPSIS
+       $prog_name [-s] [-q] [-t] [-i interface] [-h]
+
+DESCRIPTION
+       To set up for EMS test, or restore the EMS test setting.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -s    To start EMS test.
+
+       -q    To quit EMS test.
+
+       -i    To choose the interface of combo port.
+             Available options are \"0\" for fiber, \"1\" for copper.
+             Without this option default is fiber.
+			 
+       -t    Test every two port group links with self-generated traffic.
+
+       -h    Show this help message.
+
+EXAMPLE
+       $prog_name -s
+       $prog_name -s -i 1
+       $prog_name -q
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    exit 1
+fi
+
+function gen_packet() {
+	cd /usr/bin/wnc_diag/cmds 2>&1 > /dev/null
+	traffic-test edit-pkt -i 1 -l 1514 -d 00:00:00:00:00:01 -s 00:00:00:00:00:02 -e 0800 -p 5
+	#traffic-test edit-pkt -i 2 -l 1514 -d 00:00:00:00:00:02 -s 00:00:00:00:00:01 -e 0800 -p 5
+	cp /usr/bin/wnc_diag/cmds/trtest/data/*_packet.txt /cmdFS/
+	cd - 2>&1 > /dev/null
+}
+
+function run_ems_test() {
+	echo -e "Start EMS test, please hit Ctrl+C to Stop.\n"
+
+	# Send 10 packets every one seconds
+	# monitor quit event (Ctrl+C or timer expiration)
+	while [ $quit != true ]; do
+		mrvl_luash -c "do traffic" 2>&1 > /dev/null
+		mrvl_luash -c "send port all file 1_packet.txt pktnum 10" 2>&1 > /dev/null
+		mrvl_luash -c "end" 2>&1 > /dev/null
+		sleep 1
+	done
+
+	echo -e "Stop EMS test\n"
+	# Wait cpu send packets
+	sleep 2
+}
+
+function stop_traffic_loop() {
+
+	echo -e "Waiting stop traffic loop\n"
+
+	mrvl_luash -c "do configure" 2>&1 > /dev/null
+	mrvl_luash -c "interface range ethernet all" 2>&1 > /dev/null
+	mrvl_luash -c "switchport pvid 300" 2>&1 > /dev/null
+	mrvl_luash -c "exit" 2>&1 > /dev/null
+
+	sleep 2
+}
+
+function show_port_pkt_cnt() {
+
+	sent_port=$1
+	sent=$2
+	received_port=$3
+	received=$4
+
+	if [ $sent -ne $received ]; then
+		loss=$(( $sent - $received ))
+		loss_persent=`awk -v x=$loss -v y=$sent 'BEGIN {printf "%.4f\n",x*100/y}'`
+		echo "Port $sent_port  Sent     = $sent,        Port $received_port  Received = $received, Loss Percentage=$loss_persent%"
+	else
+		echo "Port $sent_port  Sent     = $sent,        Port $received_port  Received = $received"
+	fi
+
+}
+
+while getopts "sqi:th" arg; do
+    case $arg in
+        s) # start test
+            action="START"
+            ;;
+        q) # stop test 
+            action="STOP"
+            ;;
+        i) # combo port interface
+            if [ "$OPTARG" == "1" ]; then
+                INF="copper"
+            else
+                INF="fiber"
+            fi
+            ;;
+        t)
+            mode=1;
+            ;;
+        h | *) # display usage
+            usage
+            exit 0
+            ;;
+    esac
+done
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    echo "CPSS not ready!"
+    exit 1
+fi
+
+if [ $mode -eq 0 ]; then
+if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+    mrvl_luash -c "do load OS6360_P10_10_EMS_$action.txt" 2>&1 > /dev/null
+elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+    if [ $action == "STOP" ]; then
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power up copper
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         # power up fiber
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    elif [ "$INF" == "copper" ]; then
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power down fiber
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa840" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa840" 2>&1 > /dev/null
+         # power up copper
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    else
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power down copper
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa840" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa840" 2>&1 > /dev/null
+         # power up fiber
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    fi
+    mrvl_luash -c "do load OS6360_P24X_PH24_EMS_$action.txt" 2>&1 > /dev/null
+elif [ "$SKU" == "OS6360-P48X" ]; then
+    if [ $action == "STOP" ]; then
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power up copper
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         # power up fiber
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    elif [ "$INF" == "copper" ]; then
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power down fiber
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa840" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa840" 2>&1 > /dev/null
+         # power up copper
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    else
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power down copper
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa840" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa840" 2>&1 > /dev/null
+         # power up fiber
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    fi
+    mrvl_luash -c "do load OS6360_P48X_EMS_$action.txt" 2>&1 > /dev/null
+else
+    echo "SKU not matched, please check!"
+    exit 1
+fi
+
+echo -e "=== EMS test $action ===\n"
+else
+
+	# Ctrl+C hander
+	trap "quit=true" SIGINT
+	quit=false
+
+	echo -e "Setting EMS test configuration\n"
+
+	if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+		mrvl_luash -c "do load OS6360_P10_10_EMS_START_FORMAT2.txt" 2>&1 > /dev/null
+	elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+		if [ "$INF" == "copper" ]; then
+			 mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+			 # power down fiber
+			 mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa840" 2>&1 > /dev/null
+			 mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa840" 2>&1 > /dev/null
+			 # power up copper
+			 mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+			 mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+			 mrvl_luash -c "end" 2>&1 > /dev/null
+		else
+			 mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+			 # power down copper
+			 mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa840" 2>&1 > /dev/null
+			 mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa840" 2>&1 > /dev/null
+			 # power up fiber
+			 mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+			 mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+			 mrvl_luash -c "end" 2>&1 > /dev/null
+		fi
+		mrvl_luash -c "do load OS6360_P24X_PH24_EMS_START_FORMAT2.txt" 2>&1 > /dev/null
+	elif [ "$SKU" == "OS6360-P48X" ]; then
+		if [ "$INF" == "copper" ]; then
+			 mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+			 # power down fiber
+			 mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa840" 2>&1 > /dev/null
+			 mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa840" 2>&1 > /dev/null
+			 # power up copper
+			 mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+			 mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+			 mrvl_luash -c "end" 2>&1 > /dev/null
+		else
+			 mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+			 # power down copper
+			 mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa840" 2>&1 > /dev/null
+			 mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa840" 2>&1 > /dev/null
+			 # power up fiber
+			 mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+			 mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+			 mrvl_luash -c "end" 2>&1 > /dev/null
+		fi
+		mrvl_luash -c "do load OS6360_P48X_EMS_START_FORMAT2.txt" 2>&1 > /dev/null
+	fi
+
+	# Clear all counters
+	mrvl_luash -c "do clear mac counters all" 2>&1 > /dev/null
+
+	# Generate a 1518B unicast packet with random pattern ( 1514 + 4 byte CRC)
+	gen_packet
+
+	# Send traffic until receive Ctrl+C signal
+	run_ems_test
+	
+	# Change port 1 and 2 pvid setting for stop traffic loop
+	stop_traffic_loop
+
+	# dump counters
+	mrvl_luash -c "do set output nopause" 2>&1 > /dev/null
+	mrvl_luash -c "do show interfaces mac counters ethernet all" > /tmp/ems_cnt.txt
+
+	# action stop
+	if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+		mrvl_luash -c "do load OS6360_P10_10_EMS_STOP.txt" 2>&1 > /dev/null
+	elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+		mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+        # power up copper
+        mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+        mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+        # power up fiber
+        mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+        mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+        mrvl_luash -c "end" 2>&1 > /dev/null
+		mrvl_luash -c "do load OS6360_P24X_PH24_EMS_STOP.txt" 2>&1 > /dev/null
+	elif [ "$SKU" == "OS6360-P48X" ]; then
+		mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+		# power up copper
+		mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+		mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+		# power up fiber
+		mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+		mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+		mrvl_luash -c "end" 2>&1 > /dev/null
+		mrvl_luash -c "do load OS6360_P48X_EMS_STOP.txt" 2>&1 > /dev/null
+	fi
+
+	echo -e "Remove EMS test configuration done\n"
+
+	# Calculate
+	CNT_ARRAY=($(awk '{print $2}' /tmp/ems_cnt.txt))
+	# Get packet counter
+	# Show copper port counter
+	if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+		show_port_pkt_cnt "01" ${CNT_ARRAY[17]} "02" ${CNT_ARRAY[4]}
+		show_port_pkt_cnt "02" ${CNT_ARRAY[18]} "01" ${CNT_ARRAY[3]}
+		show_port_pkt_cnt "03" ${CNT_ARRAY[19]} "04" ${CNT_ARRAY[6]}
+		show_port_pkt_cnt "04" ${CNT_ARRAY[20]} "03" ${CNT_ARRAY[5]}
+		show_port_pkt_cnt "05" ${CNT_ARRAY[21]} "06" ${CNT_ARRAY[8]}
+		show_port_pkt_cnt "06" ${CNT_ARRAY[22]} "05" ${CNT_ARRAY[7]}
+		show_port_pkt_cnt "07" ${CNT_ARRAY[23]} "08" ${CNT_ARRAY[10]}
+		show_port_pkt_cnt "08" ${CNT_ARRAY[24]} "07" ${CNT_ARRAY[9]}
+		show_port_pkt_cnt "09" ${CNT_ARRAY[25]} "10" ${CNT_ARRAY[12]}
+		show_port_pkt_cnt "10" ${CNT_ARRAY[26]} "09" ${CNT_ARRAY[11]}
+		show_port_pkt_cnt "11" ${CNT_ARRAY[27]} "12" ${CNT_ARRAY[14]}
+		show_port_pkt_cnt "12" ${CNT_ARRAY[28]} "11" ${CNT_ARRAY[13]}
+	elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+		show_port_pkt_cnt "01" ${CNT_ARRAY[33]} "02" ${CNT_ARRAY[4]}
+		show_port_pkt_cnt "02" ${CNT_ARRAY[34]} "01" ${CNT_ARRAY[3]}
+		show_port_pkt_cnt "03" ${CNT_ARRAY[35]} "04" ${CNT_ARRAY[6]}
+		show_port_pkt_cnt "04" ${CNT_ARRAY[36]} "03" ${CNT_ARRAY[5]}
+		show_port_pkt_cnt "05" ${CNT_ARRAY[37]} "06" ${CNT_ARRAY[8]}
+		show_port_pkt_cnt "06" ${CNT_ARRAY[38]} "05" ${CNT_ARRAY[7]}
+		show_port_pkt_cnt "07" ${CNT_ARRAY[39]} "08" ${CNT_ARRAY[10]}
+		show_port_pkt_cnt "08" ${CNT_ARRAY[40]} "07" ${CNT_ARRAY[9]}
+		show_port_pkt_cnt "09" ${CNT_ARRAY[41]} "10" ${CNT_ARRAY[12]}
+		show_port_pkt_cnt "10" ${CNT_ARRAY[42]} "09" ${CNT_ARRAY[11]}
+		show_port_pkt_cnt "11" ${CNT_ARRAY[43]} "12" ${CNT_ARRAY[14]}
+		show_port_pkt_cnt "12" ${CNT_ARRAY[44]} "11" ${CNT_ARRAY[13]}
+		show_port_pkt_cnt "13" ${CNT_ARRAY[45]} "14" ${CNT_ARRAY[16]}
+		show_port_pkt_cnt "14" ${CNT_ARRAY[46]} "13" ${CNT_ARRAY[15]}
+		show_port_pkt_cnt "15" ${CNT_ARRAY[47]} "16" ${CNT_ARRAY[18]}
+		show_port_pkt_cnt "16" ${CNT_ARRAY[48]} "15" ${CNT_ARRAY[17]}
+		show_port_pkt_cnt "17" ${CNT_ARRAY[49]} "18" ${CNT_ARRAY[20]}
+		show_port_pkt_cnt "18" ${CNT_ARRAY[50]} "17" ${CNT_ARRAY[19]}
+		show_port_pkt_cnt "19" ${CNT_ARRAY[51]} "20" ${CNT_ARRAY[22]}
+		show_port_pkt_cnt "20" ${CNT_ARRAY[52]} "19" ${CNT_ARRAY[21]}
+		show_port_pkt_cnt "21" ${CNT_ARRAY[53]} "22" ${CNT_ARRAY[24]}
+		show_port_pkt_cnt "22" ${CNT_ARRAY[54]} "21" ${CNT_ARRAY[23]}
+		show_port_pkt_cnt "23" ${CNT_ARRAY[55]} "24" ${CNT_ARRAY[26]}
+		show_port_pkt_cnt "24" ${CNT_ARRAY[56]} "23" ${CNT_ARRAY[25]}
+		show_port_pkt_cnt "25" ${CNT_ARRAY[59]} "26" ${CNT_ARRAY[27]}
+		show_port_pkt_cnt "26" ${CNT_ARRAY[57]} "25" ${CNT_ARRAY[29]}
+		show_port_pkt_cnt "27" ${CNT_ARRAY[58]} "28" ${CNT_ARRAY[30]}
+		show_port_pkt_cnt "28" ${CNT_ARRAY[60]} "27" ${CNT_ARRAY[28]}
+	elif [ "$SKU" == "OS6360-P48X" ]; then
+		show_port_pkt_cnt "01" ${CNT_ARRAY[89]} "02" ${CNT_ARRAY[32]}
+		show_port_pkt_cnt "02" ${CNT_ARRAY[90]} "01" ${CNT_ARRAY[31]}
+		show_port_pkt_cnt "03" ${CNT_ARRAY[91]} "04" ${CNT_ARRAY[34]}
+		show_port_pkt_cnt "04" ${CNT_ARRAY[92]} "03" ${CNT_ARRAY[33]}
+		show_port_pkt_cnt "05" ${CNT_ARRAY[93]} "06" ${CNT_ARRAY[36]}
+		show_port_pkt_cnt "06" ${CNT_ARRAY[94]} "05" ${CNT_ARRAY[35]}
+		show_port_pkt_cnt "07" ${CNT_ARRAY[95]} "08" ${CNT_ARRAY[38]}
+		show_port_pkt_cnt "08" ${CNT_ARRAY[96]} "07" ${CNT_ARRAY[37]}
+		show_port_pkt_cnt "09" ${CNT_ARRAY[97]} "10" ${CNT_ARRAY[40]}
+		show_port_pkt_cnt "10" ${CNT_ARRAY[98]} "09" ${CNT_ARRAY[39]}
+		show_port_pkt_cnt "11" ${CNT_ARRAY[99]} "12" ${CNT_ARRAY[42]}
+		show_port_pkt_cnt "12" ${CNT_ARRAY[100]} "11" ${CNT_ARRAY[41]}
+		show_port_pkt_cnt "13" ${CNT_ARRAY[101]} "14" ${CNT_ARRAY[44]}
+		show_port_pkt_cnt "14" ${CNT_ARRAY[102]} "13" ${CNT_ARRAY[43]}
+		show_port_pkt_cnt "15" ${CNT_ARRAY[103]} "16" ${CNT_ARRAY[46]}
+		show_port_pkt_cnt "16" ${CNT_ARRAY[104]} "15" ${CNT_ARRAY[45]}
+		show_port_pkt_cnt "17" ${CNT_ARRAY[105]} "18" ${CNT_ARRAY[48]}
+		show_port_pkt_cnt "18" ${CNT_ARRAY[106]} "17" ${CNT_ARRAY[47]}
+		show_port_pkt_cnt "19" ${CNT_ARRAY[107]} "20" ${CNT_ARRAY[50]}
+		show_port_pkt_cnt "20" ${CNT_ARRAY[108]} "19" ${CNT_ARRAY[49]}
+		show_port_pkt_cnt "21" ${CNT_ARRAY[109]} "22" ${CNT_ARRAY[52]}
+		show_port_pkt_cnt "22" ${CNT_ARRAY[110]} "21" ${CNT_ARRAY[51]}
+		show_port_pkt_cnt "23" ${CNT_ARRAY[111]} "24" ${CNT_ARRAY[54]}
+		show_port_pkt_cnt "24" ${CNT_ARRAY[112]} "23" ${CNT_ARRAY[53]}
+		show_port_pkt_cnt "25" ${CNT_ARRAY[61]} "26" ${CNT_ARRAY[4]}
+		show_port_pkt_cnt "26" ${CNT_ARRAY[62]} "25" ${CNT_ARRAY[3]}
+		show_port_pkt_cnt "27" ${CNT_ARRAY[63]} "28" ${CNT_ARRAY[6]}
+		show_port_pkt_cnt "28" ${CNT_ARRAY[64]} "27" ${CNT_ARRAY[5]}
+		show_port_pkt_cnt "29" ${CNT_ARRAY[65]} "30" ${CNT_ARRAY[8]}
+		show_port_pkt_cnt "30" ${CNT_ARRAY[66]} "29" ${CNT_ARRAY[7]}
+		show_port_pkt_cnt "31" ${CNT_ARRAY[67]} "32" ${CNT_ARRAY[10]}
+		show_port_pkt_cnt "32" ${CNT_ARRAY[68]} "31" ${CNT_ARRAY[9]}
+		show_port_pkt_cnt "33" ${CNT_ARRAY[69]} "34" ${CNT_ARRAY[12]}
+		show_port_pkt_cnt "34" ${CNT_ARRAY[70]} "33" ${CNT_ARRAY[11]}
+		show_port_pkt_cnt "35" ${CNT_ARRAY[71]} "36" ${CNT_ARRAY[14]}
+		show_port_pkt_cnt "36" ${CNT_ARRAY[72]} "35" ${CNT_ARRAY[13]}	
+		show_port_pkt_cnt "37" ${CNT_ARRAY[73]} "38" ${CNT_ARRAY[16]}
+		show_port_pkt_cnt "38" ${CNT_ARRAY[74]} "37" ${CNT_ARRAY[15]}
+		show_port_pkt_cnt "39" ${CNT_ARRAY[75]} "40" ${CNT_ARRAY[18]}
+		show_port_pkt_cnt "40" ${CNT_ARRAY[76]} "39" ${CNT_ARRAY[17]}
+		show_port_pkt_cnt "41" ${CNT_ARRAY[77]} "42" ${CNT_ARRAY[20]}
+		show_port_pkt_cnt "42" ${CNT_ARRAY[78]} "41" ${CNT_ARRAY[19]}
+		show_port_pkt_cnt "43" ${CNT_ARRAY[79]} "44" ${CNT_ARRAY[22]}
+		show_port_pkt_cnt "44" ${CNT_ARRAY[80]} "43" ${CNT_ARRAY[21]}
+		show_port_pkt_cnt "45" ${CNT_ARRAY[81]} "46" ${CNT_ARRAY[24]}
+		show_port_pkt_cnt "46" ${CNT_ARRAY[82]} "45" ${CNT_ARRAY[23]}
+		show_port_pkt_cnt "47" ${CNT_ARRAY[88]} "48" ${CNT_ARRAY[55]}
+		show_port_pkt_cnt "48" ${CNT_ARRAY[113]} "47" ${CNT_ARRAY[30]}
+		show_port_pkt_cnt "49" ${CNT_ARRAY[86]} "50" ${CNT_ARRAY[27]}
+		show_port_pkt_cnt "50" ${CNT_ARRAY[85]} "49" ${CNT_ARRAY[28]}
+		show_port_pkt_cnt "51" ${CNT_ARRAY[114]} "52" ${CNT_ARRAY[58]}
+		show_port_pkt_cnt "52" ${CNT_ARRAY[116]} "51" ${CNT_ARRAY[56]}
+	fi
+
+	# remove tmp couter file
+	rm -f /tmp/ems_cnt.txt
+fi
+
+exit 0

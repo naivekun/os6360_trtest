@@ -1,0 +1,9 @@
+// TAG:               vlan; restore; default;
+// Short Description: Remove vlan#2 for dev#0
+// Description:       Remove vlan#2 for dev#0
+end
+configure
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan remove 2
+no interface vlan device ${dev} vid 2
+end

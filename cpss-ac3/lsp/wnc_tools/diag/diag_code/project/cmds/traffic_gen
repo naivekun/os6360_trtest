@@ -1,0 +1,138 @@
+#!/bin/bash
+
+prog_name=$(basename $0)
+prog_dir=$(dirname $0)
+cfg_dir="${prog_dir}/cmd_cfg/traffic_gen"
+
+function usage() {
+echo "Usage:
+
+NAME
+       $prog_name - Traffic generator command
+
+SYNOPSIS
+       $prog_name <start|stop>
+
+DESCRIPTION
+       This command is used for generating/receiving traffic on front port 45 - port 50.
+       Port 45 and port 46 support generating/receiving traffic at 1Gbps.
+       Port 47 and port 48 support generating/receiving traffic at 2.5Gbps.
+       Port 49 and port 50 support generating/receiving traffic at 10Gbps.
+
+       Parameter <start|stop> is used for starting/stopping traffic generator.
+
+       After executing this command, the statistics result is displayed.
+
+MANDATORY OPTIONS
+       At least one optional option <start|stop> is needed.
+
+OPTIONAL OPTIONS
+       <start|stop>    Action of traffic generator. Available options are start and stop.
+                       start: to start generating/receiving traffic.
+                       stop: to stop generating/receiving traffic.
+
+EXAMPLE
+       $prog_name start
+       $prog_name stop
+">&2
+}
+
+if [ $# -ne 1 ]; then
+    usage
+    exit 1
+fi
+
+if [ "$1" != "start" ] && [ "$1" != "stop" ]; then
+    usage
+    exit 1
+fi
+
+action="$1"
+
+# Wait for CPSS ready
+if [ ! -r /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl ]; then
+    echo -e "\nError: SDK utility is missing.\n"
+    exit 1
+fi
+source /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl
+wait_cpss
+if [ $? -ne 0 ]; then
+    echo -e "\nError: CPSS is not ready.\n"
+    exit 1
+fi
+
+# Start/Stop traffic generator
+if [ "${action}" == "start" ]; then
+    echo -e "\nStart Traffic Generator\n"
+
+    # Create packet file
+    if [ ! -d /usr/bin/wnc_diag/cmds ]; then
+        echo -e "\nError: Diag cmds is missing.\n"
+        exit 1
+    fi
+    cd /usr/bin/wnc_diag/cmds
+    if [ ! -x traffic-test ]; then
+        echo -e "\nError: traffic-test utility is missing.\n"
+        cd - > /dev/null
+        exit 1
+    fi
+    ./traffic-test edit-pkt -i 1 -l 1514 -d 00:00:00:00:00:01 -s 00:00:00:00:00:02 -e 0800 -p 5
+    if [ ! -r trtest/data/1_packet.txt ] || [ ! -d /cmdFS ]; then
+        echo -e "\nError: Create packet file failed.\n"
+        cd - > /dev/null
+        exit 1
+    fi
+    cp trtest/data/1_packet.txt /cmdFS
+    cd - > /dev/null
+
+    # Load and remove traffic generator start config
+    if [ ! -r ${cfg_dir}/traffic_gen_start ]; then
+        echo -e "\nError: Traffic generator start config is missing.\n"
+        exit 1
+    fi
+    cp -f ${cfg_dir}/traffic_gen_start /cmdFS
+    mrvl_luash -c "do load traffic_gen_start" > /dev/null
+    rm -f /cmdFS/traffic_gen_start
+
+    # Remove packet file
+    rm -f /usr/bin/wnc_diag/cmds/trtest/data/1_packet*
+    rm -f /cmdFS/1_packet*
+else
+    echo -e "\nStop Traffic Generator\n"
+
+    # Load and remove traffic generator stop config
+    if [ ! -r ${cfg_dir}/traffic_gen_stop ] || [ ! -d /cmdFS ]; then
+        echo -e "\nError: Load and remove traffic generator stop config failed.\n"
+        exit 1
+    fi
+    cp -f ${cfg_dir}/traffic_gen_stop /cmdFS
+    mrvl_luash -c "do load traffic_gen_stop" > /dev/null
+    rm -f /cmdFS/traffic_gen_stop
+
+    # Load and remove traffic generator stats config
+    if [ ! -r ${cfg_dir}/traffic_gen_stats ]; then
+        echo -e "\nError: Traffic generator stats config is missing.\n"
+        exit 1
+    fi
+    cp -f ${cfg_dir}/traffic_gen_stats /cmdFS
+    if [ -r /tmp/traffic_gen_counter ]; then
+        rm -f /tmp/traffic_gen_counter
+    fi
+    mrvl_luash -c "do load traffic_gen_stats" > /tmp/traffic_gen_counter
+    rm -f /cmdFS/traffic_gen_stats
+
+    # Re-format and display statistics log
+    sed -e 's/.*1\/20/=== Statistics on Port 45 ===/' \
+        -e 's/.*1\/21/=== Statistics on Port 46 ===/' \
+        -e 's/.*1\/27/=== Statistics on Port 47 ===/' \
+        -e 's/.*0\/24/=== Statistics on Port 48 ===/' \
+        -e 's/.*1\/25/=== Statistics on Port 49 ===/' \
+        -e 's/.*1\/24/=== Statistics on Port 50 ===/' \
+        -e '/Console/d' -e '/Performing/d' -e '/Config/d' \
+        -i /tmp/traffic_gen_counter
+    cat /tmp/traffic_gen_counter
+    rm -f /tmp/traffic_gen_counter
+fi
+
+exit 0
+

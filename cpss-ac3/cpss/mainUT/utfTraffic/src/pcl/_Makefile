@@ -1,0 +1,79 @@
+# $(warning "Started") 
+#LIB_NAME = tgfPclEnhancedUT.lib
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ prvTgfEgrPclEportBindingMode.c \
+ prvTgfEgrPclEvlanBindingMode.c \
+ prvTgfIngressPclKeyStdL2.c \
+ prvTgfPclBc2.c \
+ prvTgfPclBothUserDefinedBytes.c \
+ prvTgfPclBypass.c \
+ prvTgfPclEArchRedirect.c \
+ prvTgfPclEPortBindingMode.c \
+ prvTgfPclEVlanBindingMode.c \
+ prvTgfPclEgrOrgVid.c \
+ prvTgfPclEgrQuadLookup.c \
+ prvTgfPclEportEvlan.c \
+ prvTgfPclEvlanMatch.c \
+ prvTgfPclFourLookups.c \
+ prvTgfPclFullLookupControl.c \
+ prvTgfPclFws.c \
+ prvTgfPclLion2.c \
+ prvTgfPclLion2UdbOverride.c \
+ prvTgfPclLookup00And01.c \
+ prvTgfPclLookup0ForRoutedPackets.c \
+ prvTgfPclMacModify.c \
+ prvTgfPclMetadataPacketType.c \
+ prvTgfPclMplsTransit.c \
+ prvTgfPclNonMplsTransit.c \
+ prvTgfPclPhyPortBindingMode.c \
+ prvTgfPclPolicer.c \
+ prvTgfPclPortGroupPolicer.c \
+ prvTgfPclPortListGrouping.c \
+ prvTgfPclPortLstCross.c \
+ prvTgfPclPortLstMode.c \
+ prvTgfPclPumaPortGroup.c \
+ prvTgfPclQuadLookup.c \
+ prvTgfPclRedirectToLTT.c \
+ prvTgfPclSecondLookupMatch.c \
+ prvTgfPclSourceIdMask.c \
+ prvTgfPclSourcePortSelect.c \
+ prvTgfPclSrcTrunkIdMatch.c \
+ prvTgfPclTag1Match.c \
+ prvTgfPclTargetPortSelect.c \
+ prvTgfPclTcpRstFinMirroring.c \
+ prvTgfPclTrunkEportRedirect.c \
+ prvTgfPclTrunkHashVal.c \
+ prvTgfPclUdb.c \
+ prvTgfPclUdb10KeyCustomer.c \
+ prvTgfPclUdbFlds.c \
+ prvTgfPclUdbL3Minus2.c \
+ prvTgfPclUdbMetadataSrcEPort.c \
+ prvTgfPclUdbOnlyKeys.c \
+ prvTgfPclUdePacketTypes.c \
+ prvTgfPclValidInvalidRulesActionUpdate.c \
+ prvTgfPclValidInvalidRulesBasicExtended.c \
+ prvTgfPclVpls.c \
+ prvTgfPclWriteRuleInvalid.c \
+ prvTgfPclXCat.c \
+ prvTgfPclEgressTrapMirror.c\
+ prvTgfPclEgressMirroring.c\
+ tgfCommonPclUT.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

@@ -1,0 +1,28 @@
+#run groups in parallel, run each commands of group in serial
+#Each command -> command;command description;SFCS
+#
+#PLEASE REMEMBER TO MOTIY ENV VARIABLE IN U-BOOT, OTHERWISE LOGLEVE NEVER APPLY!!!!
+#
+[group1]
+007_cpu_id_info+-g;Check CPU Info;CPU_info
+011_mem_size+-g;Check Memory size;DRAM_size
+014_nand_os_info+-i d3-98;Check Flash ID;Flash_ID
+014_nand_os_info+-c 1024;Check Flash size;Flash_size
+032_cpld_id_info+-b 0x70;Check CPLD ID;CPLD_ID
+version+-o 1.1.0;Check OS version;OS_VER
+version+-k 4.4.120-armada-18.09.2;Check Kernel version;Kernel_ver
+version+-p 1.2.0;Check DIAG version;DIAG_ver
+version+-c 0xb,0xa916;Check CPLD version;CPLD_ver
+[group2]
+056_thermal_i2c_bus+-t 20,60;Test TMP1075 thermal sensor;Thermal_test
+055_usb+-w -s 20m;USB Test;USB_test
+010_mem_long_run+-m 500K -l 3;Memory Test;DRAM_test
+021_sfp_i2c_bus+-g;SFP I2C bus test;SFP_I2C_bus
+043_sfp_tx_disable+-t 0;SFP TX_Disable low;SFP_TX_disable_low
+043_sfp_tx_disable+-t 1;SFP TX_Disable high;SFP_TX_disable_high
+047_interrupt_for_rx-los_tx-fault+-a;SFP interrupt test;SFP_interrupt
+[group3]
+wait_port_linkup;Wait all port link up;Wait_port_link_up
+027_line_rate_traffic+-g 1 -d 5 -p CNT;All front ports except fiber ports of 10G combo PHY;Traffic_front
+version+-s 4.2.380;Check CPSS version;CPSS_ver
+version+-d;Check switch revision;Switch_revision

@@ -1,0 +1,238 @@
+
+###########################################
+##                                       ##
+##    Top Make file for CPSS mainApp     ##
+##                                       ##
+###########################################
+EMB_COM = no
+$(PROJ_NAME)_PROJECT_PATH := \
+        $(PATH_COMMON)       \
+        $(PATH_SYSCONFIG)    \
+        $(PATH_MAINCMD)      \
+        $(PATH_MAINOS)       \
+        $(PATH_EXT_DRV)      \
+        $(PATH_EXT_UTILS)    \
+        $(PATH_PHY_DRV)      \
+        $(PATH_EXT_MAC)
+
+ifneq (EXCLUDE_LIB,$(EXCLUDE_GALTIS))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_GALTIS)
+endif
+ifeq (EXISTS, $(ASIC_SIMULATION))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_SIM)
+endif
+ifneq (EXISTS, $(ASIC_SIMULATION))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_SD28FIRMWARE)
+endif
+ifeq (YES, $(INCLUDE_UTF))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_UTFTOOL)
+endif
+ifeq (yes, $(CMD_LUA_CLI))
+    $(PROJ_NAME)_PROJECT_PATH += cpssEnabler/mainCmd/src/cmdShell/FS
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_LUA)
+endif
+
+ifneq (, $(wildcard referenceHal/px/bpe))
+    $(PROJ_NAME)_PROJECT_PATH += referenceHal/px/bpe/h
+    $(PROJ_NAME)_PROJECT_DEFS += $(FD)REFERENCEHAL_BPE_EXISTS
+endif
+
+ifneq (, $(wildcard embeddedCommands/px/pxEC))
+    $(PROJ_NAME)_PROJECT_PATH += embeddedCommands/px/pxEC/h
+    EMB_COM = yes
+endif
+ifneq (, $(wildcard embeddedCommands/dx/dxEC))
+    $(PROJ_NAME)_PROJECT_PATH += embeddedCommands/dx/dxEC/h
+    EMB_COM = yes
+endif
+
+ifeq ($(EMB_COM),yes)
+    $(PROJ_NAME)_PROJECT_DEFS += $(FD)EMBEDDED_COMMANDS_EXISTS
+endif
+
+$(PROJ_NAME)_PROJECT_DEFS += $(FD)ENV_MAINCMD
+
+$(PROJ_NAME)_PROJECT_PATH += common/src/cpss/common/labServices/port/gop/h
+$(PROJ_NAME)_PROJECT_PATH += common/src/cpss/common/labServices/port/gop/h/port
+
+$(PROJ_NAME)_PROJECT_PATH += cpssEnabler/mainSysConfig/hirSysConfig/h
+$(PROJ_NAME)_PROJECT_PATH += cpssEnabler/mainSysConfig/hirSysConfig/h/hir_appDemo
+
+
+
+
+ifeq (EXISTS, $(CHX_FAMILY))
+
+        $(PROJ_NAME)_AD_CFLAGS += $(FD)CHX_FAMILY
+        $(PROJ_NAME)_AD_CFLAGS += $(FD)CONFIG_DDR3
+
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_PP_DRV)
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_LABSERVICE)
+        ifeq (YES, $(INCLUDE_UTF))
+            $(PROJ_NAME)_PROJECT_PATH += $(PATH_UTF_PP_DRV)
+            $(PROJ_NAME)_PROJECT_PATH += $(PATH_UTFTRAFFIC)
+        endif
+
+        ifneq (i386.EXISTS, $(CPU).$(ASIC_SIMULATION))
+            $(PROJ_NAME)_PROJECT_PATH += cpssEnabler/mainSysConfig/src/appDemo/phy
+        endif
+endif
+
+ifeq (EXISTS, $(PX_FAMILY))
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_PX_DRV)
+endif
+
+
+ifneq (1, $(LINUX_SIM))
+ifeq (6,$(KPATCHLEVEL))
+        $(PROJ_NAME)_PROJECT_PATH += cpssEnabler/mainOs/src/gtOs/linux/kernelExt/kerneldrv/2_6
+        $(PROJ_NAME)_PROJECT_PATH += $(DIST_HOME)/include
+endif
+endif
+
+
+###############
+## DRAGONITE ##
+###############
+ifeq (A1, $(DRAGONITE_TYPE))
+ $(PROJ_NAME)_PROJECT_PATH += $(EXT_DRV_SIM_DRAGONITE_PATH)
+endif
+
+ifeq (workbench, $(TOOL_ENV))
+ $(PROJ_NAME)_AD_CFLAGS += $(FD)WORKBENCH_TOOL_ENV
+ $(PROJ_NAME)_PROJECT_PATH += $(WORKBENCH_TOOL_INCLUDE)
+endif
+
+ifeq (EXISTS,$(GALTIS_NO_APP_DEMO))
+  # compile mainCmd and take only stub for 'appDemo'
+  $(PROJ_NAME)_AD_CFLAGS += $(FD)GALTIS_NO_APP_DEMO
+endif
+
+ifeq (EXISTS,$(RTOS_ON_SIM))
+  $(PROJ_NAME)_PROJECT_PATH += $(SIMULATION_PATH)
+endif
+
+##############
+## CPSS PP  ##
+##############
+
+# check if need to use 'GM_USED'.
+#needed when 'force' image to use GM.
+#also needed for Puma2,3 where use always GM. (for simulation)
+ifeq (EXISTS, $(FORCE_GM_USE))
+  $(PROJ_NAME)_AD_CFLAGS += $(FD)GM_USED
+endif
+
+##########
+## Fpga ##
+##########
+ifeq (RHODES, $(FPGA_TYPE))
+        $(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_FPGA
+endif
+
+########################
+## CPSS MODULES FLAGS ##
+########################
+
+#L2
+$(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_BRIDGE $(FD)IMPL_MIRROR $(FD)IMPL_NETIF $(FD)IMPL_PCL $(FD)IMPL_PHY
+$(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_I2C $(FD)IMPL_POLICER $(FD)IMPL_PORT $(FD)IMPL_TRUNK $(FD)IMPL_TUNNEL $(FD)IMPL_TCAM
+
+#L3
+$(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_IP
+
+$(PROJ_NAME)_AD_CFLAGS += $(FD)CP
+
+
+
+
+#################
+## DEBUG FLAGS ##
+#################
+ifdef PRESTERA_DEBUG
+        $(PROJ_NAME)_CDEBUG = $(FD)PRESTERA_DEBUG
+endif
+
+ifeq (DEBUG_ON, $(CPSS_DEBUG))
+        ifeq (DEBUG_ON, $(CPSS_DEBUG_VLAN))
+                $(PROJ_NAME)_CDEBUG += $(FD)GT_VLAN_DEBUG
+        endif
+        ifeq (DEBUG_ON, $(CPSS_DEBUG_FDB))
+                $(PROJ_NAME)_CDEBUG += $(FD)GT_MAC_DEBUG
+        endif
+        ifeq (DEBUG_ON, $(CPSS_DEBUG_TRUNK))
+                $(PROJ_NAME)_CDEBUG += $(FD)GT_TRUNK_DEBUG
+        endif
+        ifeq (DEBUG_ON, $(CPSS_DEBUG_FDB_DUMP))
+                $(PROJ_NAME)_CDEBUG += $(FD)GT_MAC_DEBUG_DUMP
+        endif
+        ifeq (DEBUG_ON, $(CPSS_DEBUG_IPV4))
+                $(PROJ_NAME)_CDEBUG += $(FD)GT_DEBUG_IPV4
+        endif
+        ifeq (DEBUG_ON, $(CPSS_DEBUG_IPV6))
+                $(PROJ_NAME)_CDEBUG += $(FD)GT_DEBUG_IPV6
+        endif
+        ifeq (DEBUG_ON, $(CPSS_DEBUG_PCL))
+                $(PROJ_NAME)_CDEBUG += -DGT_DEBUG_PCL
+        endif
+        ifeq (DEBUG_ON, $(CPSS_DEBUG_TCM))
+                $(PROJ_NAME)_CDEBUG += $(FD)GT_DEBUG_TCM
+        endif
+endif
+
+
+##################
+## GALTIS FLAGS ##
+##################
+ifneq (EXCLUDE_LIB, $(EXCLUDE_GALTIS))
+  $(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_GALTIS
+endif
+
+
+############
+## CFLAGS ##
+############
+
+
+#$(PROJ_NAME)_PROJECT_PATH += mainPhy/mcd/src
+#$(PROJ_NAME)_PROJECT_PATH += mainPhy/mcd/samples
+
+#$(PROJ_NAME)_PROJECT_PATH += $(LUA_SRCPATH)
+
+
+
+$(PROJ_NAME)_AD_CFLAGS += $(FD)MCD_RUN_WITH_CPSS
+
+#ifeq (1.yes,$(SHARED_MEMORY).$(LUACLI_STANDALONE))
+#        $(PROJ_NAME)_AD_CFLAGS += $(FD)POSIX_SEM
+#endif
+
+
+ifeq ($(NAMED_SEM_TYPE),NO_NAMED_SEM)
+        ifeq (1,$(LINUX_SIM))
+                ifndef RTOS_ON_SIM
+                        # Linux sim on PC
+                        NAMED_SEM_TYPE = POSIX_SEM
+                        $(PROJ_NAME)_AD_CFLAGS += $(FD)POSIX_SEM
+                endif
+        endif
+endif
+
+ifeq ($(NAMED_SEM_TYPE),NO_NAMED_SEM)
+        ifdef USE_GNUEABI
+                # GnuEabi
+                NAMED_SEM_TYPE = POSIX_SEM
+                $(PROJ_NAME)_AD_CFLAGS += $(FD)POSIX_SEM
+        endif
+endif
+
+ifeq (MP_ON,$(CPSS_USE_MUTEX_PROFILER))
+     $(PROJ_NAME)_AD_CFLAGS += $(FD)CPSS_USE_MUTEX_PROFILER
+endif
+
+########################
+## WNC_CPSS_IPC FLAGS ##
+########################
+ifeq (yes, $(WNC_CPSS_IPC))
+    $(PROJ_NAME)_AD_CFLAGS += $(FD)WNC_CPSS_IPC
+endif

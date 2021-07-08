@@ -1,0 +1,7 @@
+// TAG:                interfaces; ethernet; serdes; temperature; show;           
+// Short Description:  show ethernet interfaces serdes temperature on device ${@@serdes_env.devNum} for port ${@@serdes_env.PortNum}
+// Description:        show ethernet interfaces serdes temperature on device ${@@serdes_env.devNum} for port ${@@serdes_env.PortNum}
+//                    
+//		      
+end
+show interfaces serdes temperature ethernet ${@@serdes_env.devNum}/${@@serdes_env.PortNum}

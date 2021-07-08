@@ -1,0 +1,912 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+###  Global variables
+# Assign any content to print debug message
+DBG_PRINTF=
+DBG_PRINTF_TIME=
+
+# System information parsed from DB (sysinfo file)
+UNIT_CNT=`sysinfo_get_mac_units $(dirname $0)/prod_sysinfo`
+
+# Default parameter
+LIDLIST_VALID=""
+
+# Portlist with unit
+TEST_PLIST=
+
+# For packet information checkiing
+PKT_INFO_CHK=true
+
+# Get MAC chip
+#SKU=""
+#[ -f "/opt/cpss/pinfo_phantom.cfg" ] && SKU="PHANTOM_400G"
+MAC_CHIP=`grep MAC_CHIP $(dirname $0)/prod_sysinfo | cut -d '=' -f2 | sed 's/\"//g'`
+
+# To set up SDK at a time
+SET_AT_A_TIME="y"
+
+# To handle loopback case
+SEG_LIST_MAC_SINGLE_REMAP=""
+SEG_LIST_PHY_SINGLE_REMAP=""
+SEG_LIST_GE_PHY_SINGLE_REMAP=""
+
+# For checking port status
+ALL_PORT_STATUS=
+
+### Local functions ###
+# Get system information from SDK
+function get_sys_info()
+{
+    local sdk_unit_cnt
+
+    sdk_unit_cnt=`cpss_get_unit_count`
+    [ -n "$DBG_PRINTF" ] && echo "INFO: The MAC unit count from SDK is $sdk_unit_cnt."
+    if [ "$UNIT_CNT" != "$sdk_unit_cnt" ]; then
+        echo "FAIL: The SDK MAC unit count ($sdk_unit_cnt) is different from sysinfo file ($UNIT_CNT)!"
+        exit 3
+    fi
+}
+
+# Generate tx packet information for run stage
+function gen_tx_info()
+{
+    # Wait for checking packet information ready.
+    while [ ! -f "$(dirname $0)/metadata/tx_pkt_info_done" ]; do
+        sleep 0.1
+        [ -n "$DBG_PRINTF" ] && echo "Verb: Waiting for packet information checking done."
+    done
+    [ -f "$(dirname $0)/metadata/tx_pkt_info_not_the_same" ] && PKT_INFO_CHK=false
+
+    # Generate tx_pkt_info file
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        if [ $PKT_INFO_CHK == false ]; then
+            [ -n "$DBG_PRINTF" ] && echo "Info: Packet information among test lists - $LIDLIST_VALID are not same."
+            echo "PKT_INFO_NOT_SAME!" > $(dirname $0)/metadata/tx_pkt_info_${unit}
+        else
+            [ -n "$DBG_PRINTF" ] && echo "Info: Packet information among test lists - $LIDLIST_VALID are same."
+            cat $(dirname $0)/metadata/tx_plist_${unit} > $(dirname $0)/metadata/tx_pkt_info_${unit}
+            cat $(dirname $0)/metadata/tx_pkt_info      >> $(dirname $0)/metadata/tx_pkt_info_${unit}
+        fi
+    done
+}
+
+# Check packet information for TX packet in run stage
+function compare_pkt_info()
+{
+    local lid
+    local pid_list
+    local pkt_num
+    local stime=`date +%s`
+    local first_loop=true
+    local pkt_info_chk=$PKT_INFO_CHK
+    local first_pid_list first_pkt_num
+
+    for lid in $@; do
+        # Get packet information for loop file
+        pid_list=`grep -w "PID_LIST" $(dirname $0)/data/${lid}_loop | cut -d '=' -f2`
+        pkt_num=`grep -w "PKT_NUM"  $(dirname $0)/data/${lid}_loop | cut -d '=' -f2`
+        [ -n "$DBG_PRINTF" ] && echo "Info: PID_LIST=$pid_list, PKT_NUM=$pkt_num in loop $lid, $first_loop."
+
+        # Compare
+        if  [ $first_loop == false ]; then
+            if [ $pkt_info_chk == true ]; then
+                if [ "$pid_list" != "$first_pid_list" ] ||  [ "$pkt_num" != "$first_pkt_num" ]; then
+                    pkt_info_chk=false
+                fi
+            else
+                break
+            fi
+        else
+            first_loop=false
+            first_pid_list=$pid_list
+            first_pkt_num=$pkt_num
+            echo "PID_LIST=$first_pid_list" > $(dirname $0)/metadata/tx_pkt_info
+            echo "PKT_NUM=$first_pkt_num"   >> $(dirname $0)/metadata/tx_pkt_info
+            [ -n "$DBG_PRINTF" ] && echo "Info: first_pid_list=$first_pid_list and first_pkt_num=$first_pkt_num in 1st test loop $lid."
+        fi
+    done
+
+    # Touch the done file for parallel process
+    touch $(dirname $0)/metadata/tx_pkt_info_done
+    # Touch file to return not the same result to the parent shell
+    [ $pkt_info_chk == false ] && touch $(dirname $0)/metadata/tx_pkt_info_not_the_same
+    sync;sync;sync
+
+    print_exec_time_debug "$DBG_PRINTF_TIME" "compare pakcet inforation" "$stime"
+}
+
+# Apply special settings per configure file for each segment
+function process_config () {
+    local cfg_file="$1"
+    local ret=0
+
+    if [ -n "$cfg_file" ]; then
+        if [ -z "`ls $(dirname $0)/data/$cfg_file 2>/dev/null`" ]; then
+            echo "WARNING: The specific configure file - $cfg_file does not exist in data folder ($(pwd $0)/data)!" | tee -a $(dirname $0)/metadata/check_fail_result
+            ret=1
+        else
+            # Execute command per line
+            while read line; do
+                /bin/bash -c "$line"
+                if [ $? -ne 0 ]; then
+                    [ -n "$DBG_PRINTF" ] && echo "FAIL: Get failure on executing the command - \"$line\"!" | tee -a $(dirname $0)/metadata/check_fail_result
+                    ret=1
+                fi
+            done < $(dirname $0)/data/$cfg_file
+        fi
+        if [ $ret -ne 0 ]; then
+            echo "FAIL: Get failure with command execution in the configure file - $cfg_file!" | tee -a $(dirname $0)/metadata/check_fail_result
+        else
+            [ -n "$DBG_PRINTF" ] && echo "Info: Apply configuration successfully with the file $cfg_file."
+        fi
+    fi
+
+    return $ret
+}
+
+# The correlation of the internal port for each product will be recored in the
+# prod_iportlink file and the correclation information is based on HW circuit.
+#
+# For the following case, the internal segment is i11,i21 or i12,i22 only.
+#   +--------------------------------------------------------------------+
+#   |                               Switch                               |
+#   |   +--------------------+                 +--------------------+    |
+#   |   |                    |      Inter      |                    |    |
+#   |   |                    |     segment     |                    |    |
+#   |   |       MAC 0/24(i11)+-----------------+1/27(i21) MAC       |    |
+#   |   |       #0           |                 |          #1        |    |
+#   |   |           0/26(i12)+-----------------+1/26(i22)           |    |
+#   |   |                    |                 |                    |    |
+#   |   +--------------------+                 +--------------------+    |
+#   +--------------------------------------------------------------------+
+#
+function iportlink_check() {
+    local sysinfo_file=$1
+    local segment=$2
+    local matched=0
+
+    combination="`cat $sysinfo_file | grep "IPORTLINK_SET" | cut -d '=' -f 2`"
+    if [ -n "$combination" ]; then
+        for combi in $combination; do
+            if [ "$segment" == "$combi" ]; then
+                matched=1
+                break
+            fi
+        done
+    fi
+
+    if [ $matched -eq 1 ]; then
+        return 0  # Found
+    else
+        return 1
+    fi
+}
+
+#   +--------------------------------------------------------------------+
+#   |                               Switch                               |
+#   |   +--------------------+                 +--------------------+    |
+#   |   |                    |      Inter      |                    |    |
+#   |   |                    |     segment     |                    |    |
+#   |   |       MAC     0/26 +-----------------+ 1/26   MAC         |    |
+#   |   |       #0           |                 |        #1          |    |
+#   |   |                    |                 |                    |    |
+#   |   +--------------------+                 +--------------------+    |
+#   +--------------------------------------------------------------------+
+#
+# A valid segment is Ux/Px,Uy/Py.
+# Ux & Uy is unit number.
+# Px & Py is internal port.
+# 0. exact 1 segment.
+# 1. Check the correct link settings between two internal ports per the iportlink file.
+# 2. Invalid unit assignment - Ux & Uy cannot be empty and will be 0~9.
+# 3. Ux & Uy must be valid in current system.
+# 4. Ux & Uy must not be identical.
+function inter_segment_validation () {
+    local valid=true
+    local unit_port1 unit_port2 unit1 unit2
+
+    # Exam 0: single port in the internal segment.
+    if [ $# -gt 1 ]; then
+        [ -n "$DBG_PRINTF" ] && echo "FAIL: Assign more than one internal segment in the loop!"
+        return 1
+    fi
+
+    for seg in $@; do
+        # Parse unit/port information
+        unit_port1=${seg%,*}
+        unit_port2=${seg#*,}
+        unit1=${unit_port1%/*}
+        unit2=${unit_port2%/*}
+
+        # Exam 1: iport link checking.
+        iportlink_check $(dirname $0)/prod_sysinfo $seg
+        if [ $? -ne 0 ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Mismatch assignment for internal segment [$seg]!"
+            valid=false
+            continue
+        fi
+
+        # Exam 2: Both ports have assigned with specific unit.
+        if [ $(is_digit $unit1) == false ] || \
+           [ $(is_digit $unit2) == false ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Invalid unit assignment in the segment [$seg]!"
+            valid=false
+            continue
+        fi
+
+        # Exam 3: Ux & Uy must not be identical.
+        if [ "$unit1" == "$unit2" ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: The same unit on both ports in the internal segment [$seg]!"
+            valid=false
+            continue
+        fi
+
+        # Exam 4: Unit validation.
+        if [ $unit1 -lt 0 ] || [ $unit1 -ge $UNIT_CNT ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Invalid unit $unit1 in the segment [$seg]!"
+            valid=false
+            continue
+        fi
+        if [ $unit2 -lt 0 ] || [ $unit2 -ge $UNIT_CNT ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Invalid unit $unit2 in the segment [$seg]!"
+            valid=false
+            continue
+        fi
+    done
+
+    if [ $valid == false ]; then
+        echo "INVALID_SEGMENT among inter segment" >> $(dirname $0)/metadata/${lid}_loop
+        return 1
+    fi
+
+    return 0
+}
+
+# Intra segment in one switch chip (Simple traffic loop with One port / 2 ports)
+#   +------------------------------------------------------------------+
+#   |                              Switch                              |
+#   |   +-----------------------------------------------------------+  |
+#   |   |    Intra                                          Intra   |  |
+#   |   |   segment                                        segment  |  |
+#   |   |   +----+                  MAC                      +-+    |  |
+#   |   |   |    |                  #0                       | |    |  |
+#   |   |  0/0  0/1 ........................................ 0/23   |  |
+#   |   +---|----|-------------------------------------------|-|----+  |
+#   |       |    |                                           | |       |
+#   +-------|----|-------------------------------------------|-|-------+
+#           +----+                                           +-+
+#            Cable                                     Loopback module
+#
+# Intra segment in two switch chips (Snake-like traffic loop)
+#   +------------------------------------------------------------------------+
+#   |                                Switch                                  |
+#   |   +---------------------+                 +-----------------------+    |
+#   |   |         MAC         |                 |       MAC             |    |
+#   |   |  Intra   #0         |                 |        #1     Intra   |    |
+#   |   | segment        0/26 +-----------------+ 1/26         segment  |    |
+#   |   |  +---+   Intra   /  |                 |   \   Intra   +---+   |    |
+#   |   |  |   |  segment /   |                 |    \ segment  |   |   |    |
+#   |   | 0/0 0/1       0/20  |                 |    1/5      1/21 1/23 |    |
+#   |   +--|---|---------|----+                 +-----|---------|---|---+    |
+#   +------|---|---------|----------------------------|---------|---|--------+
+#          +---+         +----------------------------+         +---+
+#          Cable                     Cable                      Cable
+#
+# A valid segment is Ux/Px,Uy/Py.
+# Ux & Uy is unit number.
+# Px & Py is MRVL port (zero based), eg. 0, 24, 53.
+# 1. Invalid unit assignment - Ux & Uy cannot be empty and will be 0~9.
+# 2. Ux & Uy must be valid in current system.
+# 3. Ux & Uy must be identical.
+# 4. Px & Py must be valid in current system.
+# 5. Px & Py must be enabled.
+
+function intra_segment_validation () {
+    local valid=true
+    local unit_port1 unit_port2 unit1 unit2 pport1 pport2
+
+    for seg in $@; do
+        # Parse unit/port information
+        unit_port1=${seg%,*}
+        unit_port2=${seg#*,}
+        unit1=${unit_port1%/*}
+        unit2=${unit_port2%/*}
+        pport1=${unit_port1%i*}     # Discard "i" if got one
+        pport2=${unit_port2%i*}     # Discard "i" if got one
+        port1=${pport1#*/}
+        port2=${pport2#*/}
+        ports="$port1,$port2"
+
+        # Exam 1: Both ports have assigned with specific unit.
+        if [ $(is_digit $unit1) == false ] || \
+           [ $(is_digit $unit2) == false ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Invalid unit assignment in the segment [$seg]!"
+            valid=false
+            continue
+        fi
+
+        # Exam 2: Unit validation.
+        if [ $unit1 -lt 0 ] || [ $unit1 -ge $UNIT_CNT ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Invalid unit in the segment [$seg]!"
+            valid=false
+            continue
+        fi
+
+        # Exam 3: Ux & Uy must be identical.
+        if [ "$unit1" != "$unit2" ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Mismatch unit on both ports in the segment [$seg]!"
+            valid=false
+            continue
+        fi
+
+        # Extract port info from seg.
+        [ -n "$DBG_PRINTF" ] && echo "Info: ports=$ports."
+
+        # Exam 4: Port validation.
+        if [ -z "`grep -w "$unit_port1 " "$(dirname $0)/prod_sysinfo"`" ] ||
+           [ -z "`grep -w "$unit_port2 " "$(dirname $0)/prod_sysinfo"`" ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Invalid port type in the segment [$seg]!"
+            valid=false
+            continue
+        fi
+
+        # Exam 5: Check if the port is disabled.
+        stat=`cpss_get_port_status $unit1 $ports | awk '{print $2}' | grep -c "n/a"`
+        if [ "$stat" -ne 0 ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Get port disabled among the segment [$seg]!"
+            [ -n "$DBG_PRINTF" ] && echo "Port mode status: $stat"
+            valid=false
+            continue
+        fi
+    done
+
+    if [ $valid == false ]; then
+        echo "INVALID_SEGMENT among intra segment" >> $(dirname $0)/metadata/${lid}_loop
+        return 1
+    fi
+
+    return 0
+}
+
+function set_loopback()
+{
+    local seglist_single_remap=$1
+    local lb_mode="$2"
+    local seg unit pport port_type
+
+    for seg in $seglist_single_remap; do
+        unit=`echo ${seg%/*}`
+        pport=`echo ${seg#*/}`
+
+        if [ "$lb_mode" != "none" ]; then
+            if [ "$lb_mode" == "mac" ]; then
+                SEG_LIST_MAC_SINGLE_REMAP="$SEG_LIST_MAC_SINGLE_REMAP $seg"
+            elif [ "$lb_mode" == "phy" ]; then
+                phy_type="`sysinfo_get_portinfo pport "$seg" PhyType "$(dirname $0)/prod_sysinfo"`"
+                if [ "$phy_type" == "88E1680" -o "$phy_type" == "88E1543" ]; then
+                    SEG_LIST_PHY_SINGLE_REMAP="$SEG_LIST_PHY_SINGLE_REMAP $seg"
+                fi
+            fi
+        else
+            phy_type="`sysinfo_get_portinfo pport "$seg" PhyType "$(dirname $0)/prod_sysinfo"`"
+            if [ "$phy_type" == "88E1680" -o "$phy_type" == "88E1543" ]; then
+                SEG_LIST_GE_PHY_SINGLE_REMAP="$SEG_LIST_GE_PHY_SINGLE_REMAP $seg"
+                if [ -z "$SET_AT_A_TIME" ]; then
+                    # Set up per loop
+                    cpss_ge_phy_lb_setup "enable" "$seg"
+                fi
+            fi
+        fi
+    done
+}
+
+function record_tx_plist()
+{
+    local seg unit_port1 unit_port2 unit1 unit2 port1 port2 ports
+    declare -A tx_plist   # Idx=unit and value=portlist
+
+    [ -n "$DBG_PRINTF" ] && echo "Info: Record TX portlist for valid loop list $LIDLIST_VALID."
+
+    for seg in $TEST_PLIST; do
+       # Parse unit/port information
+       unit_port1=${seg%,*}
+       unit_port2=${seg#*,}
+       unit1=${unit_port1%/*}
+       unit2=${unit_port2%/*}
+       port1=${unit_port1#*/}
+       port2=${unit_port2#*/}
+       port1=${port1%i*}        # Discard "i" if got one
+       port2=${port2%i*}        # Discard "i" if got one
+       ports="$port1,$port2"
+
+       if [ "$unit_port1" == "$unit_port2" ]; then
+           ports="$port1"
+       fi
+
+       if [ "$unit1" != "$unit2" ]; then
+           tx_plist[$unit1]="$port1,${tx_plist[${unit1}]}"
+           tx_plist[$unit2]="$port2,${tx_plist[${unit2}]}"
+       else
+           tx_plist[$unit1]="$ports,${tx_plist[${unit1}]}"
+       fi
+    done
+
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        tx_plist="${tx_plist[${unit}]}"
+        tx_plist=`echo $tx_plist | sed "s/$unit\///g"` # Remove unit number.
+        tx_plist=`echo $tx_plist | sed "s/.$//g"` # remove last char ",".
+        echo "TX_PLIST=$tx_plist" > $(dirname $0)/metadata/tx_plist_${unit}
+        [ -n "$DBG_PRINTF" ] && echo "Info: Record TX portlist($tx_plist) with unit $unit."
+    done
+}
+
+function mark_invalid_loop()
+{
+    local unit=$1
+    local pport=$2
+    local reason=$3
+    local lidlist_tmp=""
+    local front_port invalid_lid lid seglist seg_list_single port_type
+
+    # Mapping from SDK port to front port
+    front_port=`map_to_front_port "$unit/$pport"`
+
+    # Invalid the loop skip the test later
+    invalid_lid=`grep -w "$unit/$pport" $(dirname $0)/metadata/test_looplist | cut -d "=" -f2`
+    echo "INVALID_SEGMENT among intra segment" >> $(dirname $0)/metadata/${invalid_lid}_loop
+    for lid in $LIDLIST_VALID; do
+        [ "$lid" != "$invalid_lid" ] && lidlist_tmp="$lidlist_tmp $lid"
+    done
+    LIDLIST_VALID="$lidlist_tmp"
+    [ -n "$DBG_PRINTF" ] && echo "Info: updated loop list=$LIDLIST_VALID with lid $invalid_lid removal."
+
+    # Parse error message per result
+    if [ "$reason" == "speed" ]; then
+        cur=$4
+        max=$5
+        echo "FAIL: The link-up speed $cur mismatches with maximum speed $max on the port $front_port in traffic loop $invalid_lid!" | tee -a $(dirname $0)/metadata/check_fail_result
+    elif [ "$reason" == "link" ]; then
+        echo "FAIL: Get the link-down on port $front_port in traffic loop $invalid_lid!" | tee -a $(dirname $0)/metadata/check_fail_result
+    fi
+
+#FIXME!!!
+#    # Restore the MDI loopback for single external loopback on copper port
+#    seglist=`grep -w "SEG_LIST_REMAP" $(dirname $0)/metadata/${invalid_lid}_loop | cut -d '=' -f2`
+#    single_seglist=`grep -w "SEG_LIST_SINGLE_REMAP" $(dirname $0)/metadata/${invalid_lid}_loop | cut -d '=' -f2`
+#    if [ "$seglist" == "$single_seglist" ]; then
+#        port_type="`sysinfo_get_portinfo pport "$seglist" PortType "$(dirname $0)/prod_sysinfo"`"
+#        if [ "$port_type" == "COPPER" ]; then
+#            [ -n "$DBG_PRINTF" ] && echo "Info: Restore the MDI loopback setting (Disable) for copper port ($unit:$pport)."
+#            rtk_disable_rj45_loop_port "$unit" "$pport"
+#        fi
+#    fi
+}
+
+# Check the port speed for each link-up copper port
+function check_speed()
+{
+    local valid=true
+    local update_plist one_port
+    local tx_plist tx_plist_org tx_plist_new
+    local pport link_state max_speed speed port_type
+
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        update_plist=false
+        one_port=false
+        tx_plist_org=`grep -w "TX_PLIST" $(dirname $0)/metadata/tx_plist_${unit} | cut -d '=' -f2`
+        tx_plist=`echo $tx_plist_org | sed "s/,/ /g"`
+        [ -n "$DBG_PRINTF" ] && echo "Info: Check port speed with portlist($tx_plist) on unit $unit."
+
+        [ -z "$tx_plist" ] && continue
+
+        [ "`echo $tx_plist_org | grep -c ,`" -eq 0 ] && one_port=true # Only have one port
+
+        # Get Tx ports status here for MRVL platform
+        all_tx_port_status=`cpss_get_port_status $unit $tx_plist_org`
+
+        for pport in $tx_plist; do
+            # Check if the port is copper one
+            port_type="`sysinfo_get_portinfo pport "$unit/$pport" PortType "$(dirname $0)/prod_sysinfo"`"
+            if [ "$port_type" != "COPPER" ]; then
+                continue
+            fi
+
+            # Get max speed on the copper port
+            max_speed="`sysinfo_get_portinfo pport "$unit/$pport" PortSpeed "$(dirname $0)/prod_sysinfo"`"
+
+            # Get Link status (include speed) and bypass the link-down port
+            link_state=`echo "$all_tx_port_status" | grep $unit/$pport`
+            [ "`echo $link_state | grep -c Down`" -eq 1 ] && continue
+            speed=`echo $link_state | awk '{print $4}' | sed "s/ //g"`
+            [ -n "$DBG_PRINTF" ] && echo "Verb: Link speed on port $pport is $speed and the its max speed is $max_speed."
+
+            if [ "$speed" != "$max_speed" ]; then
+                valid=false
+                update_plist=true
+
+                # Mark the invalid loop
+                mark_invalid_loop "$unit" "$pport" "speed" "$speed" "$max_speed"
+
+                if [ $one_port == false ]; then
+                    tx_plist_new=`echo $tx_plist_org | sed "s/$pport,//g"` # plist=X,Y,....
+                else
+                    tx_plist_new=`echo $tx_plist_org | sed "s/$pport//g"`  # plist=X
+                fi
+            fi
+        done
+
+        if [ $update_plist == true ]; then
+            sed -i "s/$tx_plist_org/$tx_plist_new/g" $(dirname $0)/metadata/tx_plist_${unit}
+        fi
+    done
+
+    [ $valid == false ] && return 1 || return 0
+}
+
+function check_link()
+{
+    local valid=true
+    local pport portlist_linkdown
+    local update_plist one_port
+    local tx_plist tx_plist_org tx_plist_new
+    local retry=0
+    local retry_max=30 # =3s
+
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        tx_plist=`grep -w "TX_PLIST" $(dirname $0)/metadata/tx_plist_${unit} | cut -d '=' -f2`
+        [ -n "$DBG_PRINTF" ] && echo "Info: Check link status with portlist($tx_plist) on unit $unit."
+
+        [ -z "$tx_plist" ] && continue
+
+        # Reset counter first
+        retry=0
+
+        # Port link status, a retry mechanism for tolerance
+        while [ $retry -lt $retry_max ]; do
+            # Get Link status
+            portlist_linkdown=`cpss_get_port_status $unit $tx_plist | grep "Down"`
+            if [ -z "$portlist_linkdown" ]; then
+                break
+            fi
+            sleep 0.1
+            retry=$((retry+1))
+        done
+
+        if [ $retry -ge $retry_max ]; then
+            valid=false
+            portlist_linkdown=`echo "$portlist_linkdown" | awk '{print $1}'`
+            portlist_linkdown=`echo $portlist_linkdown` # Remove newline symbol
+            [ -n "$DBG_PRINTF" ] && echo "[FAIL] Get port link-down on portlist [$portlist_linkdown]!"
+
+            # Mark the invalid loop
+            for sdk_port in $portlist_linkdown; do
+                port_unit=${sdk_port%/*}
+                port_pport=${sdk_port#*/}
+                mark_invalid_loop "$port_unit" "$port_pport" "link"
+            done
+        fi
+    done
+
+    [ $valid == false ] && return 1 || return 0
+}
+
+function parse_loop_info()
+{
+    local lidlist=$@
+    local all_loops seg_list seglist_remap seglist_pair_int_remap seglist_pair_remap seglist_single_remap
+
+    echo -n "Check each traffic loop"     # Show the action in frontend
+
+    [ -n "$DBG_PRINTF" ] && echo " ($lidlist)"
+    for lid in $lidlist; do
+        echo -n "."    # Generate process bar in frontend
+        if [ -z "`ls $(dirname $0)/data/${lid}_loop 2>/dev/null`" ]; then
+            all_loops=$(pushd $(dirname $0)/data/ > /dev/null; ls *_loop; popd > /dev/null)
+            all_loops=$(echo $all_loops | sed 's/_loop//g')
+            echo "WARNING: The traffic loop $lid does not exist in data folder ($(pwd $0)/data) and all loops in the folder are $all_loops!" | tee -a $(dirname $0)/metadata/check_fail_result
+            continue
+        fi
+
+        # Parse segment list from loop file and replace portmap as SDK type for each segment
+        while read line; do
+            if [ "${line:0:8}" == "SEG_LIST" ]; then
+                seg_list=${line##*=}
+            elif [ "${line:0:8}" == "CFG_FILE" ]; then
+                cfg_file=${line##*=}
+            elif [ "${line:0:8}" == "LOOPBACK" ]; then
+                loopback=${line##*=}
+            fi
+        done < $(dirname $0)/data/${lid}_loop
+        seglist_remap=`portmap_replace "$seg_list" "sdk"`
+        if [ -n "$seglist_remap" ]; then
+            echo "SEG_LIST_REMAP=$seglist_remap" > $(dirname $0)/metadata/${lid}_loop
+        else
+            echo "INVALID_SEGMENT among inter segment" > $(dirname $0)/metadata/${lid}_loop
+            echo "FAIL: The segment setting of traffic loop $lid is invalid due to incorrect port assignment in segment list ($seg_list)!" | tee -a $(dirname $0)/metadata/check_fail_result
+            echo -e "\nDump \"$(dirname $0)/prod_sysinfo\":"
+            cat "$(dirname $0)/prod_sysinfo"
+        fi
+
+        # Execute special setup per config file
+        process_config "$cfg_file"
+
+        # Segment type
+        # pair: Two ports in one segment, within one switch chip
+        # pair_int: Two internal ports in one segment, across two switch chips
+        # single : One front port in one segment, within one switch chip
+        seglist_pair_int_remap=""
+        seglist_pair_remap=""
+        seglist_single_remap=""
+
+        # Parse the type for each segment and remap them.
+        for seg in $seglist_remap; do
+            if [ `echo $seg | grep -o ',' | wc -l` -ne 0 ]; then
+                if [ `echo $seg | grep -o 'i' | wc -l` -eq 2 ]; then
+                    seglist_pair_int_remap="$seglist_pair_int_remap$seg "
+                else
+                    seglist_pair_remap="$seglist_pair_remap$seg "
+                fi
+            else
+                seglist_single_remap="$seglist_single_remap$seg "
+            fi
+        done
+        echo "SEG_LIST_PAIR_INT_REMAP=$seglist_pair_int_remap" | sed 's/[[:space:]]*$//' >> $(dirname $0)/metadata/${lid}_loop
+        echo "SEG_LIST_PAIR_REMAP=$seglist_pair_remap" | sed 's/[[:space:]]*$//' >> $(dirname $0)/metadata/${lid}_loop
+        echo "SEG_LIST_SINGLE_REMAP=$seglist_single_remap" | sed 's/[[:space:]]*$//' >> $(dirname $0)/metadata/${lid}_loop
+
+        # Record: portlst for link checking later
+        TEST_PLIST="$seglist_remap $TEST_PLIST"
+        echo "$seglist_remap=$lid" >> $(dirname $0)/metadata/test_looplist
+
+        # Configure loopback mode for signle port segment before link checking
+        if [ "$CFG_MODE" != "1" ] && [ -n "$seglist_single_remap" ]; then
+            set_loopback "$seglist_single_remap" "$loopback"
+        fi
+
+        # Examine intra segment if existed
+        seglist_all_pair_remap="$seglist_single_remap $seglist_pair_remap"
+        if [ "$MFG_MODE" != "1" ] && [ -n "$seglist_all_pair_remap" ]; then
+            intra_segment_validation $seglist_all_pair_remap
+            if [ $? -ne 0 ]; then
+                echo "FAIL: The segment setting of traffic loop $lid is invalid due to failure internal segment!" | tee -a $(dirname $0)/metadata/check_fail_result
+                continue
+            fi
+        fi
+
+        # Examine inter segment if existed
+        if [ "$MFG_MODE" != "1" ] && [ -n "$seglist_pair_int_remap" ]; then
+            inter_segment_validation $seglist_pair_int_remap
+            if [ $? -ne 0 ]; then
+                echo "FAIL: The segment setting of traffic loop $lid is invalid due to failure intra segment!" | tee -a $(dirname $0)/metadata/check_fail_result
+                continue
+            fi
+        fi
+
+        # Record valid loops
+        LIDLIST_VALID="$LIDLIST_VALID $lid"
+    done
+
+    if [ "$CFG_MODE" != "1" ] && [ -n "$SET_AT_A_TIME" ]; then
+        # Set stub loopback at a time
+        set_all_loopback
+    fi
+
+    [ -n "$DBG_PRINTF" ] && echo "Info: Valid looplist=$LIDLIST_VALID."
+}
+
+function setup_loop_info()
+{
+    local set_fail=0
+
+    # Copy pre-configure Tx and loop files w/o the checking
+    echo -n "Copy metadata for MFG mode."
+    [ -e "/etc/opt/trtest/mfg_cfg/metadata" ] && cp -rf /etc/opt/trtest/mfg_cfg/metadata/* $(dirname $0)/metadata
+    if [ -e "$(dirname $0)/metadata/valid_lidlist" ]; then
+        LIDLIST_VALID=`grep -w "LIDLIST_VALID" $(dirname $0)/metadata/valid_lidlist | cut -d '=' -f2`
+        [ ! -e "$(dirname $0)/metadata/test_looplist" ] && echo "FAIL: Lack of valid_lidlist/test_looplist in MFG mode!!!" && exit 3
+        [ ! -e "$(dirname $0)/metadata/tx_pkt_info" ] && echo "FAIL: Lack of valid_lidlist/tx_pkt_info in MFG mode!!!" && exit 3
+        [ ! -e "$(dirname $0)/metadata/tx_pkt_info_done" ] && echo "FAIL: Lack of valid_lidlist/tx_pkt_info_done in MFG mode!!!" && exit 3
+
+        for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+            [ ! -e "$(dirname $0)/metadata/tx_plist_$unit" ] && echo "FAIL: Lack of valid_lidlist/tx_plist_$unit in MFG mode!!!" && exit 3
+        done
+    else
+        echo "FAIL: Lack of valid_lidlist/test_looplist in MFG mode!!!"
+        exit 3
+    fi
+}
+
+function setup_system()
+{
+    local unit
+    local stime=`date +%s`
+
+	# sync caches to disk before create setup_system_cmds.txt
+	sync;sync;sync
+
+    # Disable print pause
+    cpss_set_print_pasue disable > metadata/setup_system_cmds.txt
+
+	# Set jumbo-frame
+    #cpss_set_jumbo_frame "all" "10304" >> metadata/setup_system_cmds.txt
+
+    if [ "$MFG_MODE" != "1" ]; then
+
+        # Make sure to disable flow control and pause advertise
+        # Phantom (Falcon) not allowed to set flow control
+        if [ "$MAC_CHIP" != "Falcon" ]; then
+            cpss_flow_ctrl_on_off "all" "off" >> metadata/setup_system_cmds.txt
+        fi
+
+        # Clear VLAN table, and binds all ports to default VLAN
+        for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+            clear_cpss_vlan "$unit" >> metadata/setup_system_cmds.txt
+        done
+
+        # Set all ports pvid to 100
+        for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+            create_cpss_vlan "$unit" "100"
+        done
+        set_cpss_pvid_all_ports "all" "100" >> metadata/setup_system_cmds.txt
+
+        # For in-band mgmt port setting
+        if [ -f "./data/inband.config" ]; then
+           inband_unit=`awk '$1 = /unit/{print $NF}' ./data/inband.config`
+           inband_port=`awk '$1 = /port/{print $NF}' ./data/inband.config`
+           inband_vlan=`awk '$1 = /vlan/{print $NF}' ./data/inband.config`
+           restore_cpss_inband_settings $inband_unit $inband_port $inband_vlan >> metadata/setup_system_cmds.txt
+        fi
+
+    fi
+
+	# Disable MAC learning on ports to reduce the loading of CPU, especially in loopback cable case.
+    cpss_port_mac_learning "all" "disable" >> metadata/setup_system_cmds.txt
+
+    # Clear mac counters before all packets are sent
+    clear_cpss_counter "all" >> metadata/setup_system_cmds.txt
+
+    # Load command to execute
+    cpss_load_config_file "metadata/setup_system_cmds.txt" "no_show"
+
+    print_exec_time_debug "$DBG_PRINTF_TIME" "system setup in check stage" "$stime"
+}
+
+function check_cmdline_cfile_exist()
+{
+    if [ -f "$(dirname $0)/data/init.cfg" ] && [ "$MFG_MODE" != "1" ]; then
+        # Apply user-defined config file if exists and different to SDK init config
+        cpss_load_config_file "$(dirname $0)/data/init.cfg" "no_show"
+    fi
+}
+
+function set_all_loopback() {
+    if [ -n "$SEG_LIST_MAC_SINGLE_REMAP" ]; then
+        cpss_mac_lb_setup "enable" "$SEG_LIST_MAC_SINGLE_REMAP" > $(dirname $0)/metadata/mac_lb_cmds.txt
+        cpss_load_config_file "metadata/mac_lb_cmds.txt" "no_show"
+        # Save to a file for later to restore
+    fi
+
+    if [ -n "$SEG_LIST_PHY_SINGLE_REMAP" ]; then
+        cpss_phy_lb_setup "enable" "$SEG_LIST_PHY_SINGLE_REMAP" > $(dirname $0)/metadata/phy_lb_cmds.txt
+        cpss_load_config_file "metadata/phy_lb_cmds.txt" "no_show"
+        # Save to a file for later to restore
+    fi
+
+    if [ -n "$SEG_LIST_GE_PHY_SINGLE_REMAP" ]; then
+        cpss_ge_phy_lb_setup "enable" "$SEG_LIST_GE_PHY_SINGLE_REMAP" > $(dirname $0)/metadata/ge_phy_lb_cmds.txt
+        cpss_load_config_file "metadata/ge_phy_lb_cmds.txt" "no_show"
+        # Save to a file for later to restore
+    fi
+}
+
+#function rx_training() {
+#    if [ -f "$RX_TRAINING_CMD" ] && [ "$PORT_LIST_RX_TUNING" != "" ]; then
+#        $RX_TRAINING_CMD -p `echo ${PORT_LIST_RX_TUNING% } | sed 's/ /,/g'`
+#    fi
+#
+#    if [ -f "$RX_TRAINING_CMD_AVG" ] && [ "$PORT_LIST_RX_TUNING" != "" ]; then
+#        $RX_TRAINING_CMD_AVG -p `echo ${PORT_LIST_RX_TUNING% } | sed 's/ /,/g'`
+#    fi
+#}
+
+function get_all_ports_status()
+{
+    local sdk_port_list=""
+    local table_head first_line
+
+    # For all ports from sysinfo
+    table_head="`grep -nw "LPort" $(dirname $0)/prod_sysinfo | cut -d ':' -f 1`"
+    first_line=$((table_head + 2))
+    for sdk_port in `sed -n "$first_line,\\$p" $(dirname $0)/prod_sysinfo | awk '{print $2}'`; do
+        sdk_port="`echo $sdk_port | sed "s/i//g"`"
+        [ -z $sdk_port_list ] &&  sdk_port_list="$sdk_port" || sdk_port_list="$sdk_port_list,$sdk_port"
+    done
+
+    # Get all status and dump into a file for later to check
+    ALL_PORT_STATUS=`$LUASH -c "do show interfaces status ethernet $sdk_port_list" | sed 's/\r//g'`
+}
+
+# MAIN
+STIME_CHECK=`date +%s` # For execution time calculation record
+STIME=$STIME_CHECK
+
+# Check if CPSS is ready
+wait_cpss
+
+# Get system information from SDK
+get_sys_info
+
+# Get port info
+cpss_read_portmapping
+
+# Setup system settings
+setup_system &
+
+# Create metadata folder to generate teset data for run/stop stages
+[ -d "$(dirname $0)/metadata" ] && rm -f $(dirname $0)/metadata/* || mkdir -p $(dirname $0)/metadata
+
+# Compare for each test loop to quick the tx action in run stage with portlist and same pkt/number.
+compare_pkt_info $@ &
+
+# Get port mapping array once and for all
+get_portmap_array "$(dirname $0)/prod_sysinfo"
+
+# Check if trtest command with option -f
+check_cmdline_cfile_exist
+
+# Process loop info
+if [ "$MFG_MODE" != "1" ]; then
+    # Parse traffic loop information
+    parse_loop_info $@
+    [ -n "$DBG_PRINTF_TIME" ] && echo ""
+    print_exec_time_debug "$DBG_PRINTF_TIME" "test loops validation and classification" "$STIME"; STIME=`date +%s`
+else
+    # Copy pre-configure files in metadata w/o the loop checking
+    setup_loop_info
+    [ -n "$DBG_PRINTF_TIME" ] && echo ""
+    print_exec_time_debug "$DBG_PRINTF_TIME" "Setup loop info" "$STIME"; STIME=`date +%s`
+fi
+
+# Record TX portlist for later packet information process
+if [ "$MFG_MODE" != "1" ] && [ -n "$LIDLIST_VALID" ]; then
+    record_tx_plist
+    print_exec_time_debug "$DBG_PRINTF_TIME" "portlist record" "$STIME"; STIME=`date +%s`
+fi
+
+## Get all ports status here for MRVL platform
+#get_all_ports_status
+
+# Check link status for valid test portlist and remove link-down port from valid list
+if [ -n "$LIDLIST_VALID" ]; then
+    check_link
+    print_exec_time_debug "$DBG_PRINTF_TIME" "port link check" "$STIME"; STIME=`date +%s`
+fi
+
+# Check the port speed for link-up copper ports from valid test portlist and remove invalid port from valid list
+if [ "$MFG_MODE" != "1" ] && [ -n "$LIDLIST_VALID" ]; then
+    check_speed
+    print_exec_time_debug "$DBG_PRINTF_TIME" "port speed check" "$STIME"; STIME=`date +%s`
+fi
+
+# Check if there is any valid test loop after port link checking
+if [ -z "$LIDLIST_VALID" ]; then
+    echo "FAIL: All traffic loops ($@) are invalid!"
+    exit 3
+fi
+
+# Record valid loop list after port link checking
+echo "LIDLIST_VALID=$LIDLIST_VALID" > $(dirname $0)/metadata/valid_lidlist
+[ -n "$DBG_PRINTF" ] && echo "Info: Valid lid list=$LIDLIST_VALID."
+
+# Generate tx packet information with all valid lists for run stage
+gen_tx_info
+
+# For execution time calculation
+ETIME_CHECK=`date +%s`
+EXEC_TIME=$(($ETIME_CHECK - $STIME_CHECK))
+[ -n "$DBG_PRINTF_TIME" ] && echo "Done(${EXEC_TIME}s)" || echo "Done"
+
+# Return result
+[ -f $(dirname $0)/metadata/check_fail_result ] && exit 1 || exit 0

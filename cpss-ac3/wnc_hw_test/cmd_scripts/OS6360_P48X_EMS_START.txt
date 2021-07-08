@@ -1,0 +1,134 @@
+do configure
+interface range ethernet all
+switchport allowed vlan remove 1
+exit
+interface range vlan device 0 vid 2-13,24-26,27
+exit
+interface range vlan device 1 vid 13-27
+exit
+interface range ethernet 0/0,3
+switchport allowed vlan add 2 untagged
+switchport pvid 2
+exit
+interface range ethernet 0/2,5
+switchport allowed vlan add 3 untagged
+switchport pvid 3
+exit
+interface range ethernet 0/4,7
+switchport allowed vlan add 4 untagged
+switchport pvid 4
+exit
+interface range ethernet 0/6,9
+switchport allowed vlan add 5 untagged
+switchport pvid 5
+exit
+interface range ethernet 0/8,11
+switchport allowed vlan add 6 untagged
+switchport pvid 6
+exit
+interface range ethernet 0/10,13
+switchport allowed vlan add 7 untagged
+switchport pvid 7
+exit
+interface range ethernet 0/12,15
+switchport allowed vlan add 8 untagged
+switchport pvid 8
+exit
+interface range ethernet 0/14,17
+switchport allowed vlan add 9 untagged
+switchport pvid 9
+exit
+interface range ethernet 0/16,19
+switchport allowed vlan add 10 untagged
+switchport pvid 10
+exit
+interface range ethernet 0/18,21
+switchport allowed vlan add 11 untagged
+switchport pvid 11
+exit
+interface range ethernet 0/20,23
+switchport allowed vlan add 12 untagged
+switchport pvid 12
+exit
+interface ethernet 0/22
+switchport allowed vlan add 13 untagged
+switchport pvid 13
+exit
+interface ethernet 1/1
+switchport allowed vlan add 13 untagged
+switchport pvid 13
+exit
+interface range ethernet 1/0,3
+switchport allowed vlan add 14 untagged
+switchport pvid 14
+exit
+interface range ethernet 1/2,5
+switchport allowed vlan add 15 untagged
+switchport pvid 15
+exit
+interface range ethernet 1/4,7
+switchport allowed vlan add 16 untagged
+switchport pvid 16
+exit
+interface range ethernet 1/6,9
+switchport allowed vlan add 17 untagged
+switchport pvid 17
+exit
+interface range ethernet 1/8,11
+switchport allowed vlan add 18 untagged
+switchport pvid 18
+exit
+interface range ethernet 1/10,13
+switchport allowed vlan add 19 untagged
+switchport pvid 19
+exit
+interface range ethernet 1/12,15
+switchport allowed vlan add 20 untagged
+switchport pvid 20
+exit
+interface range ethernet 1/14,17
+switchport allowed vlan add 21 untagged
+switchport pvid 21
+exit
+interface range ethernet 1/16,19
+switchport allowed vlan add 22 untagged
+switchport pvid 22
+exit
+interface range ethernet 1/18,21
+switchport allowed vlan add 23 untagged
+switchport pvid 23
+exit
+interface ethernet 1/20
+switchport allowed vlan add 24 untagged
+switchport pvid 24
+exit
+interface ethernet 0/24
+switchport allowed vlan add 24 untagged
+switchport pvid 24
+exit
+interface range ethernet 1/24,27
+switchport allowed vlan add 25 untagged
+switchport pvid 25
+exit
+interface ethernet 1/25
+switchport allowed vlan add 26 untagged
+switchport pvid 26
+exit
+interface ethernet 0/27
+switchport allowed vlan add 26 untagged
+switchport pvid 26
+exit
+interface range ethernet 0/1,25
+switchport allowed vlan add 27 untagged
+switchport pvid 27
+exit
+interface ethernet 0/26
+switchport allowed vlan add 13 untagged
+switchport allowed vlan add 24 untagged
+switchport allowed vlan add 26 untagged
+exit
+interface ethernet 1/26
+switchport allowed vlan add 13 untagged
+switchport allowed vlan add 24 untagged
+switchport allowed vlan add 26 untagged
+exit

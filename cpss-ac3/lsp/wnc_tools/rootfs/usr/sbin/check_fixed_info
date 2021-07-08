@@ -1,0 +1,30 @@
+#!/bin/bash                     
+
+FIXED_IP_FILE=/usr/data/wnc_fixed_ip
+FIXED_MAC_FILE=/usr/data/wnc_fixed_mac
+FIXED_MASK_FILE=/usr/data/wnc_fixed_mask
+
+if [ -f $FIXED_IP_FILE ];
+then
+  FIXED_IP=`cat $FIXED_IP_FILE`  
+  echo FIXED IP is set $FIXED_IP
+else
+  echo FIXED IP is NOT SET 
+fi
+
+if [ -f $FIXED_MAC_FILE ];
+then
+  FIXED_MAC=`cat $FIXED_MAC_FILE`  
+  echo FIXED MAC is set $FIXED_MAC
+else
+  echo FIXED MAC is NOT SET
+fi
+
+if [ -f $FIXED_MASK_FILE ];
+then
+  FIXED_MASK=`cat $FIXED_MASK_FILE`  
+  echo FIXED MASK is set $FIXED_MASK
+else
+  echo FIXED MASK is NOT SET
+fi
+

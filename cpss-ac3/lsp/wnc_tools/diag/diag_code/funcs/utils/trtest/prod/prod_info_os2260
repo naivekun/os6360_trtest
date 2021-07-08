@@ -1,0 +1,163 @@
+#!/bin/bash
+
+PROD_SKU="PROD_NA"
+if [ -f /usr/local/sku ]; then
+    PROD_SKU=`cat /usr/local/sku`
+
+    case $PROD_SKU in
+        "OS2260-48" | "OS2360-48" | "OS2260-P48" | "OS2360-P48")
+            PSU_NUM=0
+            FAN_NUM=1
+            ;;
+        "OS2260-P48X" | "OS2360-P48X")
+            PSU_NUM=0
+            FAN_NUM=2
+            ;;
+        "OS2560-48X")
+            PSU_NUM=1
+            FAN_NUM=1
+            ;;
+        "OS2560-P48X")
+            PSU_NUM=2
+            FAN_NUM=2
+            ;;
+        "OS2260-P24" | "OS2360-P24" | "OS2260-P24X" | "OS2360-P24X")
+            PSU_NUM=0
+            FAN_NUM=1
+            ;;
+        "OS2560-24X")
+            PSU_NUM=1
+            FAN_NUM=0
+            ;;
+        "OS2560-P24X")
+            PSU_NUM=2
+            FAN_NUM=1
+            ;;
+        *)
+            PSU_NUM=0
+            FAN_NUM=0
+            ;;
+    esac
+fi
+
+# SYSFS path
+CPLD_SYSFS_PATH="/sys/bus/i2c/devices/0-007f"
+LM75_SYSFS_PATH="/sys/bus/i2c/devices/8-0048/hwmon/hwmon0"
+
+function add_ch_at_suffix() {
+    local cmd=$1
+    $cmd | tr '\n' '$'
+}
+
+function get_prod_name() {
+    echo "$PROD_SKU"
+}
+
+function get_prod_sn() {
+#   echo "${FUNCNAME[0]}() is under constructed.." >&2
+    echo "SN_NA"
+}
+
+function get_os_info() {
+    # it is known that $(...) will trim newline character
+    # the workaround is to add '$' character (cat -E option) to tail of
+    # each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+    # newline character
+    add_ch_at_suffix "cat /proc/sys/kernel/osrelease"
+}
+
+function get_kernel_info() {
+    add_ch_at_suffix "uname -a"
+}
+
+function get_sensor_info() {
+    # it is known that $(...) will trim newline character
+    # the workaround is to add '$' character (cat -E option) to tail of
+    # each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+    # newline character
+    # various data from "sensors" command, that requires lm-sensors
+    # package installed, plus extra sensor points in switch chip or
+    # somewhere else
+    #sensors > tmp.log
+    #cat -E tmp.log; rm -f tmp.log
+
+    # Get temperature from sensor and conversed in degree C format.
+    temp_reg=`cat $LM75_SYSFS_PATH/temp1_input`
+    temp_int=`echo $((${temp_reg}/1000))`
+    temp_point=`echo $((${temp_reg}/100-${temp_int}*10))`
+    temp="${temp_int}.${temp_point}"
+
+    echo "Thermal sensor:" >> tmp.log
+    echo "temp_1075 = ${temp} deg C" >> tmp.log
+    echo "" >> tmp.log
+    add_ch_at_suffix "cat tmp.log"; rm -f tmp.log
+}
+
+function get_fan_info() {
+    # it is known that $(...) will trim newline character
+    # the workaround is to add '$' character (cat -E option) to tail of
+    # each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+    # newline character
+    # return present status, RPM
+    echo "Fan info:" >> tmp.log
+    if [ "$FAN_NUM" != "0" ]; then
+        for ((fan_index=1; fan_index<=$FAN_NUM; fan_index++)); do
+            fs_value=`cat $CPLD_SYSFS_PATH/fan${fan_index}_cnt`
+            speed=`echo $((5000*60/${fs_value}))`
+            echo "FAN_${fan_index} RPM : $speed" >> tmp.log
+        done
+    else
+        echo "Not support" >> tmp.log
+        echo "" >> tmp.log
+    fi
+    add_ch_at_suffix "cat tmp.log"; rm -f tmp.log
+}
+
+function get_psu_info() {
+    # it is known that $(...) will trim newline character
+    # the workaround is to add '$' character (cat -E option) to tail of
+    # each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+    # newline character
+    # return present status, power good, etc
+    echo "PSU info:" >> tmp.log
+    if [ "$PSU_NUM" != "0" ]; then
+        echo "Wait for Diag ready to read PSU inforatmion" >> tmp.log
+    else
+        echo "Not support" >> tmp.log
+        echo "" >> tmp.log
+    fi
+    add_ch_at_suffix "cat tmp.log"; rm -f tmp.log
+}
+
+function get_port_info() {
+    # it is known that $(...) will trim newline character
+    # the workaround is to add '$' character (cat -E option) to tail of
+    # each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+    # newline character
+    # return MAC+PHY status from switch driver, plus transceiver EEPROM
+    # and DMI data
+    echo "Port status:" > tmp.log
+    # all_port_status is generated at prod_stop
+    cat metadata/all_port_status.log >> tmp.log
+    rm -f metadata/all_port_status.log
+    add_ch_at_suffix "cat tmp.log";rm -f tmp.log
+}
+
+function get_counters() {
+    # it is known that $(...) will trim newline character
+    # the workaround is to add '$' character (cat -E option) to tail of
+    # each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+    # newline character
+    # return all counters from switch driver
+
+    # trtest_pkt is generated at prod_stop
+    cat metadata/trtest_pkt.log >> tmp.log
+    rm -f metadata/trtest_pkt.log
+    #cat -E tmp.log; rm -f tmp.log
+    add_ch_at_suffix "cat tmp.log";rm -f tmp.log
+}
+
+function get_prod_lb_modes() {
+    # return all available loopbck modes of the product
+    echo "phy"
+}

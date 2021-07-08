@@ -1,0 +1,117 @@
+// TAG:               L2VPN, L3VPN, PE-device, BEB, PBB, routing, IEEE802.1ah
+// Short Description: Clear a configuration of PE-device A in L2VPN network.
+//                    A routed traffic can be transmitted through the Backbone
+//                    network with differend I-SID.
+// Description:       configure a PE-device A in the L2VPN network (see a
+//                    diagram below) transmitting a routed traffic.
+//                    The client's traffic is routed on the PE-devices and is
+//                    transfered (if necessary) to a remote router(PE-device)
+//                    through the backbone network. The routed packets can be
+//                    transmitted through the Backbone with different I-SID
+//                    depending on route entries values.
+//
+//                    A packet came to devA/1 wit DIP = 172.16.2.1.
+//                    It is routed through the Backbone network (and through
+//                    the device B) to dev C with I-SID = 0x010000.
+//                    dev C terminates a tunnel header and routes the packet
+//                    back to dev B with I-SID = 0x020000.
+//                    dev B termanates a tunnel header and the packet is
+//                    finally egressed to a client port devB/1.
+//------------------------------------------------------------------------------
+// SPBM Core Network
+//------------------------------------------------------------------------------
+//  Branch #1(172.16.1/24)
+//      |
+//     0|
+// |----|------------|
+// |   dev A         |
+// |                 |54
+// |00:00:00:00:DE:AA|----|         Branch #2(172.16.2/24)
+// |-----------------|    |            |
+//                        \           0|
+//                         \    |------|----------|
+//                          \---|   dev B         |
+//                            54|                 |
+//                              |00:00:00:00:DE:BB|
+//                              |-----------------|
+//                               /5
+// |-----------------|          /
+// |    dev C        |54       /
+// |                 |--------/
+// |00:00:00:00:DE:CC|
+// |-------|---------|
+//        0|
+//         |
+//    Central Office (172.16.3/24)
+//
+// Core  (backbone) ports are A/54, B/54,5, C/54
+// Customer network ports are A/0,  B/0     C/0
+// PVIDs:
+// A/0, PVID 1000
+// B/0, PVID 1000
+// C/0, PVID 1000
+//
+// B-VID = 511
+//
+// Every remote PE-device is mapped to special ePort. Unicast packets intended
+// to some remote PE-device (through backbone)are forwarded to special egress
+// ePort that specifies a tunnel header fields.
+//
+// UC ePort A/1002 -> port A/4 B-DA 00:00:00:00:DE:BB
+// UC ePort A/1003 -> port A/4 B-DA 00:00:00:00:DE:CC
+// UC ePort B/1001 -> port B/4 B-DA 00:00:00:00:DE:AA
+// UC ePort B/1003 -> port B/5 B-DA 00:00:00:00:DE:CC
+// UC ePort C/1001 -> port C/4 B-DA 00:00:00:00:DE:AA
+// UC ePort C/1002 -> port C/4 B-DA 00:00:00:00:0D:EB
+//
+// On all Backbone devices a I-SID is mapped to VRF-ID (throuth the vlan).
+// I-SID 0x010000 -> VID 1000 -> vrf-id 1
+// I-SID 0x020000 -> VID 3000 -> vrf-id 2
+//
+//  route entries (device, VRF-ID, IP -> next hop):
+// dev A, VRF-ID 1, 172.16/16  -> ePort 1003  eVLAN 1000, ARP 00:00:00:00:DE:CC
+// dev B, VRF-ID 2, 172.16.2.1 -> port 1      eVLAN 1000, ARP 00:00:00:00:01:21
+// dev C, VRF-ID 1, 172.16.2.1 -> ePort 1002  eVLAN 2000, ARP 00:00:00:00:DE:CC
+end
+configure
+no ip route 172.16.0.0 255.255.0.0 vrf-id 1
+no ip next-hop 11
+no ip vrf-id 1
+interface range vlan device ${dev} vid 1000,2000
+no ip routing
+exit
+interface eport ${dev}/1003
+no ip routing
+exit
+interface eport ${dev}/1002
+no ip routing
+exit
+interface ethernet ${dev}/${port[1]}
+no ip routing
+exit
+
+interface eport ${dev}/1003
+tpid tunnel-start bind 0
+exit
+interface eport ${dev}/1002
+tpid tunnel-start bind 0
+exit
+interface ethernet ${dev}/${port[4]}
+no spbm pe-node uc-eport 1002
+no spbm pe-node uc-eport 1003
+exit
+interface ethernet ${dev}/${port[4]}
+no bridge multicast unregistered
+tpid egress bind 0 ether_type_index 0
+switchport allowed vlan add 511 tagged
+exit
+interface range ethernet ${dev}/${port[1]}
+switchport allowed vlan remove 1000
+no switchport pvid
+exit
+no spbm service-vlan i-sid 0x010000
+no interface range vlan device ${dev} vid 511,1000,2000
+tpid device ${dev} direction ingress index 7 etherType 0x8100
+tpid device ${dev} direction egress index 7 etherType 0x8100
+no mac address
+end

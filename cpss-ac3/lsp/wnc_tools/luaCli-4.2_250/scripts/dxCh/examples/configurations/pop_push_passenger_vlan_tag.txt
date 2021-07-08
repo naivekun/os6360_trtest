@@ -1,0 +1,110 @@
+// TAG:               pop; push; tpid; mpls
+// Short Description: Set pop passenger vlan tag config
+// Description:       Configures MPLS, creates vlans 4,5,6,7,8,9 ports 18,36, add fdb entry, configures tunnels, configures eport, configures tpid
+
+
+//Test description:
+//
+//Ingress: A passenger packet with 3 tags encapsulated in a tunnel.
+//Action: The packet is TT. The outer tag is popped and the inner tags are classified to tag0 and tag1.
+//        IPCL rule based on the values of tag0 and tag1 classifies the packet to an eVLAN and default IPCL rule drops all the other packets.
+//        The packet is bridged to a target ePort.
+//Tag state: The egress tag state of the ePort is {tag1, tag0}. The ePort is associated with a Push Tag to passenger and with a Tunnel.
+//Egress: So a passenger packet with tags [x,y,z] encapsulated in tunnel, and the egress push tag [w], would be sent with tags [w,z,eVLAN] encapsulated in a new tunnel.
+
+//IPCL configuration is in dxCh\examples\tests\pop_push_passenger_vlan_tag.lua
+
+end
+configure
+pcl-config ${dev} force-tt-per-vlan false
+//define all the vlans in the test:
+//tunnel vlan 4
+//passenger vlans 7,8,9
+interface vlan device ${dev} vid 4
+exit
+interface vlan device ${dev} vid 5
+exit
+interface vlan device ${dev} vid 6
+exit
+interface vlan device ${dev} vid 7
+exit
+interface vlan device ${dev} vid 8
+exit
+interface vlan device ${dev} vid 9
+exit
+
+//add ports to vlan 5
+//do not modify any tag in vlan 5
+//the egress tag state for vlan6 is {outer tag1, inner tag0}
+interface range ethernet ${dev}/${port[2]},${port[3]}
+switchport allowed vlan add 5 do_not_modify
+switchport allowed vlan add 8 outer_tag1_inner_tag0
+exit
+
+//Passenger tags inner 0x8100 standard TPID used by customer bridge VLAN tags (C-tags),
+//middle 0x88A8 standard TPID used by service provider VLAN tags (S-tags), outer 0x8888 proprietary tag
+
+// set TPID global config to add 0x8100 (standard vlan tag ethertype) - for ingress,egress
+// set TPID global config to add 0x88A8 (customer bridge ethertype)   - for ingress,egress
+// set TPID gloabl config to add 0x9999 (new push tag to passenger) - for egress
+tpid device ${dev} direction ingress index 0 etherType 0x8100
+tpid device ${dev} direction ingress index 7 etherType 0x88A8
+tpid device ${dev} direction egress  index 0 etherType 0x8100
+tpid device ${dev} direction egress  index 6 etherType 0x9999
+tpid device ${dev} direction egress  index 7 etherType 0x88A8
+
+// for tag 0 recognition :
+// bind profile 0 with tpids in index : 0
+tpid ingress profile 0 device ${dev} ether_type_index 0 tpid-range 0,7
+// for tag 1 recognition :
+// bind profile 0 with tpids in index : 1
+tpid ingress profile 0 device ${dev} ether_type_index 1 tpid-range 0,7
+
+//TPID profile per ingress port
+interface range ethernet ${dev}/${port[2]}
+tpid ingress profile 0 ether_type_index 0 is_default false
+tpid ingress profile 0 ether_type_index 1 is_default false
+exit
+
+//TPID profile per egress eport
+interface eport ${dev}/0x201
+tpid egress bind 7 ether_type_index 0
+exit
+
+// The outer tag is popped
+interface eport ${dev}/0x200
+pop-vlan-tag 4B-vlan-tag
+exit
+
+//The bridge directs the packet to the egress ePort.
+mac address-table static 00:09:0A:0B:0C:22 device ${dev} vlan 8 eport ${dev}/0x201
+
+// Push Tag to passenger
+interface eport ${dev}/0x201
+push-vlan-tag command single-tag-on-passenger vid 9 tpid-index 6
+exit
+
+interface ethernet ${dev}/${port[2]}
+mpls assign-eport 0x200 vid 4 my-mac-addr 00:01:02:03:34:02 nexthop-mac-addr 00:04:05:06:07:11 ingress-labels-values-list 0x111,0x222 egress-labels-values-list 0x333
+exit
+
+interface ethernet ${dev}/${port[3]}
+mpls assign-eport 0x201 vid 4 my-mac-addr 00:01:02:03:34:03 nexthop-mac-addr 00:04:05:06:07:12 ingress-labels-values-list 0x111,0x222 egress-labels-values-list 0x333
+
+// command to show MPLS configuration
+do show mpls
+exit
+
+//IPCL rule based on the values of tag0 and tag1 classifies the packet to an eVLAN and default IPCL rule drops all the other packets
+//tpid0 from 0x88a8 (index 7)
+//tpid1 from 0x8100 (index 0)
+access-list device ${dev} ingress pcl-ID 0x124
+rule-id 6 action permit modifyVlan0 8 tpid-index 7 tpid1-index 0
+exit
+access-list device ${dev} ingress pcl-ID 0x124
+rule-id 2100 action deny
+exit
+interface eport ${dev}/0x200
+service-acl pcl-ID 0x124 lookup 0
+end
+

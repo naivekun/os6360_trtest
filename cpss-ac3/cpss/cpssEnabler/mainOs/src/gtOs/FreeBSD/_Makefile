@@ -1,0 +1,41 @@
+# $(warning "Started") 
+#cpssEnabler_AD_CFLAGS += -DOS_USERSPACE_MUTEXES
+#SUBDIRS = stubs pthreads
+
+#ifeq (1, $(LINUX_SIM))
+#else
+#C_EXCLUDE_FILE_LIST = osFreeBsdIntr.c osFreeBsdSimEther.c
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ pthreads \
+ stubs 
+
+#List of files to include in list
+FILES := \
+ osFreeBsdExc.c \
+ osFreeBsdGen.c \
+ osFreeBsdInet.c \
+ osFreeBsdIntr.c \
+ osFreeBsdIo.c \
+ osFreeBsdMem.c \
+ osFreeBsdRand.c \
+ osFreeBsdSem.c \
+ osFreeBsdSimEther.c \
+ osFreeBsdStr.c \
+ osFreeBsdTimer.c \
+ osObjIdLib.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

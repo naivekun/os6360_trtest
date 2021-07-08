@@ -1,0 +1,18 @@
+// TAG:               flow-control; restore; default;
+// Short Description: Restore default flow-control
+// Description:       Restore default flow-control, remove vlan 10
+end
+configure
+interface range ethernet ${dev}/${port[1]},${port[2]}
+no flow-control
+no force link up
+switchport allowed vlan remove 10
+exit
+interface range ethernet ${dev}/${port[3]}
+no flow-control periodic
+no flow-control
+no force link up
+switchport allowed vlan remove 10
+exit
+no interface vlan device ${dev} vid 10
+end

@@ -1,0 +1,19 @@
+// TAG:               FAST BOOT
+// Short Description: check traffic after Eeprom configuration
+// Description:       0. cpssInitSystem PEX only
+//                    1. load Eeprom configuration from file
+//                    2. raise fast boot flag fast_boot INIT
+//                    3. check traffic
+//                    4. cpssInitSystem
+//                    5. raise fast boot flag fast_boot CATCHUP
+//                    6. check traffic
+//                    7. raise fast boot flag fast_boot COMPLETE
+//                    8. check traffic
+
+end
+
+debug-mode
+load eeprom dxCh/examples/data/bobcat2Eeprom.txt
+
+end
+

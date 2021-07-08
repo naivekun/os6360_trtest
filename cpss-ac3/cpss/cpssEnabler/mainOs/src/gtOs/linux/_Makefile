@@ -1,0 +1,114 @@
+# $(warning "Started")
+export USE_KERNEL_EXT
+#SUBDIRS=stubs
+MODULES := stubs
+
+#List of subfolders to include in build
+
+
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+    LIB_NAME = gtOs.lib
+endif
+ifeq (YES,$(APP_DEMO_ONLY))
+    USE_KERNEL_EXT = 0
+else
+
+ifeq (PPC603, $(CPU))
+    ifeq (6,$(KPATCHLEVEL))
+        USE_KERNEL_EXT = 1
+    endif
+    ifeq (4,$(KPATCHLEVEL))
+        USE_KERNEL_EXT = 1
+    endif
+endif
+ifeq (ARMARCH5, $(CPU))
+    USE_KERNEL_EXT = 1
+endif
+ifeq (ARMARCH7, $(CPU))
+    USE_KERNEL_EXT = 1
+endif
+ifeq (PPC85XX, $(CPU))
+    USE_KERNEL_EXT = 1
+endif
+ifeq (EP3041A, $(CPU))
+    USE_KERNEL_EXT = 1
+endif
+
+ifeq (MIPS64, $(CPU))
+    USE_KERNEL_EXT = 1
+endif
+ifeq (INTEL64, $(CPU))
+    USE_KERNEL_EXT = 1
+endif
+endif
+ifeq (YES, $(LINUX_NOKM))
+    USE_KERNEL_EXT = 0
+endif
+
+ifeq (MP_ON,$(CPSS_USE_MUTEX_PROFILER))
+    USE_KERNEL_EXT = 0
+endif
+
+ifeq (1,$(USE_KERNEL_EXT))
+    cpssEnabler_CFLAGS_CL += -DV2L_KERNEL
+    #SUBDIRS += kernelExt
+    MODULES += kernelExt
+
+
+
+else
+    cpssEnabler_CFLAGS_CL += -DV2L_PTHREADS
+    #SUBDIRS += pthreads
+    MODULES += pthreads
+endif   
+ifneq (yes, $(MV_KERNEL_EXT_MUTEXES))
+    cpssEnabler_CFLAGS_CL += -DOS_USERSPACE_MUTEXES=512
+endif
+ifeq (yes, $(USE_VALGRIND))
+    cpssEnabler_CFLAGS_CL += -DUSE_VALGRIND
+endif
+ifeq (1, $(LINUX_SIM))
+    #SUBDIRS += linuxSim
+    MODULES += linuxSim
+endif
+
+#MODULES := \
+# linuxSim \
+# pthreads \
+# stubs 
+
+#List of files to include in list
+FILES := \
+ osLinuxExc.c \
+ osLinuxGen.c \
+ osLinuxInet.c \
+ osLinuxIntr.c \
+ osLinuxIo.c \
+ osLinuxMem.c \
+ osLinuxMsgQ.c \
+ osLinuxRand.c \
+ osLinuxSem.c \
+ osLinuxStdLib.c \
+ osLinuxStr.c \
+ osLinuxTimer.c \
+ osObjIdLib.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := gtOs.lib
+    cpssEnabler_gtOs_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

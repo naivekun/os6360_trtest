@@ -1,0 +1,85 @@
+# $(warning "Started") 
+
+COMMON_FILES := \
+	 cmdLuaBitwizeFunctions.c \
+	 wraplGtU64.c \
+	 wraplOsMsgQ.c \
+	 wraplOsSem.c \
+	 wraplTFTPC.c \
+	 wraplTaskCreate.c \
+	 wraplTrace.c \
+	 wraplWriteBin.c \
+	 wraplReadJSON.c \
+	 wraplXmodem.c \
+	 wraplIncrement.c
+#wraplED.c \
+
+ifneq (yes,$(CMDFS_NIX))
+	COMMON_FILES += \
+		 wraplZlib.c
+endif
+
+
+FILES := $(COMMON_FILES)
+
+COMMON_FILES_DX := \
+         all_common_lua_c_type_manual_wrappers.c \
+         all_common_lua_c_type_wrappers.c
+
+COMMON_FILES_PX := \
+         all_common_noppdrv_lua_c_type_manual_wrappers.c \
+         all_common_noppdrv_lua_c_type_wrappers.c
+
+COMMON_FILES_DXPX := \
+         all_common_lua_c_type_manual_wrappers.c \
+         all_common_noppdrv_lua_c_type_manual_wrappers.c \
+         all_common_dxpx_lua_c_type_wrappers.c
+
+
+ifeq (yes,$(LUACLI_STANDALONE_BUILD))
+  #C_EXCLUDE_FILE_LIST = wraplGaltisWrapper.c wraplCpssGenEvents.c
+else
+  #List of files to include in list
+  FILES += \
+    wraplCpssGenEvents.c \
+    wraplGaltisWrapper.c
+endif
+
+
+## the PX not supports next files
+ifeq (EXISTS,$(CHX_FAMILY))
+ifneq (EXISTS,$(PX_FAMILY))
+  FILES += $(COMMON_FILES_DX)
+else
+  FILES += $(COMMON_FILES_DXPX)
+endif
+endif
+
+
+ifeq (EXISTS,$(PX_FAMILY))
+ifneq (EXISTS,$(CHX_FAMILY))
+  FILES += $(COMMON_FILES_PX)
+endif
+endif
+
+MODULES := \
+   private 
+
+## the PX not supports files (in next folders)
+#List of subfolders to include in build
+#ifeq (EXISTS,$(CHX_FAMILY))
+  MODULES += \
+   cider 
+#endif
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINLUAWRAPPER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

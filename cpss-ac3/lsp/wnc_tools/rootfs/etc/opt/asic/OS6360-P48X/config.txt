@@ -1,0 +1,23 @@
+cpssInitSystem 19,2,0
+
+// WNC Tx EQ
+do load wnc_txeq/txeq_48.txt
+
+// do X-unit PCS reset to prevent combo port fiber-interface link-down issue
+do debug-mode
+phy 10G register write device 1 port 25 register 0xf002 phyDev 3 phyID 0xd data 0x8007
+phy 10G register write device 1 port 24 register 0xf002 phyDev 3 phyID 0xc data 0x8007
+end
+
+// default disable pauseAdvertise
+do configure
+interface range ethernet all
+jumbo-frame 10304
+flow-control off
+end
+
+// Enable SFP LED power switch
+do shell-execute osCmd "echo 1 > /sys/bus/i2c/devices/0-007f/sfp_led_pwr_ctrl_en"
+
+// set ACL rule to trap packet to CPU
+do load OS6360_P48X_SET_ACL_RULE.txt

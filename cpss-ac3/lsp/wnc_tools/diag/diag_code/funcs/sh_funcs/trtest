@@ -1,0 +1,75 @@
+#!/bin/bash
+
+function trtest_nibble_to_4bits
+{
+    b0=$(((16#$1) % 2))
+    quot=$(((16#$1) / 2))
+    b1=$(($quot % 2))
+    quot=$(($quot / 2))
+    b2=$(($quot % 2))
+    b3=$(($quot / 2))
+
+    echo -n "$b3$b2$b1$b0"
+}
+
+function trtest_err_byte_show()
+{
+    local PKT_FILE_TX=$1
+    local PKT_FILE_RX=$2
+    local CMP_FILE_TX="/tmp/cmp_file_tx"
+    local CMP_FILE_RX="/tmp/cmp_file_rx"
+    local cmp_tx_pkt cmp_rx_pkt
+
+    # Get Tx pkt to compare
+    cmp_tx_pkt="`cat $PKT_FILE_TX`"
+    echo "$cmp_tx_pkt" > $CMP_FILE_TX
+
+    # Get first line in rx_pkt file to compare, and delete other lines if the same
+    cmp_rx_pkt=`sed -n 1p $PKT_FILE_RX`
+    sed -i "/${cmp_rx_pkt}/d" $PKT_FILE_RX
+    while [ "${cmp_rx_pkt}" != "" ]; do
+        # Change rx_pkt to lower case, and dump to the file
+        cmp_rx_pkt=${cmp_rx_pkt,,}
+        echo ${cmp_rx_pkt} > $CMP_FILE_RX
+
+        # Compare two files, and get the first column (which nibble is different)
+        err_byte_list=""
+        # Note command "cmp" here, can't use the lighter one in busybox
+        diff_list=`cmp -l -b $CMP_FILE_TX $CMP_FILE_RX 2>/dev/null | awk '{print $1}'`
+        for idx in $diff_list; do
+            # If idx is odd, byte [(idx+1)/2] <idx,idx+1> is what we want.
+            # If idx is even, byte [idx/2] <idx-1,idx> is what we want.
+            # Hence, change to even, and then divide by 2 to show as the byte.
+            [ $(($idx % 2)) -eq 1 ] && byte=$(((idx + 1)/2)) || byte=$((idx / 2))
+
+            if [ "`echo $err_byte_list | grep -w "$byte"`" != "" ]; then
+                continue
+            fi
+
+            # First multiply $byte by 2, and minus 1 to show from MSB.
+            # But the syntax of shell is 0-based, need to minus 1 more.
+            tx_nibble_l=${cmp_tx_pkt:$(($byte * 2 - 2)):1}
+            tx_nibble_2=${cmp_tx_pkt:$(($byte * 2 - 1)):1}
+            rx_nibble_l=${cmp_rx_pkt:$(($byte * 2 - 2)):1}
+            rx_nibble_2=${cmp_rx_pkt:$(($byte * 2 - 1)):1}
+            tx_byte="${tx_nibble_l}${tx_nibble_2}"
+            rx_byte="${rx_nibble_l}${rx_nibble_2}"
+            # Shown in 8-bit format.
+            tx_in_bit="`trtest_nibble_to_4bits ${tx_nibble_l}`"
+            tx_in_bit="$tx_in_bit`trtest_nibble_to_4bits ${tx_nibble_2}`"
+            rx_in_bit="`trtest_nibble_to_4bits ${rx_nibble_l}`"
+            rx_in_bit="$rx_in_bit`trtest_nibble_to_4bits ${rx_nibble_2}`"
+
+            echo "  Got mismatched on byte [$byte], Tx is [0x${tx_byte} (2b'${tx_in_bit})], but Rx is [0x${rx_byte} (2b'${rx_in_bit})]!"
+
+            # List to prevent checking it again
+            err_byte_list="$err_byte_list $byte"
+        done
+
+        cmp_rx_pkt=`sed -n 1p $PKT_FILE_RX`
+        [ -n "$cmp_rx_pkt" ] && sed -i "/${cmp_rx_pkt}/d" $PKT_FILE_RX
+    done
+
+    # Remove generated files
+    rm -f $CMP_FILE_TX $CMP_FILE_RX
+}

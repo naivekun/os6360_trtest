@@ -1,0 +1,230 @@
+#!/bin/bash
+
+# ## Include ## #
+
+set -e
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/defines
+source ${dir_path}/sh_funcs/exit
+source ${dir_path}/sh_funcs/print
+
+prog_name=`echo $0 | awk -F / '{print $NF}'`
+
+# ## Functions ## #
+
+function usage() {
+echo "
+Usage:
+NAME
+       ${prog_name} - read data from the EEPROM
+
+SYNOPSIS
+       ${prog_name} [-r] [-s Serial_number] [-d MFG_date]
+                       [-a MAC_address] [-c MAC_count]
+
+DESCRIPTION
+       ${prog_name} is used to read out the contents of EEPROM from 
+       I2C. It will parser data from the EEPROM and display its all
+       information. Additionally, User's can l check whether the 
+       EEPROM's field values meet their expectations.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -r    Read EEPROM data
+				
+       -s    Check serial number
+	   
+       -d    Check MFG. date/time
+             Time: time string. Format: \"2009-10-19 14:21:29\"
+
+       -a    Check MAC address
+	   
+       -c    Check number of additional contiguous MAC address
+	   
+       -h    Help message
+
+PASS CRITERIA
+       - Read EEPROM data (-r):
+           SUCCESS: Display EEPROM information
+             Display: PASS 
+             Return code: 0
+
+           ERROR: Can't get EEPROM information
+             Display: FAIL 
+             Return code: 1 (input  error)
+                          2 (option error)
+                          3 (system error)
+                          4 (read   error)
+       
+       - Check EEPROM data (-s, -d, -a, -c):
+           SUCCESS: EEPROM information is correct
+             Display: PASS 
+             Return code: 0
+
+           ERROR: EEPROM information is incorrect
+             Display: FAIL 
+             Return code: 1 (input  error)
+                          2 (option error)
+                          3 (system error)
+                          4 (read   error)
+                          6 (test   error)						
+
+Example:
+       ${prog_name} -r
+       ${prog_name} -s K5260098
+       ${prog_name} -d \"2009-10-19 14:21:29\"
+       ${prog_name} -a 00:e0:b1:c7:f4:30
+       ${prog_name} -c 32
+       ${prog_name} -s K5260098 -d \"2009-10-19 14:21:29\" \\ 
+                       -a 00:e0:b1:c7:f4:30 -c 32
+" >&2
+}
+
+function error_msg() {
+
+    # 1: error_code, 2: error_msg
+
+    # ERROR CODE
+    #   Input error : 1
+    #   Option error: 2
+    #   System error: 3
+    #   Read error  : 4
+    #   Write error : 5 
+    #   Test error  : 6 
+
+    if [ ${1} -eq 1 ]; then
+        echo -e "\n[Input error] ${2}" >&2
+    elif [ ${1} -eq 2 ]; then
+        :
+    elif [ ${1} -eq 3 ]; then
+        echo -e "\n[System error] ${2}" >&2
+    elif [ ${1} -eq 4 ]; then
+        echo -e "\n[Read error] ${2}" >&2
+    elif [ ${1} -eq 5 ]; then
+        echo -e "\n[Write error] ${2}" >&2
+    elif [ ${1} -eq 6 ]; then
+        echo -e "\n[Test error] ${2}" >&2
+    fi
+    quit ${1}
+}
+
+function check_system_file() {
+
+    local file=${1}
+    [ -f "${file}" ] || error_msg 3 "File: '${file}' not found"
+}
+
+# ## Initial variables ## #
+
+# eeprom_parser_file_path="/root/diag_ws/eeprom_parser"
+eeprom_parser_file_path="/usr/bin/eeprom_parser"
+
+mode=""
+
+# ## Check sys argvs ## #
+
+if [ $# -lt 1 ]; then
+
+    usage
+    error_msg 2
+    # error_msg 2 "At least one optional option is needed."
+fi
+
+while getopts ":rs:d:a:c:h" arg
+do
+    case ${arg} in      
+        r)
+            mode="read"
+            ;;
+        s)
+            mode="test"
+            serial_number=${OPTARG}
+            ;;
+        d)
+            mode="test"
+            if [[ ${OPTARG} =~ ^[0-9]+\-[0-9]+\-[0-9]+\ [0-9]+\:[0-9]+\:[0-9]+$ ]]; then
+                manufacturing_date=${OPTARG}
+            else
+                error_msg 1 "Date format is 'year-month-day hour:minute:seconds', like '2009-10-19 14:21:29'"
+            fi
+            ;;
+        a)
+            mode="test"
+            base_mac_range_1=`echo ${OPTARG} | sed 's/://g'`
+            ;;
+        c)
+            mode="test"
+            mac_count_range_1=${OPTARG}
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        :)
+            usage
+            error_msg 2
+            # error_msg 2 "Option \"-${OPTARG}\" requires an argument"
+            ;;
+        ?)
+            usage
+            error_msg 2
+            # error_msg 2 "Unknown option \"-${OPTARG}\""
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "No options were passed"
+fi
+
+# ## Check mode ## #
+
+check_system_file ${eeprom_parser_file_path}
+
+if [ ${mode} == "read" ]; then
+
+    bash ${eeprom_parser_file_path} -r
+
+elif [ ${mode} == "test" ]; then
+
+    result=${PASS}
+
+    if [ ! -z "${serial_number+x}" ]; then
+        ans_serial_number=`bash ${eeprom_parser_file_path} -s 33,57`
+        if [ "${serial_number}" != "${ans_serial_number}" ]; then
+            echo -e "\nSerial number: '"${serial_number}"' is incorrect, it should be '"${ans_serial_number}"'"
+            result=6
+        fi
+    fi
+
+    if [ ! -z "${manufacturing_date+x}" ]; then
+        ans_mfg_date_dec=`bash ${eeprom_parser_file_path} -d 58,61`
+        LANG=en_us_88591
+        ans_mfg_date=`date -d @${ans_mfg_date_dec} +"%Y-%m-%d %H:%M:%S"`
+        if [ "${manufacturing_date}" != "${ans_mfg_date}" ]; then
+            echo -e "\nManufacturing date: '"${manufacturing_date}"' is incorrect, it should be '"${ans_mfg_date}"'"
+            result=6
+        fi
+    fi
+
+    if [ ! -z "${base_mac_range_1+x}" ]; then
+        ans_base_mac_range_1=`bash ${eeprom_parser_file_path} -x 62,67`
+        if [ "${base_mac_range_1,,}" != "${ans_base_mac_range_1,,}" ]; then
+            echo -e "\nMAC Address: '"${base_mac_range_1,,}"' is incorrect, it should be '"${ans_base_mac_range_1}"'"
+            result=6
+        fi
+    fi
+
+    if [ ! -z "${mac_count_range_1+x}" ]; then
+        ans_mac_count_range_1=`bash ${eeprom_parser_file_path} -d 68,69`
+        if [ "${mac_count_range_1}" != "${ans_mac_count_range_1}" ]; then
+            echo -e "\nMAC count: '"${mac_count_range_1}"' is incorrect, it should be '"${ans_mac_count_range_1}"'"
+            result=6
+        fi
+    fi
+    quit ${result}
+fi

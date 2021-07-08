@@ -1,0 +1,20 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+ifeq (i386.EXISTS, $(CPU).$(ASIC_SIMULATION))
+SUBDIRS=NONE
+endif
+
+LIB_NAME = mainSysConfig.lib
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

@@ -1,0 +1,33 @@
+#!/bin/bash
+#i2cset -y 0 0x2e 0x40 0x05
+
+#After the decimal point
+ADP=`i2cget -y 0 0x2e 0x77`
+ADP_VAL=`printf "%d" $ADP`
+#Remote 1 temperature
+R1=`i2cget -y 0 0x2e 0x25`
+R1_VAL=`printf "%d" $R1`
+#Local temperature
+LOCAL=`i2cget -y 0 0x2e 0x26`
+LOCAL_VAL=`printf "%d" $LOCAL`
+#Remote 2 temperature
+R2=`i2cget -y 0 0x2e 0x27`
+R2_VAL=`printf "%d" $R2`
+
+#bit0,1 
+ADP0=$(( $ADP_VAL/4 ))
+#bit2,3 Remote 1 ADP value
+ADP_R1=$((( $ADP0%4 )*25))
+ADP1=$(( $ADP0/4 ))
+#bit4,5 Local ADP value
+ADP_L=$((( $ADP1%4 )*25))
+ADP2=$(( $ADP1/4 ))
+#bit6,7 Remote 2 ADP value
+ADP_R2=$((( $ADP2%4 )*25))
+
+echo ADT7476 Temperature
+echo Remote 1 = $R1_VAL.$ADP_R1 
+echo Local    = $LOCAL_VAL.$ADP_L
+echo Remote 2 = $R2_VAL.$ADP_R2
+
+exit 0

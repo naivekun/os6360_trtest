@@ -1,0 +1,20 @@
+#!/bin/bash
+
+[ -z "$FUNCS_PATH" ] && FUNCS_PATH=$(dirname $0)
+
+source $FUNCS_PATH/sh_funcs/defines
+source $FUNCS_PATH/sh_funcs/byteswap
+source $FUNCS_PATH/sh_funcs/decxfer
+source $FUNCS_PATH/sh_funcs/exit
+source $FUNCS_PATH/sh_funcs/yesno
+source $FUNCS_PATH/sh_funcs/sdkutils_bcm
+source $FUNCS_PATH/sh_funcs/sdkutils_mrvl
+source $FUNCS_PATH/sh_funcs/sdkutils_rtk
+source $FUNCS_PATH/sh_funcs/print
+source $FUNCS_PATH/sh_funcs/err_code
+source $FUNCS_PATH/sh_funcs/mac_addr
+source $FUNCS_PATH/sh_funcs/list
+source $FUNCS_PATH/sh_funcs/portmap
+source $FUNCS_PATH/sh_funcs/sysinfo
+source $FUNCS_PATH/sh_funcs/trtest
+

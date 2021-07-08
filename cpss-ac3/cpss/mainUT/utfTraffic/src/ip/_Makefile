@@ -1,0 +1,72 @@
+# $(warning "Started")
+#LIB_NAME = tgfIpEnhancedUT.lib
+
+
+#List of subfolders to include in build
+MODULES := \
+ customer
+
+#List of files to include in list
+FILES := \
+ prvTgfBasicIpv42SharedVirtualRouter.c \
+ prvTgfBasicIpv4McRouting.c \
+ prvTgfBasicIpv4McRoutingSourceIdMask.c \
+ prvTgfBasicIpv4Uc2VirtualRouter.c \
+ prvTgfBasicIpv4UcEcmpRouting.c \
+ prvTgfBasicIpv4UcLowLevelRouting.c \
+ prvTgfBasicIpv4UcRouting.c \
+ prvTgfBasicIpv4UcRoutingTrapToCpu.c \
+ prvTgfBasicIpv6McRouting.c \
+ prvTgfBasicIpv6UcRouting.c \
+ prvTgfComplicatedIpv4McRouting.c \
+ prvTgfComplicatedPbrIpPclResize.c \
+ prvTgfComplicatedPbrIpResize.c \
+ prvTgfDefaultIpv4McRouting.c \
+ prvTgfDefaultIpv6McRouting.c \
+ prvTgfDynamicPartitionIpLpmMcRouting.c \
+ prvTgfDynamicPartitionIpLpmUcRouting.c \
+ prvTgfIpLmpIpUcPrefixBulkAdd.c \
+ prvTgfIpLpmDBCapacityUpdate.c \
+ prvTgfIpMtuExceedExceptionCheck.c \
+ prvTgfIpNonExactMatchRoutingIpv4Mc.c \
+ prvTgfIpNonExactMatchRoutingIpv4Uc.c \
+ prvTgfIpNonExactMatchRoutingIpv6Mc.c \
+ prvTgfIpNonExactMatchRoutingIpv6Uc.c \
+ prvTgfIpPclResizeDefSmallerBigger.c \
+ prvTgfIpResizeDefSmallerBigger.c \
+ prvTgfIpv4Ipv6UcRoutingAddManyIpLpmMng.c \
+ prvTgfIpv4McRoutingAddMany.c \
+ prvTgfIpv4McRoutingAddRealPrefixes.c \
+ prvTgfIpv4Uc2MultipleVr.c \
+ prvTgfIpv4UcNatTcp.c \
+ prvTgfIpv4UcNatUdpWithOptions.c \
+ prvTgfIpv4UcRoutingAddDeleteAddRealPrefixes.c \
+ prvTgfIpv4UcRoutingAddMany.c \
+ prvTgfIpv4UcRoutingAddManyIpLpmMng.c \
+ prvTgfIpv4UcRoutingAddRealPrefixes.c \
+ prvTgfIpv4UcRoutingAddRealPrefixes_data.c \
+ prvTgfIpv4UcRoutingHiddenPrefixes.c \
+ prvTgfIpv6McRoutingAddMany.c \
+ prvTgfIpv6UcRoutingAddMany.c \
+ prvTgfIpv6UcRoutingAddManyIpLpmMng.c \
+ prvTgfIpv6UcSaMismatchCheck.c \
+ prvTgfTablesFillingLpm.c \
+ prvTgfTablesFillingLtt.c \
+ prvTgfIpv6McRpfFail.c \
+ prvTgfIpv4Ipv6UcMcRoutingAddDelAndFillLpm.c\
+ prvTgfIpv4UcRoutingPriority.c \
+ prvTgfIpv4UcPbrRoutingPriority.c \
+ tgfCommonIpUT.c
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

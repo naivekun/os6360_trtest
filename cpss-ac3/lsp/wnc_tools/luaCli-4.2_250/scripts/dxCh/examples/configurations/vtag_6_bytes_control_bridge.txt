@@ -1,0 +1,221 @@
+// TAG:               v_tag_6_bytes; controlbridge;
+// Short Description: set configuration for 'control bridge' in v_tag_6_bytes system
+// Description:       Configures the 'control bridge' device in the next system :
+//                      station_1
+//                            &
+//                            &
+//                            &
+//              ******************************************
+//              *            port 54                     *
+//              *                                        *
+//              *        Control bridge (CB)      port 0 *&&&&&& station_7 (not tested)
+//              *                                        *
+//              *       port 36             port 18      *
+//              ******************************************
+//                     #                         #
+//                     #                         #
+//                     #                         #
+//       ***********************      ***********************
+//       *          port 18    *      *       port 36       *
+//       *                     *      *                     *
+//       *        PE3          *      *        PE2   port 0 *&&&&&&   station_2
+//       *                     *      *                     *         pcid=1004
+//       *    port 0           *      *    port 18          *         eport=1004
+//       ***********************      ***********************
+//              &                              # station_6
+//              &                              # pcid=1005
+//              &                              # eport=1005
+//        station_5                   ***********************
+//        pcid=1001                   *     port 54         *
+//        eport=1101                  *                     *
+//                                    *        PE1  port 36 *&&&&&& station_8 (not tested)
+//                                    *                     *       pcid=1003
+//                                    * port 0      port 18 *       eport=1003
+//                                    ***********************
+//                                       &              &
+//                                       &              &
+//                                       &              &
+//                                   station_4
+//                                   station_9       station_3
+//                                   pcid=1001       pcid=1002
+//                                   eport=1001      eport=1002
+end
+
+// enter the config context
+config
+
+
+// set TPID global config to add 0x8100 (standard vlan tag ethertype) - for ingress,egress
+// set TPID global config to add 0x893f (BPE 802.1br ethertype)  - for ingress,egress
+tpid device ${dev} direction ingress index 0 etherType 0x8100
+tpid device ${dev} direction ingress index 7 etherType 0x893f  tag-type 6-bytes-tag
+tpid device ${dev} direction egress index 0 etherType 0x8100
+tpid device ${dev} direction egress index 7 etherType 0x893f  tag-type 6-bytes-tag
+// bind profile 0 with tpids in indexes : 0..6
+tpid ingress profile 0 device ${dev} ether_type_index 0 tpid-range 0,1,2,3,4,5,6
+// for tag 0 recognition : 
+//      bind profile 0 with tpids in indexes : 0..6 ,without 1
+tpid ingress profile 1 device ${dev} ether_type_index 0 tpid-range 0,2,3,4,5,6
+// for tag 1 recognition : 
+//      bind profile 0 with tpids in indexes : 0..6 ,without 1
+//      bind profile 7 with tpids in index   : 7
+tpid ingress profile 0 device ${dev} ether_type_index 1 tpid-range 0,2,3,4,5,6
+tpid ingress profile 7 device ${dev} ether_type_index 1 tpid-range 7
+
+// state that the device is 'Control bridge' in BPE 802.1br system
+bpe-802-1-br my-info role cb
+
+// 'cascade port'
+// state that port 18 connected to :
+//      1. 'port extender' named "pe_2" directly 
+//      2. 'port extender' named "pe_1" indirectly 
+interface ethernet ${dev}/${port[2]}
+bpe-802-1-br neighbor-info role pe name "pe_2" my-connection direct   tag-type 6-bytes-tag
+bpe-802-1-br neighbor-info role pe name "pe_1" my-connection indirect tag-type 6-bytes-tag
+exit
+
+// 'cascade port'
+// state that port 36 connected to :
+//      1. 'port extender' named "pe_3" directly 
+interface ethernet ${dev}/${port[3]}
+bpe-802-1-br neighbor-info role pe name "pe_3" my-connection direct   tag-type 6-bytes-tag
+exit
+
+//state that all next 'eports' will :
+//      represent the 'Extended port' of 'PE' that uses value of 'pcid'
+//
+//state that 'eport' 1001 : Represent the 'Extended port' of "pe_1" that uses pcid = 0x3e9
+//state that 'eport' 1002 : Represent the 'Extended port' of "pe_1" that uses pcid = 0x3ea
+//state that 'eport' 1003 : Represent the 'Extended port' of "pe_1" that uses pcid = 0x3eb
+//state that 'eport' 1004 : Represent the 'Extended port' of "pe_2" that uses pcid = 0x3ec
+//state that 'eport' 1005 : Represent the 'Extended port' of "pe_2" that uses pcid = 0x3ed
+//state that 'eport' 1101 : Represent the 'Extended port' of "pe_3" that uses pcid = 0x3e9
+
+interface eport ${dev}/1001
+bpe-802-1-br pcid-on-pe pe-name "pe_1" pcid 0x3e9 pvid0 1 tti-rule-index any
+
+exit
+interface eport ${dev}/1002
+bpe-802-1-br pcid-on-pe pe-name "pe_1" pcid 0x3ea pvid0 1 tti-rule-index any
+
+exit
+interface eport ${dev}/1003
+bpe-802-1-br pcid-on-pe pe-name "pe_1" pcid 0x3eb pvid0 1 tti-rule-index any
+
+exit
+interface eport ${dev}/1004
+bpe-802-1-br pcid-on-pe pe-name "pe_2" pcid 0x3ec pvid0 1 tti-rule-index any
+
+exit
+interface eport ${dev}/1005
+bpe-802-1-br pcid-on-pe pe-name "pe_2" pcid 0x3ed pvid0 1 tti-rule-index any
+
+exit
+interface eport ${dev}/1101
+bpe-802-1-br pcid-on-pe pe-name "pe_3" pcid 0x3e9 pvid0 1 tti-rule-index any
+
+exit
+
+//
+// bind <GRP>,<ECID> to vlans:
+//                      
+//      to vlan 1 : GRP = 3 , ECID = 0xf01
+//      to vlan 5 : GRP = 1 , ECID = 0xf05
+//      to vlan 6 : GRP = 2 , ECID = 0xf06
+//
+interface vlan device ${dev} vid 1
+bpe-802-1-br flood-etag-info grp ${@@bpe_grp(3)} e-cid-base 0xf01
+exit
+
+interface vlan device ${dev} vid 5
+bpe-802-1-br flood-etag-info grp 1 e-cid-base 0xf05
+exit
+interface vlan device ${dev} vid 6
+bpe-802-1-br flood-etag-info grp 2 e-cid-base 0xf06
+exit
+
+//
+// add ports to vlan : 
+// need to add the 'cascade ports' to all vlans (in our case : 18,36)
+//
+// NOTE: the cascade ports MUST be configured : 'outer_tag0_inner_tag1'
+//
+//
+
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan add 5 outer_tag0_inner_tag1 
+switchport allowed vlan add 6 outer_tag0_inner_tag1 
+exit
+
+//
+// TPID configurations on the physical ports: (ingress and egress)
+// network ports : (non-cascade ports) : 
+//      Uses tpid profiles:
+//              a. for tag 0 - profile 0
+//              b. for tag 1 - profile 1
+//
+interface range ethernet ${dev}/${port[1]},${port[4]}
+tpid ingress profile 0 ether_type_index 0 is_default true
+tpid ingress profile 1 ether_type_index 1 is_default true
+
+tpid egress bind 1 ether_type_index 1
+exit
+
+//
+// TPID configurations on the physical ports: (ingress and egress)
+// cascade ports : 
+//      Uses tpid profiles:
+//              a. for tag 0 - profile 0
+//              b. for tag 1 - profile 7
+//
+interface range ethernet ${dev}/${port[2]},${port[3]}
+tpid ingress profile 0 ether_type_index 0 is_default true
+tpid ingress profile 7 ether_type_index 1 is_default true
+
+exit
+
+//-------  define registered mac-multicast groups
+
+// define group with the cascade ports (needed in CB and in PE device)
+// NOTE: 'upstream ports' not needed in PE devices
+// in vlan 5 : bind 01:02:03:55:55:55 to <GRP> = 3 , <ecid-base> = 0x550
+// in addition to 'cascade ports' added also the needed ports
+
+// the eports are : 1001(station_4) , 1003 (station_8) , 1004 (station_2) , 1101 (station_5) , 54(station_1)
+interface vlan device ${dev} vid 5
+bridge multicast mac address group 01:02:03:55:55:55 ethernet ${dev}/${port[2]},${port[3]},${port[4]}
+bpe-802-1-br mc-etag-info grp ${@@bpe_grp(3)} e-cid-base 0x550 mac 01:02:03:55:55:55
+exit
+
+// in vlan 6 : bind 01:02:03:55:55:55 to <GRP> = 2 , <ecid-base> = 0x660
+// in addition to 'cascade ports' added also the needed ports
+// in vlan 6 : bind 01:02:03:66:66:66 to <GRP> = 3 , <ecid-base> = 0x661
+// in addition to 'cascade ports' added also the needed ports
+
+// the eports are :  1003 (station_8) , 1004 (station_2) , 1101 (station_5) , 54(station_1)
+interface vlan device ${dev} vid 6
+bridge multicast mac address group 01:02:03:55:55:55 ethernet ${dev}/${port[2]},${port[3]},${port[4]}
+bpe-802-1-br mc-etag-info grp 2 e-cid-base 0x660 mac 01:02:03:55:55:55
+
+// the eports are :  1002 (station_3) , 1101 (station_5)
+bridge multicast mac address group 01:02:03:66:66:66 ethernet ${dev}/${port[2]},${port[3]}
+bpe-802-1-br mc-etag-info grp ${@@bpe_grp(3)} e-cid-base 0x661 mac 01:02:03:66:66:66
+exit
+
+
+// command to show only neighbors info
+do show bpe-802-1-br neighbor-info
+
+// command to show 'ALL' BPE 802.1br info
+do show bpe-802-1-br info
+
+// show the registered mac-multicast groups
+do show bridge multicast address-table device ${dev}
+
+// internal DB of the used tti rules
+//do debug-mode
+//show tti internal-db tcam
+//show bridge internal-db mac multicast
+//exit
+
+

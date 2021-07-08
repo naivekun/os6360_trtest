@@ -1,0 +1,128 @@
+#
+# cpss luaCLI Cider UT engine
+#
+# File version: 1 $ 
+#
+
+#
+# Internal Data
+#
+
+# enable UT features
+expect "Console"
+send "CLI_enable_test_mode\n"
+#expect "###EXECOK#0#"
+expect "CLI_PROMPT#"
+send "debug-mode\n"
+expect "CLI_PROMPT#"
+send "lua\n"
+expect "lua>"
+send "cider_UT_mode=true\n"
+expect "lua>"
+send ".\n"
+expect "CLI_PROMPT#"
+
+############################
+# engine
+############################
+set UT_command_last ""
+set UT_syntax_check_status false
+set UT_command_execution_status false
+set UT_command_output ""
+set UT_current_test_log ""
+set UT_addr ""
+set UT_found { }
+proc UT_log_output {} {
+    global UT_current_test_log
+    upvar 1 expect_out exout
+    set UT_current_test_log "$UT_current_test_log$exout(buffer)"
+}
+#
+# UT_do_command
+#
+# DESCRIPTION:
+#       Execute command in luaCLI
+#       Store result in variables:
+#           UT_syntax_check_status
+#                   true / false
+#           UT_command_execution_status
+#                   false       if command failed (syntax, missing var, etc)
+#                   0           successful ( command returns nothing, true, 0 )
+#                   Non-zero    failure ( command returns false or non-zero number )
+#           UT_command_output
+#                   Command output
+#
+# INPUTS
+#       commandline
+#
+# COMMENTS:
+#
+proc UT_do_command { commandline } {
+    global UT_command_last
+    global UT_syntax_check_status
+    global UT_command_execution_status
+    global UT_command_output
+    global UT_addr
+    global UT_found
+    global UT_current_test_log
+
+    set UT_command_last $commandline
+    set UT_syntax_check_status false
+    set UT_command_execution_status false
+    set UT_command_output ""
+    set UT_addr ""
+    set UT_found { }
+    set UT_current_test_log ""
+
+    send "$commandline\n"
+    expect "\n"
+    UT_log_output
+    expect {
+        -re "###ERR#SYNTAX\r?\n" {
+            set UT_syntax_check_status false
+        }
+        -re "###SYNTAXOK\r?\n" {
+            set UT_syntax_check_status true
+        }
+        timeout { 
+            UT_log_output
+            return -code error "Unexpected timeout"
+        }
+    }
+    UT_log_output
+    if { $UT_syntax_check_status == false } {
+        UT_log_output
+        expect "CLI_PROMPT#"
+        return
+    }
+    # UT_syntax_check_status == true
+    expect {
+        -re "###ERR#EXEC\r?\n" { set UT_command_execution_status false }
+        -re "###ADDR=(\[^\r\n\]*)\r?\n" {
+            UT_log_output
+            set UT_addr $expect_out(1,string)
+            exp_continue
+        }
+        -re "###FOUND=(\[^\r\n\]*)\r?\n" {
+            UT_log_output
+            lappend UT_found $expect_out(1,string)
+            exp_continue
+        }
+        -re "###EXECOK#(\\d+)#\r?\n" { set UT_command_execution_status $expect_out(1,string) }
+        -re "^(\[^\r\n\]*\r?\n)" {
+            UT_log_output
+            set UT_command_output "$UT_command_output[string trim $expect_out(1,string) \r\n]\n"
+            exp_continue
+        }
+        timeout {
+            return -code error "Unexpected timeout"
+        }
+    }
+    UT_log_output
+    expect "CLI_PROMPT#"
+    UT_log_output
+}
+
+
+
+

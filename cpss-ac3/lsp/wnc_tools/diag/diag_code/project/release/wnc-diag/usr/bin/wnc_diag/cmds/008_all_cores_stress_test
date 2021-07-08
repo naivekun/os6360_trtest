@@ -1,0 +1,261 @@
+#!/bin/bash
+
+# ## Include ## #
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/defines
+source ${dir_path}/sh_funcs/exit
+source ${dir_path}/sh_funcs/print
+
+prog_name=`echo ${0} | awk -F / '{print $NF}'`
+
+# ## Functions ## #
+
+function usage() {
+echo "
+Usage:
+NAME
+       ${prog_name} - CPU stress test command
+
+SYNOPSIS
+       ${prog_name} [-t timeout]
+
+DESCRIPTION
+       ${prog_name} is used to perform a stress test on 
+       all cores of CPU. User can determine how long stress test will
+       be executed. Additionally, user can use the start option to 
+       execute stress test, and use the stop option to terminate the test.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -t    Execute stress test during the seconds. If timeout is set as 0, 
+             stress test will run until user type Ctrl-C.
+        
+       -s    Start stress test
+
+       -p    Stop stress test
+
+       -h    Help message
+
+PASS CRITERIA
+       - Execute stress test during the seconds (-t):
+           SUCCESS: All cores stress test complete
+             Display: PASS
+             Return code: 0
+
+           Error: All cores stress test fail
+             Display: FAIL
+             Return code: 1 (input  error)
+                          2 (option error)
+                          6 (test   error)
+
+Example:
+       ${prog_name} -t 10
+       ${prog_name} -s
+       ${prog_name} -p
+
+" >&2
+}
+
+function error_msg() {
+
+    # 1: error_code, 2: error_msg
+
+    # ERROR CODE
+    #   Input error : 1
+    #   Option error: 2
+    #   System error: 3
+    #   Read error  : 4
+    #   Write error : 5 
+    #   Test error  : 6 
+
+    if [ ${1} -eq 1 ]; then
+        echo -e "\n[Input error] ${2}" >&2
+    elif [ ${1} -eq 2 ]; then
+        :
+    elif [ ${1} -eq 3 ]; then
+        echo -e "\n[System error] ${2}" >&2
+    elif [ ${1} -eq 4 ]; then
+        echo -e "\n[Read error] ${2}" >&2
+    elif [ ${1} -eq 5 ]; then
+        echo -e "\n[Write error] ${2}" >&2
+    elif [ ${1} -eq 6 ]; then
+        echo -e "\n[Test error] ${2}" >&2
+    fi
+    quit ${1}
+}
+
+function create_loop_file() {
+
+# 1: file
+
+echo "
+#!/bin/bash
+while :
+do
+    :
+done
+" > ${1}
+sync
+}
+
+function check_valid_int() {
+
+    # 1: integer
+
+    if [[ ! ${1} =~ ^[0-9]+$ ]]; then
+        error_msg 1 "Variable \"${1}\" isn't a integer"
+    fi
+}
+
+function trap_ctrlc () {
+
+    # 1: pid_list, 2: file
+
+    local pid_list=("${!1}")
+    kill_all_process pid_list[@]
+    rm -f ${2}
+    echo "Ctrl-C caught...performing clean up"
+    quit_ok
+}
+
+function kill_all_process() {
+
+    # 1: pid_list
+
+    local pid_list=("${!1}")
+    for i in "${pid_list[@]}"; do
+		kill ${i} 2>/dev/null
+        wait ${i} 2>/dev/null
+    done
+}
+
+# ## initial variables ## #
+
+number=5
+sleep_time=""
+
+file_name="loop_file"
+tmp_file=/tmp/${file_name}
+
+declare -a pid_list
+
+mode=""
+
+# ## Check sys argvs ## #
+
+if [ $# -lt 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] At least one optional option is needed."
+fi
+
+while getopts ":t:sph" arg
+do
+    case ${arg} in      
+        t)
+            if [ -z ${mode} ]; then
+                mode=1
+                check_valid_int ${OPTARG}
+                sleep_time=${OPTARG}
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        s)
+            if [ -z ${mode} ]; then
+                mode=2
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        p)
+            if [ -z ${mode} ]; then
+                mode=3
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        :)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Option \"-${OPTARG}\" requires an argument"
+            ;;
+        ?)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Unknown option \"-${OPTARG}\""
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] No options were passed"
+fi
+# ## ARM ##
+pid=`ps -ef | grep "bash ${tmp_file}" | grep -v grep | awk '{print $1}'`
+# ## x86 ##
+# pid=`ps -ef | grep "bash ${tmp_file}" | grep -v grep | awk '{print $2}'` 
+
+if [ ${mode} -eq 1 ]; then
+
+    if [ -z "${pid}" ]; then
+        trap "trap_ctrlc pid_list[@] ${tmp_file}" SIGINT
+        echo "Stress test start"
+        create_loop_file ${tmp_file}
+        for ((i=0; i<=$((${number}-1)); i++))
+        do
+            bash ${tmp_file} &
+            pid_list[${i}]=$!
+        done
+        if [ ${sleep_time} -eq 0 ]; then
+            tail -f /dev/null
+        else
+            sleep ${sleep_time}
+        fi
+        kill_all_process pid_list[@]
+        rm -f ${tmp_file}
+        echo "Stress test complete"
+        quit ${PASS}
+    else
+        error_msg 6 "Stress test is already running"
+    fi
+
+elif [ ${mode} -eq 2 ]; then
+
+    if [ -z "${pid}" ]; then
+        echo "Stress test start"
+        create_loop_file ${tmp_file}
+        for ((i=0; i<=$((${number}-1)); i++))
+        do
+            bash ${tmp_file} &
+            pid_list[${i}]=$!
+        done
+    else
+        echo "Stress test is already running"
+    fi
+
+elif [ ${mode} -eq 3 ]; then
+
+    if [ -z "${pid}" ]; then
+        echo "Stress test hasn't started yet"
+    else
+        echo ${pid} | xargs kill
+        rm -f ${tmp_file}
+        echo "Stress test stop"
+    fi
+fi

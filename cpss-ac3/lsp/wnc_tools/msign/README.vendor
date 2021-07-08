@@ -1,0 +1,68 @@
+#
+# Copyright (c) 2017 Cisco Systems, Inc.
+#
+
+Summary:
+========
+
+Msign is the Meraki tool for signing U-boot FIT images. It will sign
+and verify secp384r1 signatures using a key pair.
+
+
+Prerequisites:
+==============
+
+The following packages are required:
+ * ruby
+ * ruby-dev
+ * libfdt-dev
+
+Install the gem:
+ * gem build msign.gemspec
+ * export PATH=$PATH:$(ruby -rubygems -e 'puts Gem.user_dir')/bin
+ * gem install --user-install msign-0.1.0.gem
+ 
+This tool expects FIT image files with a signature node to sign.
+More information can be found in the U-boot documentation, but the
+quick steps are:
+ * create a FIT image using u-boot's mkimage
+ * in the config, add a signature node with the structure:
+
+	signature@1 {
+		algo = "sha384,secp384r1";
+		key-name-hint = <key-name-hint>;
+		sign-images = <list of images>;
+	};
+
+    <key-name-hint> is the name of the keys supplied to you with the
+      file extension replaced with "-dev" at the end. For example, if
+      you have a "sample-key-secp384r1.key" file, this value should be
+      "sample-key-secp384r1-dev"
+
+    <list of images> is a string list of all images in the config node.
+      For example, if your config looks like this:
+
+	config {
+		description = "sample";
+		kernel = "sample-kernel";
+		ramdisk = "sample-ramdisk";
+		signature@1 {
+			...
+		};
+	};
+
+	Then the string list would be: "kernel", "ramdisk";
+
+
+Running the tool:
+=================
+
+You can run 'msign -h' for more information, but there are two commands
+you should use:
+
+sign:
+  msign sign <unsigned-image.itb> --keydir=keys
+
+verify:
+  msign verify <signed-image.itb> --keydir=keys
+

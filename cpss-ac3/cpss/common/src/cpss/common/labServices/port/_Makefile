@@ -1,0 +1,35 @@
+# $(warning "Started") 
+
+#ifeq (VIPS, $(HOME_ENV))
+#PROJ_NAME = mainLabServices
+#
+#PRESTERA_COMMON_DIR = $(subst \,/,$(SW_ROOT))
+#
+#
+#include $(PRESTERA_COMMON_DIR)/mainCommon/make/vxWorks/gtBuild
+#
+#else
+#
+#
+#include $(PROJ_BASE)/gtTopMake
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ gop 
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+COMMON_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

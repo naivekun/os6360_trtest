@@ -1,0 +1,63 @@
+#!/bin/bash
+
+#Set fixed ip 
+
+Usage()
+{
+   echo Usage: set_fixed_ip [ip] : set fixed IPv4 IP 
+}
+
+Check_ubi0_4()
+{ 
+  #This file is generated in init_ubidata
+  CHK_FILE=/tmp/no_ubi0_4
+
+  if [ -f $CHK_FILE ];
+  then
+     echo Error: There is no data section. 
+     exit 1
+  fi
+}
+
+
+if [ $# -ne 1 ];
+then
+   Usage
+   exit 1
+fi
+
+ip=${1:-1.2.3.4}
+
+ipvalid() {
+  # Set up local variables
+  local ip=${1:-1.2.3.4}
+  local IFS=.; local -a a=($ip)
+  # Start with a regex format test
+  [[ $ip =~ ^[0-9]+(\.[0-9]+){3}$ ]] || return 1
+  # Test values of quads
+  for quad in {0..3}; do
+    [[ "${a[$quad]}" -gt 255 ]] && return 1
+  done
+  return 0
+}
+
+Check_ubi0_4
+
+IP_FOLDER=/usr/data
+
+if ipvalid "$ip"; then
+  if [ ! -d $IP_FOLDER ]; 
+  then
+    mkdir -p $IP_FOLDER
+  fi
+ 
+  echo $ip > $IP_FOLDER/wnc_fixed_ip
+  sync
+  sleep 1
+  echo Set fixed ip as $ip
+  exit 0
+else
+  echo "Error: Wrong IP format. ($ip)"
+  exit 1
+fi
+

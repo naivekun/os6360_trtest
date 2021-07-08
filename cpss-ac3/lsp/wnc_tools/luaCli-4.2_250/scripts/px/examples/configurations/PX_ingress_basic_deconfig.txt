@@ -1,0 +1,99 @@
+// TAG:               PX devices(PIPE); ingress-processing;
+// Short Description: PIPE device : Simple ingress-processing configuration, send traffic and capture on egress port.
+// Description:       PIPE device : Ingress-processing configuration for two pairs of extended ports
+//                                  each ports in pair send packet one to another.
+//                                  Check captured traffic - egress packet should not be modified
+//
+end
+//
+//                        lane 0| |lane1 lane0| |lane1
+//                              | |           | |
+//                           *************************
+//                           *  port 6       port 7  *
+//                           *   |             |     *
+//                           *   |    PE3      |     *
+//                           *   |             |     *
+//                           *  port 0       port 1  *
+//                           *************************
+//                        lane0  |       lane0 |
+//
+
+
+// Reset Destination port map table entry for extended port[1] 
+cpss-api call cpssPxIngressPortMapEntrySet devNum ${dev} tableType CPSS_PX_INGRESS_PORT_MAP_TABLE_TYPE_DESTINATION_E entryIndex 100 portsBmp 0 bypassLagDesignatedBitmap false
+// Reset Destination port map table entry for extended port[2] 
+cpss-api call cpssPxIngressPortMapEntrySet devNum ${dev} tableType CPSS_PX_INGRESS_PORT_MAP_TABLE_TYPE_DESTINATION_E entryIndex 101 portsBmp 0 bypassLagDesignatedBitmap false
+// Reset Destination port map table entry for extended port[3] 
+cpss-api call cpssPxIngressPortMapEntrySet devNum ${dev} tableType CPSS_PX_INGRESS_PORT_MAP_TABLE_TYPE_DESTINATION_E entryIndex 102 portsBmp 0 bypassLagDesignatedBitmap false
+// Reset Destination port map table entry for extended port[4] 
+cpss-api call cpssPxIngressPortMapEntrySet devNum ${dev} tableType CPSS_PX_INGRESS_PORT_MAP_TABLE_TYPE_DESTINATION_E entryIndex 103 portsBmp 0 bypassLagDesignatedBitmap false
+
+// Reset Port Packet Type Key Table for ports 0,4 and 5,12 to default values
+//
+configure
+interface ethernet ${dev}/${port[1]}
+ingress port-packet-type-key profile ${port[1]}
+exit
+interface ethernet ${dev}/${port[2]}
+ingress port-packet-type-key profile ${port[2]}
+exit
+interface ethernet ${dev}/${port[3]}
+ingress port-packet-type-key profile ${port[3]}
+exit
+interface ethernet ${dev}/${port[4]}
+ingress port-packet-type-key profile ${port[4]}
+exit
+end
+
+// Reset packet type key 25,26 and 27,28 for upstream traffic to default values
+//
+configure
+packet-type-key device ${dev} ingress packet-type 25
+key-entry data source-port-profile 25
+key-entry mask source-port-profile 0x7F
+exit
+packet-type-key device ${dev} ingress packet-type 26
+key-entry data source-port-profile 26
+key-entry mask source-port-profile 0x7F
+exit
+packet-type-key device ${dev} ingress packet-type 27
+key-entry data source-port-profile 27
+key-entry mask source-port-profile 0x7F
+exit
+packet-type-key device ${dev} ingress packet-type 28
+key-entry data source-port-profile 28
+key-entry mask source-port-profile 0x7F
+exit
+end
+
+// Reset packet type 25,26 and 27,28 destination format entry for upstream traffic to default values
+//
+configure
+packet-type-key device ${dev} ingress packet-type 25
+format-entry destination constant-index 25 max-index 4095
+exit
+packet-type-key device ${dev} ingress packet-type 26
+format-entry destination constant-index 26 max-index 4095
+exit
+packet-type-key device ${dev} ingress packet-type 27
+format-entry destination constant-index 27 max-index 4095
+exit
+packet-type-key device ${dev} ingress packet-type 28
+format-entry destination constant-index 28 max-index 4095
+exit
+end
+
+
+// Show commands after clean up
+//
+do show ingress tpid device ${dev}
+do show ingress port-packet-type-key ethernet ${dev}/0-12
+do show ingress packet-type-key device all packet-type all
+
+do show ingress packet-type-format destination device all packet-type all
+do show ingress packet-type-format source device all packet-type all
+
+
+do show ingress packet-type-error device all
+do show ingress port-map-entry destination device all from 99 to 104
+

@@ -1,0 +1,34 @@
+#!/bin/bash                     
+
+FIXED_IP=192.168.1.155
+FIXED_MASK=255.255.255.0
+FIXED_IP_FILE=/usr/data/wnc_fixed_ip
+FIXED_MAC_FILE=/usr/data/wnc_fixed_mac
+FIXED_MASK_FILE=/usr/data/wnc_fixed_mask
+
+FIXED_MAC=48:A9:D2:$[RANDOM%10]$[RANDOM%10]:$[RANDOM%10]$[RANDOM%10]:$[RANDOM%10]$[RANDOM%10]
+#echo $FIXED_MAC
+
+#If there is no wnc_fixed_ip, use default fixed ip
+if [ -f $FIXED_IP_FILE ];
+then
+  FIXED_IP=`cat $FIXED_IP_FILE`  
+fi
+
+#If there is no wnc_fixed_mac, use default fixed mac
+if [ -f $FIXED_MAC_FILE ];
+then
+  FIXED_MAC=`cat $FIXED_MAC_FILE`  
+fi
+
+#echo $FIXED_MAC
+
+#If there is no wnc_fixed_mask, use default netmask
+if [ -f $FIXED_MASK_FILE ];
+then
+  FIXED_MASK=`cat $FIXED_MASK_FILE`  
+fi
+
+
+echo $FIXED_MASK
+

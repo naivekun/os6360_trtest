@@ -1,0 +1,12 @@
+// TAG:               trap/mirror; trap/mirror to CPU, CPU code, ARP BC traffic
+// Short Description: Configures trap/mirroring to CPU for ARP BC packet
+// Description:       Configures trap/mirroring to CPU for ARP BC packet
+//                    will mirror/trap ARP BC packet to CPU by VLAN command and by LUA mechanism
+
+end
+
+debug-mode
+cpss-api call cpssDxChBrgGenArpBcastToCpuCmdSet  devNum ${dev} cmdMode CPSS_DXCH_ARP_BCAST_CMD_MODE_VLAN_E cmd CPSS_PACKET_CMD_MIRROR_TO_CPU_E
+cpss-api call cpssDxChBrgVlanIpCntlToCpuSet devNum ${dev} vlanId 2 ipCntrlType CPSS_DXCH_BRG_IP_CTRL_IPV4_E
+
+end

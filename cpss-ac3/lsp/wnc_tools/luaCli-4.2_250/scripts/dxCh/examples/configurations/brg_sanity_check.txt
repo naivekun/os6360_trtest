@@ -1,0 +1,23 @@
+// TAG:               bridge; sanity-check;
+// Short Description: Configures bridge NST sanity check feature
+// Description:       Configures to enable dropping packets against
+//                    Network Shield Technology, including 
+//                    sip-is-dip and 
+//                    tcp-udp-sport-is-dport and 
+//                    tcp-fin-without-ack but
+//                    note: tcp-without-full-header will not be tested since
+//                          the creteria is (uDescIpxWithoutHeaderLength < 20)
+//                          Where
+//                            uDescIpxWithoutHeaderLength = uDescInIpxLength-uDescInIpxHeaderLength*4;
+//                          where 
+//                            uDescInIpxLength  is frame length - L2 header length
+//                            uDescInIpxHeaderLength - IPV4/6 header length field
+//                          So device checks that TCP header size + payload < 20.
+//                          We cannot send such packet in LUA tests because device sends minimum 64 bytes.
+//
+end
+configure
+bridge sanity-check sip-is-dip device ${dev}
+bridge sanity-check tcp-udp-sport-is-dport device ${dev}
+bridge sanity-check tcp-fin-without-ack device ${dev}
+end

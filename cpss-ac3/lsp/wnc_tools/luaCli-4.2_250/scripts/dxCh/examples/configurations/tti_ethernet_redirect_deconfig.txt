@@ -1,0 +1,54 @@
+// TAG:               tti; pclid; rule; Ethernet; redirect;
+// Short Description: Restore basic TTI Ethernet key rule
+// Description:       Restore TTI ethernet key rule with redirection to egress interface
+end
+configure 
+interface range ethernet ${dev}/${port[1]},${port[2]}
+switchport allowed vlan remove 10
+exit
+
+interface range ethernet ${dev}/${port[3]},${port[4]}
+switchport allowed vlan remove 20
+exit
+
+no interface vlan device ${dev} vid 10
+
+no interface vlan device ${dev} vid 20
+
+interface ethernet ${dev}/${port[1]}
+tti disable legacy-ethernet 
+exit
+
+tti pclid ${dev} legacy-ethernet 3
+
+tti rule create ${dev} ${@@validTtiIndex(123)} legacy-ethernet 
+
+no tti rule-key input-interface 
+
+no tti rule-action redirect 
+no tti rule-action vlan0-assign 
+no tti rule-action bridge-bypass
+
+exit
+
+callCpssAPI cpssDxChTtiRuleValidStatusSet
+<<<PARAMS
+{
+    { "IN", "GT_U8", "devNum", ${dev} },
+    { "IN", "GT_U32", "index", ${@@validTtiIndex(123)} },
+    { "IN", "GT_BOOL", "valid", false }
+}
+>>>
+end
+
+
+
+
+
+
+
+
+
+
+
+

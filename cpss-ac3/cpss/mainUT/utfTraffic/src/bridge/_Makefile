@@ -1,0 +1,113 @@
+# $(warning "Started") 
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ prvTgfBasicDynamicLearning.c \
+ prvTgfBrgArpTrapping.c \
+ prvTgfBrgAsicSimulationPerformance.c \
+ prvTgfBrgBasicJumboFrame.c \
+ prvTgfBrgCustomerBpdus.c \
+ prvTgfBrgDroppingIpV6MacMulticastFiltering.c \
+ prvTgfBrgDroppingNonIpV4MacMulticastFiltering.c \
+ prvTgfBrgEgressCountersCtrlToAnlyzrPortVlan.c \
+ prvTgfBrgEgressCountersUnknownPacketsTcDp.c \
+ prvTgfBrgEgrTagModifNonDsaTaggedEgrPort.c \
+ prvTgfBrgGen.c \
+ prvTgfBrgGenIcmpV6.c \
+ prvTgfBrgGenPropL2ControlProtCmd.c \
+ prvTgfBrgGenPropL2ControlProtCmdAf.c \
+ prvTgfBrgGenVid1InLearnFDBCheck.c \
+ prvTgfBrgHostCounters.c \
+ prvTgfBrgIeeeReservedMcastLearning.c \
+ prvTgfBrgIngressCountersSecFilterDisc.c \
+ prvTgfBrgIngressCountersSpanningTreeStateDrop.c \
+ prvTgfBrgIngressFilteringDisableStp.c \
+ prvTgfBrgInvalidVlanFiltering.c \
+ prvTgfBrgMatrixCounters.c \
+ prvTgfBrgMtuCheck.c \
+ prvTgfBrgNestedCoreToCustomer.c \
+ prvTgfBrgNestedCustomerToCore.c \
+ prvTgfBrgProtocolBasedVlanLlc.c \
+ prvTgfBrgProviderBpdus.c \
+ prvTgfBrgRateLimitMcastReg.c \
+ prvTgfBrgSrcId.c \
+ prvTgfBrgStpEgressFilteringChangeStates.c \
+ prvTgfBrgUntaggedMruCheck.c \
+ prvTgfBrgVlanFws.c \
+ prvTgfBrgVlanIndexing.c \
+ prvTgfBrgVlanPortAccFrameType.c \
+ prvTgfBrgVlanTagPop.c \
+ prvTgfBrgVlanForceNewDsa.c \
+ prvTgfBrgVplsBasicTest.c \
+ prvTgfBrgVplsBasicTest_1.c \
+ prvTgfBridgeFdb_ForMultiCoreFdbLookupUT.c \
+ prvTgFdbBasicIpv6UcRouting.c \
+ prvTgfFdbAging.c \
+ prvTgfFdbAuNaMessage.c \
+ prvTgfFdbAuNaMessageExtFormat.c \
+ prvTgfFdbBasicIpv4UcRouting.c \
+ prvTgfFdbBasicIpv4UcRoutingFillFdb.c \
+ prvTgfFdbIpv4UcRoutingLookupMask.c \
+ prvTgfFdbIpv6UcRoutingLookupMask.c \
+ prvTgfFdbChangeDaCommand.c \
+ prvTgfFdbChangeInterfaceType.c \
+ prvTgfFdbChangeSaCommand.c \
+ prvTgfFdbDelMacEntriesForVlanPort.c \
+ prvTgfFdbIpv4UcRoutingAgingEnable.c \
+ prvTgfFdbIpv4UcRoutingDeleteEnable.c \
+ prvTgfFdbIpv4UcRoutingMtuCheckNonDf.c \
+ prvTgfFdbIpv4UcRoutingRefreshEnable.c \
+ prvTgfFdbIpv4UcRoutingTransplantEnable.c \
+ prvTgfFdbIpv4UcPointerRoute.c \
+ prvTgfFdbIpv4v6Uc2VrfRouting.c \
+ prvTgfFdbIpv6UcRoutingAgingEnable.c \
+ prvTgfFdbIpv6UcRoutingDeleteEnable.c \
+ prvTgfFdbIpv6UcRoutingRefreshEnable.c \
+ prvTgfFdbIpv6UcRoutingTransplantEnable.c \
+ prvTgfFdbLearningAdressesSvlMode.c \
+ prvTgfFdbLocalMcSwitching.c \
+ prvTgfFdbLocalUcSwitching.c \
+ prvTgfFdbPerEgressPortUnknownUcFiltering.c \
+ prvTgfFdbPerEgressPortUnregIpv4McFiltering.c \
+ prvTgfFdbPerEgressPortUnregIpv6BcFiltering.c \
+ prvTgfFdbPerInlifPortUnknownUcFiltering.c \
+ prvTgfFdbPerInlifPortUnregIpv4BcFiltering.c \
+ prvTgfFdbPerInlifPortUnregIpv6McFiltering.c \
+ prvTgfFdbSecureAutoLearnMovedSa.c \
+ prvTgfFdbSecurityBreach.c \
+ prvTgfFdbSourceIdModeChange.c \
+ prvTgfFdbSourceIdModeDefault.c \
+ prvTgfFdbTriggeredAgingEntries.c \
+ prvTgfFdbTriggeredAgingVlans.c \
+ prvTgfMcBridgingIpV4.c \
+ prvTgfMcBridgingIpV6.c \
+ prvTgfMcGroupRxMirror.c \
+ prvTgfTransmitAllKindsOfTraffic.c \
+ prvTgfVlanEDsaTagHandling.c \
+ prvTgfVlanEgressFiltering.c \
+ prvTgfVlanFloodVidx.c \
+ prvTgfVlanIngressFiltering.c \
+ prvTgfVlanKeepVlan1.c \
+ prvTgfVlanManipulation.c \
+ prvTgfVlanManipulationTunnel.c \
+ prvTgfVlanTag1RemIfZero.c \
+ prvTgfBrgVlanInvalidate.c \
+ tgfCommonBridgeUT.c \
+ tgfCommonBridge_ForMultiCoreFdbLookupUT.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

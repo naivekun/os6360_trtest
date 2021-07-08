@@ -1,0 +1,52 @@
+# $(warning "Started") 
+#KERNEL_MODULE_SUBDIR = kerneldrv_gtLinux_2_6_8245
+#KERNELSUBDIRS = $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+#build_dir: $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+#$(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR): $(SCRAP_DIR)
+#	rm -rf $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+#	-mkdir $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+#	cp -R kerneldrv/* $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+
+#ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+#	LIB_NAME = mainExtDrv.lib
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ i2cDrv \
+ kerneldrv 
+
+#List of files to include in list
+FILES := \
+ gt8245CacheMng.c \
+ gt8245DmaDrv.c \
+ gt8245EthPortCtrlStub.c \
+ gt8245GppIsr.c \
+ gt8245HsuDrv.c \
+ gt8245HwIfDrv.c \
+ gt8245I2cDrv.c \
+ gt8245IntDrv.c \
+ gt8245PciDrv.c \
+ gt8245ResetDrv.c \
+ gt8245SmiStub.c \
+ gt8245TwsiHwCtrl.c \
+ gt8245UartDrv.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainExtDrv.lib
+    cpssEnabler_mainExtDrv_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

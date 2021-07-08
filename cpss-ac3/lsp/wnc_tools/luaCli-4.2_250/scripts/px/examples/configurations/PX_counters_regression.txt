@@ -1,0 +1,62 @@
+// TAG:               PX devices(PIPE); CNC;
+// Short Description: PIPE device : CNC regression test configuration.
+// Description:       PIPE device : CNC regression test configuration.
+//
+end
+//
+
+configure
+counters egress-processing device ${dev}
+end
+show counters egress-processing device ${dev}
+show counters egress-processing device 0 port 1-2
+show counters egress-processing device 0 port 1-2 packet-type 4
+configure
+no counters egress-processing device ${dev}
+end
+
+configure
+counters ingress-processing device ${dev}
+end
+show counters ingress-processing device 0
+show counters ingress-processing device 0 index 5-10
+configure
+no counters ingress-processing device ${dev}
+end
+
+configure
+counters egress-queue device ${dev} mode tail-drop
+end
+show counters egress-queue tail-drop device ${dev}
+show counters egress-queue tail-drop device ${dev} port 3-4
+show counters egress-queue tail-drop device ${dev} port 3-4 tc 2
+show counters egress-queue tail-drop device ${dev} port 3-4 tc 2 dp 1
+configure
+no counters egress-queue device ${dev}
+end
+
+configure
+counters egress-queue device ${dev} mode cn
+end
+show counters egress-queue cn device ${dev}
+show counters egress-queue cn device ${dev} port 1-2
+show counters egress-queue cn device ${dev} port 1-2 tc 7
+show counters egress-queue cn device ${dev} port 1-2 tc 7 pass
+show counters egress-queue cn device ${dev} port 1-2 tc 7 drop
+show counters egress-queue cn device ${dev} port 1-2 tc 7 pass cn
+show counters egress-queue cn device ${dev} port 1-2 tc 7 pass non-cn
+configure
+no counters egress-queue device ${dev}
+end
+
+configure
+counters egress-queue device ${dev} mode reduced
+end
+show counters egress-queue reduced device ${dev}
+show counters egress-queue reduced device ${dev} port 1-2
+show counters egress-queue reduced device ${dev} port 1-2 tc 7
+show counters egress-queue reduced device ${dev} port 1-2 tc 7 pass
+show counters egress-queue reduced device ${dev} port 1-2 tc 7 drop
+configure
+no counters egress-queue device ${dev}
+end

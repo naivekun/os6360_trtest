@@ -1,0 +1,687 @@
+#!/bin/bash
+
+
+SDK_PATH=''
+SDK_CMDIO_IN_QUEUE='/dev/mqueue/sh_cmdio_inq'
+SDK_CMDIO_OUT_QUEUE='/dev/mqueue/sh_cmdio_outq'
+SDK_PORT_PREFIX_LIST='fe ge xe ce'
+SDK_UNIT_LIST='0'
+SDK_TIMEOUT=300
+SDK_PORT_UP_TIMEOUT=10
+
+function is_sdk_running() {
+  # mount message queue filesystem is necessary in system init
+  if [ -z "`mount | grep mqueue`" ]; then
+    echo "no" # message queue filesystem is not mounted
+    return
+  fi
+
+  if [ -z "`ls /dev/mqueue/sh_cmdio_inq 2>/dev/null`" ]; then
+    echo "no" # SDK is not ready
+  else
+    echo "yes" # SDK is ready
+  fi
+}
+
+function stop_sdk() {
+	if [ "`is_sdk_running`" == "no" ]; then
+		return
+	fi
+
+	# stop SDK
+	bcmsh -c "exit"
+
+	# wait for SDK termination
+	while [ -n  "`ps aux | grep bcm.user | grep -v grep`" ]; do
+		sleep 1
+	done
+}
+
+function start_sdk() {
+	if [ "`is_sdk_running`" == "yes" ]; then
+		return
+	fi
+
+	# start SDK
+	screen -X eval "screen -t sdk_shell 1 run" "other"
+
+	# wait for SDK init
+  while [  "`is_sdk_running`" == "no" ]; do
+		sleep 1
+	done
+
+	# wait for cmdio to create I/O pipes
+	while [ ! -e $SDK_CMDIO_IN_QUEUE ] ||
+	      [ ! -e $SDK_CMDIO_OUT_QUEUE ]; do
+		sleep 1
+	done
+}
+
+function wait_sdk() {
+	local cnt=0
+
+	# wait for SDK init
+	while [ "`is_sdk_running`" == "no"  ] || [ ! -e $SDK_CMDIO_IN_QUEUE ] || [ ! -e $SDK_CMDIO_OUT_QUEUE ]; do
+		sleep 1
+		cnt=$(($cnt + 1))
+		if [ $cnt -gt $SDK_TIMEOUT ]; then
+			echo "Error: SDK init failed!"
+			exit 1
+		fi
+	done
+}
+
+function parse_sdk_port() {
+	local port=$1
+	local port_pfx=''
+	local port_id=''
+	local pfx=''
+	local pfx_list="$SDK_PORT_PREFIX_LIST"
+	local result="fail"
+
+	for pfx in $pfx_list; do
+		# matching port prefix
+		port_pfx=$(echo $port | cut -c -${#pfx})
+		if [ "$port_pfx" != "$pfx" ]; then
+			continue
+		fi
+
+		# matching port id
+		port_id=$(echo $port | cut -c $((${#pfx} + 1))-)
+		if [ -n "`echo $port_id | grep ^[0-9]$`" ] || \
+		   [ -n "`echo $port_id | grep ^[0-9][0-9]$`" ] || \
+		   [ -n "`echo $port_id | grep ^[0-9][0-9][0-9]$`" ]; then
+			result="pass"
+			break
+		fi
+	done
+
+	if [ "$result" == "pass" ]; then
+		echo $port
+	else
+		echo ""
+	fi
+}
+
+function parse_sdk_port_list() {
+	local segs=`echo $1 | tr ',' ' '`
+	local port=''
+	local pfx=''
+	local pid=''
+	local end_port=''
+	local end_pfx=''
+	local end_pid=''
+	local result=''
+
+	# parse port segment iterately
+	for seg in $segs; do
+		# get start port
+		port=`echo $seg | cut -d '-' -f1`
+		if [ -z "$port" ] ||
+		   [ -z "`parse_sdk_port $port`" ]; then
+			echo "Error: invalid port list $1" >&2
+			exit 1
+		fi
+		pfx=`echo $port | tr -d [:digit:]`
+		pid=`echo $port | tr -d [:alpha:]`
+
+		# get end port
+		end_port=`echo $seg | cut -d '-' -f2`
+		if [ -z "$end_port" ]; then
+			echo "Error: invalid port list $1" >&2
+			exit 1
+		fi
+		end_pfx=$pfx
+		end_pid=$pid
+
+		# if start port != end port, it means port segment exists
+		if [ "$end_port" != "$port" ]; then
+			if [ -z "`parse_sdk_port $end_port`" ]; then
+				echo "Error: invalid port list $1" >&2
+				exit 1
+			fi
+			end_pfx=`echo $end_port | tr -d [:digit:]`
+			end_pid=`echo $end_port | tr -d [:alpha:]`
+		fi
+		if [ "$end_pfx" != "$pfx" ] || \
+		   [ $end_pid -lt $pid ]; then
+			echo "Error: invalid port list $1" >&2
+			exit 1
+		fi
+		while [ $pid -le $end_pid ]; do
+			result="$result $pfx$pid"
+			pid=$(($pid + 1))
+		done
+	done
+
+	# remove redundant port(s)
+	result=`echo $(printf '%s\n' $result | sort -u)`
+
+	echo $result
+}
+
+function link_scan_on() {
+	local select_unit=$1
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			bcmsh -c "$unit:linkscan on"
+		fi
+	done
+}
+
+function link_scan_off() {
+	local select_unit=$1
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			bcmsh -c "$unit:linkscan off"
+		fi
+	done
+}
+
+function pw_setup() {
+	local select_unit=$1
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			bcmsh -c "$unit:pw report -"
+			bcmsh -c "$unit:pw dump options -"
+			bcmsh -c "$unit:pw dump options raw"
+			bcmsh -c "$unit:pw log 15"
+			bcmsh -c "$unit:pw rate 100000"
+		fi
+	done
+}
+
+function pw_start() {
+	local select_unit=$1
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			bcmsh -c "$unit:pw start"
+		fi
+	done
+}
+
+function pw_stop() {
+	local select_unit=$1
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			bcmsh -c "$unit:pw stop"
+		fi
+	done
+}
+
+function pw_dump() {
+	local select_unit=$1
+	local counter="$2"
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			bcmsh -c "$unit:pw dump $counter"
+		fi
+	done
+}
+
+function cnt_hr_start() {
+    local select_unit=$1
+    local ports="`echo $2 | sed 's/ /,/g'`"
+
+    wait_sdk
+    for unit in $SDK_UNIT_LIST; do
+        if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+            bcmsh -c "$unit:counter pbm=$ports hr=true"
+        fi
+    done
+}
+
+function cnt_hr_stop() {
+    local select_unit=$1
+    local ports="`echo $2 | sed 's/ /,/g'`"
+
+    wait_sdk
+    for unit in $SDK_UNIT_LIST; do
+        if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+            bcmsh -c "$unit:counter pbm=$ports hr=false"
+        fi
+    done
+}
+
+function cw_start() {
+	local select_unit=$1
+	local ports="`echo $2 | sed 's/ /,/g'`"
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			bcmsh -c "$unit:cw pbm=$ports en=true"
+		fi
+	done
+}
+
+function cw_stop() {
+	local select_unit=$1
+	local ports="`echo $2 | sed 's/ /,/g'`"
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			bcmsh -c "$unit:cw pbm=$ports en=false"
+		fi
+	done
+}
+
+function clear_sdk_vlan() {
+	local select_unit=$1
+
+	wait_sdk
+	for unit in $SDK_UNIT_LIST; do
+		if [ -z "$select_unit" ] || [ "$unit" == "$select_unit" ]; then
+			# set VLAN to default
+			bcmsh -c "$unit:vlan clear"
+			bcmsh -c "$unit:pvlan set all 1"
+		fi
+	done
+}
+
+function create_sdk_vlan() {
+	local unit="$1"
+	local vlan="$2"
+	local ports="`echo $3 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:vlan create $vlan pbm=$ports ubm=$ports"
+	bcmsh -c "$unit:pvlan set $ports $vlan"
+}
+
+function add_sdk_vlan_port() {
+	local unit="$1"
+	local vlan="$2"
+	local ports="`echo $3 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:vlan add $vlan pbm=$ports ubm=$ports"
+	bcmsh -c "$unit:pvlan set $ports $vlan"
+}
+
+function add_sdk_vlan_cpu_port() {
+	local unit="$1"
+	local vlan="$2"
+
+	wait_sdk
+	bcmsh -c "$unit:vlan add $vlan pbm=0x1"
+}
+function add_sdk_vlan_tag_port() {
+	local unit="$1"
+	local vlan="$2"
+	local ports="`echo $3 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:vlan add $vlan pbm=$ports"
+}
+
+function del_sdk_vlan_port() {
+	local unit="$1"
+	local vlan="$2"
+	local ports="`echo $3 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:vlan remove $vlan pbm=$ports"
+}
+
+function create_sdk_vlan_tag_only() {
+	local unit="$1"
+	local vlan="$2"
+	local ports="`echo $3 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:vlan create $vlan pbm=$ports"
+}
+
+function add_sdk_vlan_port_tag_only() {
+	local unit="$1"
+	local vlan="$2"
+	local ports="`echo $3 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:vlan add $vlan pbm=$ports"
+}
+
+function set_sdk_pvid() {
+	local unit="$1"
+	local vlan="$2"
+	local ports="`echo $3 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:pvlan set $ports $vlan"
+}
+
+function show_sdk_counter() {
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:show counters $ports"
+}
+
+function clear_sdk_counter() {
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:clear counters $ports"
+}
+
+function enable_sdk_ports() {
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:port $ports en=true"
+}
+
+function disable_sdk_ports() {
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:port $ports en=false"
+}
+
+function disable_sdk_port_all() {
+	local unit="$*"
+
+	if [ -z "$unit" ]; then
+		unit="$SDK_UNIT_LIST"
+	fi
+
+	wait_sdk
+	bcmsh -c "$unit:port all en=false"
+}
+
+function enable_sdk_port_all() {
+	local unit="$*"
+
+	if [ -z "$unit" ]; then
+		unit="$SDK_UNIT_LIST"
+	fi
+
+	wait_sdk
+	bcmsh -c "$unit:port all en=true"
+}
+
+function enable_cw_sdk_ports() {
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:cw pbm=$ports en=true"
+}
+
+function disable_cw_sdk_ports() {
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+
+	wait_sdk
+	bcmsh -c "$unit:cw pbm=$ports en=false"
+}
+
+function set_bridge_sdk_ports() {
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+	local mode="$3"
+
+	if [ -z "$unit" ]; then
+		unit="$SDK_UNIT_LIST"
+	fi
+
+	wait_sdk
+	bcmsh -c "$unit:port $ports bridge $mode"
+}
+
+function enable_sdk_pause_port_all() {
+	local unit="$1"
+
+	if [ -z "$unit" ]; then
+		unit="$SDK_UNIT_LIST"
+	fi
+
+	wait_sdk
+	bcmsh -c "$unit:port all tpau=true rpau=true"
+}
+
+function disable_sdk_pause_port_all() {
+	local unit="$1"
+
+	if [ -z "$unit" ]; then
+		unit="$SDK_UNIT_LIST"
+	fi
+
+	wait_sdk
+	bcmsh -c "$unit:port all tpau=false rpau=false"
+}
+
+function disable_sdk_pause_port() {
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+	if [ -z "$unit" ]; then
+		unit="$SDK_UNIT_LIST"
+	fi
+
+	wait_sdk
+	bcmsh -c "$unit:port $ports tpau=false rpau=false"
+}
+
+function enable_loop_port() {
+    local unit="$1"
+    local port="$2"
+    local lb_mode="$3"
+
+    wait_sdk
+	bcmsh -c "$unit:port $port lb=$lb_mode"
+}
+
+function disable_loop_port() {
+    local unit="$1"
+    local port="$2"
+
+    wait_sdk
+	bcmsh -c "$unit:port $port lb=none"
+}
+
+function enable_rj45_loop_port() {
+    local unit="$1"
+    local ports="$2"
+    local phy_type="$3"
+    local phy_addr="$4"
+
+    wait_sdk
+	case "$phy_type" in
+		IntPHY)
+            bcmsh -c "$unit:phy extlb $ports en=1"
+            ;;
+		BCM54182 | BCM54185)
+            bcmsh -c "$unit:phy raw $phy_addr 0x17 0x0f7e;$unit:phy raw $phy_addr 0x15 0x0000;$unit:phy raw $phy_addr 0x1e 0x0028"
+            bcmsh -c "$unit:phy raw $phy_addr 0x1f 0xc430;$unit:phy raw $phy_addr 0x17 0x0087;$unit:phy raw $phy_addr 0x15 0x8000"
+            ;;
+		BCM54998ES | BCM54994)
+			echo "Do not support external loopback for PHY type $phy_type!"
+			;;
+		*)
+            echo "Invalid PHY type $phy_type!"
+            ;;
+	esac
+}
+
+function disable_rj45_loop_port() {
+    local unit="$1"
+    local ports="$2"
+    local phy_type="$3"
+    local phy_addr="$4"
+
+    wait_sdk
+	case "$phy_type" in
+		IntPHY)
+		    bcmsh -c "$unit:phy extlb $ports en=0"
+			;;
+		BCM54182 | BCM54185)
+			bcmsh -c "$unit:phy raw $phy_addr 0x17 0x0f7e;$unit:phy raw $phy_addr 0x15 0x0000;$unit:phy raw $phy_addr 0x1e 0x0028"
+			bcmsh -c "$unit:phy raw $phy_addr 0x1f 0x4430;$unit:phy raw $phy_addr 0x17 0x0087;$unit:phy raw $phy_addr 0x15 0x8000"
+			;;
+		BCM54998ES | BCM54994)
+			echo "Do not support external loopback for PHY type $phy_type!"
+			;;
+		*)
+			echo "Invalid PHY type $phy_type!"
+			;;
+	esac
+}
+
+function tx_sdk_packet() {
+	local unit="$1"
+	local vlan="$2"
+	local ports="`echo $3 | sed 's/ /,/g'`"
+	local tx_cnt="$4"
+	local file="$5"
+
+	wait_sdk
+	if [ ! -z $file ]; then
+		bcmsh -c "$unit:tx $tx_cnt vlantag=$vlan pbm=$ports file=$file"
+	else
+        bcmsh -c "$unit:tx $tx_cnt vlantag=$vlan pbm=$ports"
+	fi
+}
+
+function sdk_get_port_status() {
+	local unit="$1"
+	local ports="$2"
+
+	wait_sdk
+	bcmsh -c "$unit:ps $ports"
+}
+
+function sdk_get_port_speed() {
+	local unit="$1"
+	local pport="$2"
+
+	wait_sdk
+	bcmsh -c "$unit:port $pport speed" | grep "$pport"
+}
+
+function sdk_get_switch_info() {
+    wait_sdk
+    bcmsh -c "*:show unit"
+}
+
+function sdk_cmdio_get_ready() {
+	local cnt=0
+	local sdk_done="yes"
+
+	# wait for SDK init
+  while [ "`is_sdk_running`" == "no"  ]; do
+		sleep 1
+		cnt=$(($cnt + 1))
+		if [ $cnt -gt $SDK_TIMEOUT ]; then
+			echo "Error: SDK init failed!"
+			sdk_done="no"
+			break
+		fi
+	done
+
+	# wait for cmdio to create I/O pipes
+	if [ "$sdk_done" == "yes" ]; then
+		cnt=0
+		while [ ! -e $SDK_CMDIO_IN_QUEUE ] ||
+		      [ ! -e $SDK_CMDIO_OUT_QUEUE ]; do
+			sleep 1
+			cnt=$(($cnt + 1))
+			if [ $cnt -gt $SDK_TIMEOUT ]; then
+				echo "Error: CMDIO pipes create failed!"
+				break
+			fi
+		done
+	fi
+}
+
+function sdk_port_up_get_ready() {
+	local cnt=0
+	local unit="$1"
+	local ports="`echo $2 | sed 's/ /,/g'`"
+	local stat=1
+
+	wait_sdk
+	if [ ! -z $ports ]; then
+		# wait for SDK port link up
+		while [ "$stat" -ne 0 ]; do
+			if [ $cnt -gt $SDK_PORT_UP_TIMEOUT ]; then
+				echo "Error: SDK port($ports) link-down!"
+				bcmsh -c "$unit:ps $ports"
+				break
+			fi
+			bcmsh -c "$unit:linkscan force=$ports"
+			stat="`bcmsh -c \"$unit:ps $ports\" | grep -c down`"
+			sleep 1
+			cnt=$(($cnt + 1))
+		done
+		# give SDK a buffer to prepare for the next process
+		sleep 1
+	fi
+}
+
+
+# parse_sdk_port_list() parser "xe1,xe3,xe10-xe20,xe21"
+# parse_front_port_list() parser "1,3,10-20,21"
+parse_front_port_list()
+{
+	local segs=`echo $1 | tr ',' ' '`
+	local start_port=''
+	local end_port=''
+	local index=''
+	local result=''
+
+	# parse port segment iterately
+	for seg in $segs; do
+		# get start port
+		start_port=`echo $seg | cut -d '-' -f1 | tr -d [:alpha:]`  
+		if [ -z "$start_port" ]; then
+			echo "Error: invalid port list $1" >&2
+			exit 1
+		fi
+
+		# get end port
+		end_port=`echo $seg | cut -d '-' -f2 | tr -d [:alpha:]`
+		if [ -z "$end_port" ]; then
+			echo "Error: invalid port list $1" >&2
+			exit 1
+		fi
+
+		# if start port doesn't equal to end port, it means port segment exists
+		if [ ${start_port} -ne ${end_port} ]; then
+			if [ ${end_port} -lt ${start_port} ]; then
+			  echo "Error: invalid port list $1" >&2
+			  exit 1
+			fi
+
+			index=${start_port}
+			while [ ${index} -le ${end_port} ]; do
+			  result="$result ${index}"
+			  index=`expr ${index} + 1`
+			done
+		else
+		  result="$result $start_port"
+		fi
+	done
+
+	# remove redundant port(s)
+	result=`echo $(printf '%s\n' $result | sort -u -n)`
+
+	echo $result
+}

@@ -1,0 +1,273 @@
+#!/bin/bash
+
+# ## Include ## #
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/defines
+source ${dir_path}/sh_funcs/exit
+source ${dir_path}/sh_funcs/print
+
+prog_name=`echo ${0} | awk -F / '{print $NF}'`
+
+# ## Functions ## #
+
+function usage() {
+echo "
+Usage:
+NAME
+        ${prog_name} - display fan's RPM
+
+SYNOPSIS
+        ${prog_name} [-r] [-t lower_speed,upper_speed] [-h]
+
+DESCRIPTION
+        ${prog_name} is used to read fan's RPM or check if the speed value
+        of fan is within the criteria. The scale is RPM.    
+
+MANDATORY OPTIONS
+        At least one optional option is needed.
+
+OPTIONAL OPTIONS
+        -r    Read fan's RPM.
+
+        -t    Criteria of fan's speed.
+              lower_speed: decimal
+              upper_speed: decimal
+
+        -h    Help message
+
+PASS CRITERIA
+        - Read fan's RPM (-r):
+            SUCCESS: Can get fan's RPM
+                Display: PASS
+                Return code: 0
+
+            ERROR: Can't get fan's RPM
+                Display: FAIL
+                Return code: 2 (option error)
+                             3 (system error)   
+                             4 (read   error)
+
+        - Test fan's speed is within the criteria (-t):
+            SUCCESS: The fan's speed is within the criteria
+                Display: PASS
+                Return code: 0
+
+            ERROR: The fan's speed is out of criteria
+                Display: FAIL
+                Return code: 1 (input  error)
+                             2 (option error)
+                             4 (read   error)
+                             6 (test   error)
+
+Example:
+        ${prog_name} -r
+        ${prog_name} -t 2000,5000
+" >&2
+}
+
+function error_msg() {
+
+    # 1: error_code, 2: error_msg
+
+    # ERROR CODE
+    #   Input error : 1
+    #   Option error: 2
+    #   System error: 3
+    #   Read error  : 4
+    #   Write error : 5 
+    #   Test error  : 6 
+
+    if [ ${1} -eq 1 ]; then
+        echo -e "\n[Input error] ${2}" >&2
+    elif [ ${1} -eq 2 ]; then
+        :
+    elif [ ${1} -eq 3 ]; then
+        echo -e "\n[System error] ${2}" >&2
+    elif [ ${1} -eq 4 ]; then
+        echo -e "\n[Read error] ${2}" >&2
+    elif [ ${1} -eq 5 ]; then
+        echo -e "\n[Write error] ${2}" >&2
+    elif [ ${1} -eq 6 ]; then
+        echo -e "\n[Test error] ${2}" >&2
+    fi
+    quit ${1}
+}
+
+function check_valid_int() {
+    
+    # 1: integer
+
+    if [[ ! ${1} =~ ^[0-9]+$ ]]; then
+        error_msg 1 "Variable \"${1}\" isn't a integer"
+    fi
+}
+
+function check_valid_hex() {
+    
+    # 1: hexadecimal
+
+    if [[ ! ${1} =~ ^0[xX][0-9a-fA-F]+$ ]]; then
+        error_msg 4 "Variable \"${1}\" isn't a hexadecimal"
+    fi
+}
+
+function get_criteria() {
+    
+    # 1: criteria
+
+    local lower=`echo ${1} | awk -F , '{print $1}'`
+    check_valid_int ${lower}
+    
+    local upper=`echo ${1} | awk -F , '{print $2}'`
+    check_valid_int ${upper}
+
+    if [ ${upper} -ge ${lower} ]; then
+        local list=("${lower}" "${upper}")
+    else
+        error_msg 1 "Wrong criteria, lower_speed: ${lower}, upper_speed: ${upper}"
+    fi
+    echo "${list[@]}"
+}
+
+function get_speed() {
+
+    # 1: status_file_path
+
+    if [ -f ${1} ]; then
+        local speed_value=`cat ${1}`
+        check_valid_hex ${speed_value}
+
+        if [ $((${speed_value})) -gt 0 ]; then
+            echo $((5000 * 60 / ${speed_value}))
+        else
+            error_msg 4 "Fan's speed error"
+        fi
+    else
+        error_msg 3 "Fan's status file doesn't exist, CPLD may not work"
+    fi
+}
+
+function read_speed() {
+
+    # 1: status_file_path
+
+    speed=`get_speed ${1}` || exit ${?} 
+    echo -e "\nFan rpm is ${speed} rpm"
+}
+
+function test_speed() {
+
+    # 1: status1_file_path, 2: lower_speed, 3: upper_speed 
+
+    speed=`get_speed ${1}` || exit ${?}
+    if [ ${speed} -le ${3} ] && [ ${speed} -gt ${2} ]; then
+        echo -e "\nFan's speed (${speed} rpm) is within the criteria (${2}-${3} rpm)"
+    else
+        error_msg 6 "Fan's speed (${speed} rpm) is out of criteria (${2}-${3} rpm)"
+    fi
+}
+
+# ## initial variables ## #
+
+sku_file_path="/usr/local/sku"
+status1_file_path="/sys/bus/i2c/devices/0-007f/sys_fan_1_status"
+status2_file_path="/sys/bus/i2c/devices/0-007f/sys_fan_2_status"
+
+# # Test path 
+# sku_file_path="${dir_path}/test_items/sku"
+# status1_file_path="${dir_path}/test_items/status1"
+# status2_file_path="${dir_path}/test_items/status2"
+
+mode=""
+declare -a criteria_list
+product_name=`cat ${sku_file_path}`
+
+# ## Check sys argvs ## #
+
+if [ $# -lt 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] At least one optional option is needed."
+fi
+
+while getopts ":rt:h" arg
+do
+    case ${arg} in      
+        r)
+            if [ -z ${mode} ]; then
+                mode=1
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        t)
+            if [ -z ${mode} ]; then
+                mode=2
+                criteria_list=( `get_criteria ${OPTARG}` ) || exit ${?}
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        :)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Option \"-${OPTARG}\" requires an argument"
+            ;;
+        ?)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Unknown option \"-${OPTARG}\""
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] No options were passed"
+fi
+
+case ${product_name} in
+    OS6360-10 | OS6360-P10)
+        if [ ${mode} -eq 1 ]; then
+            error_msg 4 "There is no FAN in ${product_name}"
+        elif [ ${mode} -eq 2 ]; then
+            error_msg 6 "There is no FAN in ${product_name}"
+        fi
+        ;;
+    OS6360-P24X | OS6360-PH24)
+        if [ ${mode} -eq 1 ]; then
+            read_speed ${status1_file_path}
+        elif [ ${mode} -eq 2 ]; then
+            test_speed ${status1_file_path} ${criteria_list[0]} ${criteria_list[1]}
+        fi
+        quit ${PASS}
+        ;;
+    OS6360-P48X)
+        if [ ${mode} -eq 1 ]; then
+            read_speed ${status1_file_path}
+            read_speed ${status2_file_path}
+        elif [ ${mode} -eq 2 ]; then
+            test_speed ${status1_file_path} ${criteria_list[0]} ${criteria_list[1]}
+            test_speed ${status2_file_path} ${criteria_list[0]} ${criteria_list[1]} 
+        fi
+        quit ${PASS}
+        ;;
+
+    *) # OS6360-10 or OS6360-P10
+        if [ ${mode} -eq 1 ]; then
+            error_msg 4 "There is no FAN in ${product_name}"
+        elif [ ${mode} -eq 2 ]; then
+            error_msg 6 "There is no FAN in ${product_name}"
+        fi
+        ;;
+esac

@@ -1,0 +1,52 @@
+# $(warning "Started") 
+
+
+#List of subfolders to include in build
+MODULES := 
+
+FILES :=
+
+FILES += \
+ all_dxCh_lua_c_type_manual_wrappers.c \
+ all_dxCh_lua_c_type_wrappers.c
+
+#List of files to include in list
+FILES += \
+ wraplCpssDxChBrgFdb.c \
+ wraplCpssDxChBrgMcEntry.c \
+ wraplCpssDxChDeviceInfo.c \
+ wraplCpssDxChDiag.c \
+ wraplCpssDxChDsaConvert.c \
+ wraplCpssDxChHwAccess.c \
+ wraplCpssDxChI2C.c \
+ wraplCpssDxChIp.c \
+ wraplCpssDxChMirror.c \
+ wraplCpssDxChNst.c \
+ wraplCpssDxChPclRule.c \
+ wraplCpssDxChPcs.c \
+ wraplCpssDxChPlr.c \
+ wraplCpssDxChPortControl.c \
+ wraplCpssDxChPortMapping.c \
+ wraplCpssDxChPortMapShadow.c \
+ wraplCpssDxChPortPip.c \
+ wraplCpssDxChPortPizzaArbiterControl.c \
+ wraplCpssDxChRx.c \
+ wraplCpssDxChSerdes.c \
+ wraplCpssDxChSerdesSequence.c \
+ wraplCpssDxChTcam.c \
+ wraplCpssDxChTrunk.c \
+ wraplCpssDxChVlan.c 
+
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINLUAWRAPPER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

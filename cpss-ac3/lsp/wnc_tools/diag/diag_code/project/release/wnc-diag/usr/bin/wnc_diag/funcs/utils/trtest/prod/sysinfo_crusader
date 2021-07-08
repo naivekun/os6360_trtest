@@ -1,0 +1,72 @@
+# !!! NOTE: New info please add above port info table, due to port parsing in file-portmap !!!
+
+# Total MAC units
+UNIT_CNT=1
+
+# Inter-port combination for segment
+IPORTLINK_SET=
+
+# Total frnot port number
+LPORT_NUM=56
+
+# Port info table
+LPort PPort   PhyType   PortType MaxSpeed    SupportedSpeed  PhyAddr MasterAddr  PLPName
+----- ------  -------   -------- --------    --------------  ------- ----------	 -------
+1     0:xe0   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+2     0:xe1   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+3     0:xe2   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+4     0:xe3   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+5     0:xe4   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+6     0:xe5   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+7     0:xe6   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+8     0:xe7   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+9     0:xe8   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+10    0:xe9   IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+11    0:xe10  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+12    0:xe11  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+13    0:xe12  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+14    0:xe13  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+15    0:xe14  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+16    0:xe15  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+17    0:xe16  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+18    0:xe17  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+19    0:xe18  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+20    0:xe19  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+21    0:xe20  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+22    0:xe21  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+23    0:xe22  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+24    0:xe23  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+25    0:xe24  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+26    0:xe25  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+27    0:xe26  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+28    0:xe27  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+29    0:xe28  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+30    0:xe29  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+31    0:xe30  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+32    0:xe31  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+33    0:xe32  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+34    0:xe33  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+35    0:xe34  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+36    0:xe35  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+37    0:xe36  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+38    0:xe37  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+39    0:xe38  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+40    0:xe39  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+41    0:xe40  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+42    0:xe41  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+43    0:xe42  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+44    0:xe43  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+45    0:xe44  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+46    0:xe45  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+47    0:xe46  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+48    0:xe47  IntPHY    FIBER    25G         10g,25g         N/A     N/A         N/A
+49    0:ce48  IntPHY    FIBER    100G        40g,100g        N/A     N/A         N/A
+50    0:ce52  IntPHY    FIBER    100G        40g,100g        N/A     N/A         N/A
+51    0:ce56  IntPHY    FIBER    100G        40g,100g        N/A     N/A         N/A
+52    0:ce60  IntPHY    FIBER    100G        40g,100g        N/A     N/A         N/A
+53    0:ce64  IntPHY    FIBER    100G        40g,100g        N/A     N/A         N/A
+54    0:ce68  IntPHY    FIBER    100G        40g,100g        N/A     N/A         N/A
+55    0:ce72  IntPHY    FIBER    100G        40g,100g        N/A     N/A         N/A
+56    0:ce76  IntPHY    FIBER    100G        40g,100g        N/A     N/A         N/A
+i1    0:xe80  IntPHY    FIBER    10G         N/A             N/A     N/A         N/A
+i2    0:xe81  IntPHY    FIBER    10G         N/A             N/A     N/A         N/A

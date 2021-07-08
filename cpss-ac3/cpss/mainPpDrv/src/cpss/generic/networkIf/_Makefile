@@ -1,0 +1,35 @@
+# $(warning "Started") 
+#LIB_NAME = cpssGenericNetworkIf.lib
+
+#ifeq (1,$(SHARED_MEMORY))
+#  INCLUDE_PATH += $(OS_PATH)
+#endif
+#ifneq (L_ON,$(LOG_ENABLE))
+#    C_EXCLUDE_FILE_LIST += prvCpssGenNetworkIfLog.c
+#endif
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ prvCpssGenNetIfMii.c \
+ prvCpssGenNetIfMiiPool.c \
+ prvCpssGenNetworkIfDsaTag.c
+ifeq (L_ON,$(LOG_ENABLE))
+FILES += \
+ prvCpssGenNetworkIfLog.c
+endif
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINPPDRV_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

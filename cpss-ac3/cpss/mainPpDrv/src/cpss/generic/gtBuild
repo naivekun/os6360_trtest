@@ -1,0 +1,41 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+SUBDIRS := \
+ bridge \
+ cos \
+ cpssHwInit \
+ cscd \
+ diag \
+ extMac \
+ ip \
+ labServices \
+ log \
+ networkIf \
+ nst \
+ pcl \
+ phy \
+ policer \
+ port \
+ private \
+ systemRecovery \
+ trunk \
+ tunnel \
+ version \
+ dragonite
+
+ifeq (YES, $(INCLUDE_TM))
+	SUBDIRS += tm
+endif
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

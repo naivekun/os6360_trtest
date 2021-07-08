@@ -1,0 +1,8 @@
+// TAG:               Port; Shutdown;
+// Short Description: Shutdown port 66
+// Description:       Shutdown port 66
+end
+configure
+interface ethernet ${dev}/${ext_port2}
+shutdown
+end

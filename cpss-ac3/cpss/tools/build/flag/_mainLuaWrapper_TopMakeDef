@@ -1,0 +1,67 @@
+
+
+###########################################
+##                                       ##
+##    Top Make file for LUA              ##
+##                                       ##
+###########################################
+
+$(PROJ_NAME)_PROJECT_PATH :=              \
+                $($(PROJ_NAME)_BASE_PATH) \
+                $(PATH_EXT_UTILS)         \
+                $(PATH_LUA)               \
+                $(PATH_COMMON)            \
+                $(PATH_MAINOS)            \
+                $(PATH_EXT_DRV)           \
+                $(PATH_MAINCMD)           \
+                $(PATH_SYSCONFIG)         \
+                $(PATH_MXML)
+
+
+ifeq (EXISTS, $(ASIC_SIMULATION))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_SIM)
+endif
+#not allowed to use next paths :
+#   because located in cpssEnabler , that real application may not have
+#   only the main cmd in the cpssEnabler is allowed
+#               $(SYSCONFIG_PATH)
+#               $(EXT_DRV_PATH)
+#               $(OS_PATH)
+
+ifeq (EXISTS, $(CHX_FAMILY))
+        $(PROJ_NAME)_AD_CFLAGS += $(FD)CONFIG_DDR3
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_PP_DRV)
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_LABSERVICE)
+endif
+ifeq (EXISTS, $(PX_FAMILY))
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_PX_DRV)
+endif
+
+##Shared memory requires OS_PATH
+#ifeq (1,$(SHARED_MEMORY))
+#  $(PROJ_NAME)_PROJECT_PATH += $(OS_PATH) \
+#                  $(SYSCONFIG_PATH) \
+#                  $(EXT_DRV_PATH)
+#endif
+
+
+# check if need to use 'GM_USED'.
+#needed when 'force' image to use GM.
+#also needed for Puma2,3 where use always GM. (for simulation)
+ifeq (EXISTS, $(FORCE_GM_USE))
+  $(PROJ_NAME)_AD_CFLAGS += $(FD)GM_USED
+endif
+
+##########
+## Fpga ##
+##########
+ifeq (RHODES, $(FPGA_TYPE))
+        $(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_FPGA
+endif
+
+ifeq (gnu.host_gcc, $(TOOL).$(TOOLKIT_MAKE_RULES))
+  #don't threat #warning as error
+  $(PROJ_NAME)_CFLAGS2 += -Wno-error=cpp
+endif
+
+$(PROJ_NAME)_CMD_CFLAGS += $(CMD_CFLAGS)

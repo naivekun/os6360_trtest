@@ -1,0 +1,34 @@
+// TAG:               micro-init
+// Short Description: Create configuration file by using the micro-init tool
+// Description:       Use the micro-init tool commands to create configuration files:
+//                    device-config command creates config-device.txt
+//                    port-map command creates config-map.txt
+//                    port-pizza-resources command creates config-pizza.txt
+//                    other user defined configurations saved to config-other.txt
+
+end
+micro-init file config-pipe-${@@tid}
+device-config deviceId CPSS_98PX1008_CNS mngInterfaceType CPSS_CHANNEL_PEX_MBUS_E coreClock 500Mhz features-list LED_POSITION_JUST_ON_USED_MAC RM_AVS_VDD_LIMITS RM_TXQ_QCN_GLOBAL_MISS_CONFIG
+port-map
+range 0/0-15 type ethernet_mac interface-number 0
+exit
+port-pizza-resources
+range 0/0-15 ifMode KR speed 10000
+exit
+end
+debug-mode
+trace hw-access
+end
+// user configurations
+// configure
+// interface vlan device 0 vid 2
+// exit
+// interface range ethernet 0/0-15
+// switchport pvid 2
+// switchport allowed vlan add 2 tagged
+// exit
+// end
+// debug-mode
+// trace save file config-other-pipe-${@@tid}.txt as micro-init saveToHd
+// no trace hw-access mode write
+// end

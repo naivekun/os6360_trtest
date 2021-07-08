@@ -1,0 +1,52 @@
+# $(warning "Started")
+
+
+#List of subfolders to include in build
+MODULES := \
+ drivers sharedDrv
+
+#List of files to include in list
+FILES := \
+        noKmDrvCacheMng.c\
+        noKmDrvDmaDrvStub.c\
+        noKmDrvDragoniteDrv.c\
+        noKmDrvEthPortCtrlStub.c\
+        noKmDrvGen.c\
+        noKmDrvGppIsrStub.c\
+        noKmDrvHsuDrvStub.c\
+        noKmDrvHwIfDrvStub.c\
+        noKmDrvI2cDrvStub.c\
+        noKmDrvIntDrv.c\
+        noKmDrvPciDrv.c\
+        noKmDrvPciDrvMbus.c\
+        noKmDrvPciDrvSysfs.c\
+        noKmDrvRawSocketStub.c\
+        noKmDrvResetDrv.c\
+        noKmDrvSmiHwCtrlStub.c\
+        noKmDrvTwsiHwCtrl.c\
+        noKmDrvUartDrv.c\
+        noKmDrvUtils.c\
+        noKmDrvXsmiHwCtrl.c\
+        noKmDrvI2cDrv.c \
+        noKmDrvTiDragoniteDrv.c
+
+
+cpssEnabler_AD_CFLAGS += $(FD)NOKM_DRV_EMULATE_INTERRUPTS
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+    LIB_NAME := mainExtDrv.lib
+    cpssEnabler_mainExtDrv_SRC1 += $(patsubst %,$(CWD)%,$(FILES))
+endif
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

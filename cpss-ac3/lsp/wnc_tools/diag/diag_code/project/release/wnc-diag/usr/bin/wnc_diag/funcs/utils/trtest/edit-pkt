@@ -1,0 +1,325 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog="`echo $0 | awk -F/ '{print $NF}'`"
+
+PKT_LEN_MIN=64
+PKT_LEN_MAX=9000
+PAT_MIN=1
+PAT_MAX=7
+
+function usage() {
+echo "Usage:
+NAME
+       $prog - edit a test packet
+
+SYNOPSIS
+       $prog -i pid -l len -d dmac -s smac -e etype -p pat [-v]
+       $prog -i pid -D [-v]
+       $prog -h
+
+DESCRIPTION
+       Create/modify/delete a test packet. One test packet is unique identified
+       by -i option. With -D option specified, the packet will be deleted. If
+       -D option is not specified, this command will create a new test packet or
+       overwrite the existed one.
+
+OPTIONS
+       -i pid   Specific packet's ID to operate with, start from 1.
+
+       -l len   Packet's total length in decimal, range from $PKT_LEN_MIN to $PKT_LEN_MAX. Start
+                from 1st byte of Ethernet header, end with packet's last byte,
+                include FCS.
+
+       -d dmac  Destination MAC address, accept broadcast/multicast/unicast.
+                Format: XX:XX:XX:XX:XX:XX, where X is hexadecimal.
+
+       -s smac  Source MAC address, accept unicast only.
+                Format: XX:XX:XX:XX:XX:XX, where X is hexadecimal.
+
+       -e etype Ether type. Format: XXXX, where X is hexadecimal.
+
+       -p pat   Payload's pattern:
+                    Continuous 0x00 if pattern=1.
+                    Continuous 0xFF if pattern=2.
+                    Continuous 0x55 if pattern=3.
+                    Continuous 0xAA if pattern=4.
+                    Random if pattern=5.
+                    Incrementing if pattern=6.
+                    Decrementing if pattern=7.
+
+       -D       Delete the test packet.
+
+       -v       Display the test packet.
+
+       -h       Show this help message.
+
+EXAMPLE
+       create a test packet:
+           $prog -i 5 -l 64 -d 00:00:00:00:00:01 -s 00:00:00:00:00:02 -e 0800 -p 1
+
+       delete a test packet:
+           $prog -i 5 -D
+" >&2
+}
+
+function echo_to_binary() {
+	local content_to_echo
+	for per_byte in $@; do
+		content_to_echo="$content_to_echo\\x$per_byte"
+	done
+	echo -n -e $content_to_echo
+}
+
+function generate_packet() {
+	local pl_len=$(($PKT_LEN - 14 - 4)) # exclude Ethernet header and FCS
+
+	# generate Ethernet header (binary)
+	if [ -f /usr/bin/xxd ]; then
+		echo -n $DMAC | sed 's/://g' | xxd -r -p > data/eth_header.bin
+		echo -n $SMAC | sed 's/://g' | xxd -r -p >> data/eth_header.bin
+		echo -n $ETYPE | xxd -r -p >> data/eth_header.bin
+	else
+		echo_to_binary `echo $DMAC | sed 's/:/ /g'` > data/eth_header.bin
+		echo_to_binary `echo $SMAC | sed 's/:/ /g'` >> data/eth_header.bin
+		echo_to_binary `echo $ETYPE | sed 's/..$//g'` >> data/eth_header.bin
+		echo_to_binary `echo $ETYPE | sed 's/^..//g'` >> data/eth_header.bin
+	fi
+
+	# generate payload (binary)
+	case $PAT in
+		1) # b'0000..
+			dd if=/dev/zero of=data/payload.bin bs=1 count=$pl_len 2>/dev/null
+			;;
+		2) # b'1111..
+			dd if=/dev/zero bs=1 count=$pl_len 2>/dev/null | tr "\000" "\377" > data/payload.bin
+			;;
+		3) # b'0101..
+			echo -n -e '\x55' > data/payload.bin
+			for ((i = 1; i < $pl_len; i++)); do
+				echo -n -e '\x55' >> data/payload.bin
+			done
+			;;
+		4) # b'1010..
+			echo -n -e '\xAA' > data/payload.bin
+			for ((i = 1; i < $pl_len; i++)); do
+				echo -n -e '\xAA' >> data/payload.bin
+			done
+			;;
+		5) # random
+			dd if=/dev/urandom bs=1 count=$pl_len 2>/dev/null > data/payload.bin
+			;;
+		6) # incrementing
+			for ((i = 0, j = 0; i < $pl_len; i++, j++)); do
+				[ $j -eq 256 ] && j=0
+				echo -n -e "\x$(echo -n $j | xargs -0 printf '%x')" >> data/payload.bin
+			done
+			;;
+		7) # decrementing
+			for ((i = 0, j = 255; i < $pl_len; i++, j--)); do
+				[ $j -eq -1 ] && j=255
+				echo -n -e "\x$(echo -n $j | xargs -0 printf '%x')" >> data/payload.bin
+			done
+			;;
+	esac
+
+	# generate the whole packet (binary)
+	# plain text file can be imported to wireshark for debug
+	cat data/eth_header.bin > data/${PID}_packet.bin
+	cat data/payload.bin >> data/${PID}_packet.bin
+	dd if=/dev/zero bs=1 count=4 2>/dev/null >> data/${PID}_packet.bin
+
+	# delete temporary files
+	rm -f data/eth_header.bin data/payload.bin
+
+	# convert to plain text in various format
+	cat data/${PID}_packet.bin | hexdump -ve '/1 "%02x"' > data/${PID}_packet.txt
+	cat data/${PID}_packet.bin | hexdump -ve '16/1 "%02x " "\n"' > data/${PID}_packet1.txt
+	od -Ax -tx1 -v data/${PID}_packet.bin > data/${PID}_packet2.txt
+}
+
+function delete_packet() {
+	rm -f data/${PID}_packet*
+}
+
+function check_arg_pid() {
+	local pid=$1
+
+	if [ $(is_digit $pid) == true ] && \
+	   [ $pid -ge 1 ]; then
+		echo $pid
+	else
+		echo ""
+	fi
+}
+
+function check_arg_pkt_len() {
+	local pkt_len=$1
+
+	if [ $(is_digit $pkt_len) == true ] && \
+	   [ $pkt_len -ge $PKT_LEN_MIN ] && [ $pkt_len -le $PKT_LEN_MAX ]; then
+		echo $pkt_len
+	else
+		echo ""
+	fi
+}
+
+function check_arg_dmac() {
+	local mac=$1
+
+	if [ $(is_valid_mac_address $mac) == true ]; then
+		echo $mac
+	else
+		echo ""
+	fi
+}
+
+function check_arg_smac() {
+	local mac=$1
+
+	if [ $(is_unicast_mac_address $mac) == true ]; then
+		echo $mac
+	else
+		echo ""
+	fi
+}
+
+function check_arg_etype() {
+	local etype=$1
+
+	if [ -n "`echo $etype | egrep '^[0-9,a-f,A-F]{4}$'`" ]; then
+		echo $etype
+	else
+		echo ""
+	fi
+}
+
+function check_arg_pat() {
+	local pat=$1
+
+	if [ $(is_digit $pat) == true ] && \
+	   [ $pat -ge $PAT_MIN ] && [ $pat -le $PAT_MAX ]; then
+		echo $pat
+	else
+		echo ""
+	fi
+}
+
+function parse_args() {
+	if [ $# -lt 1 ]; then
+		usage
+		res=$FAIL
+		quit $res
+	fi
+
+	while getopts "P:i:l:d:s:e:p:Dh" arg; do
+		case $arg in
+			P) # program prefix (hidden)
+				prog="$OPTARG "$prog
+				;;
+			i) # packet's unique ID
+				PID=$(check_arg_pid $OPTARG)
+				if [ -z "$PID" ]; then
+					echo "\"pid\" must be a digit and greater than 0" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			l) # packet length
+				PKT_LEN=$(check_arg_pkt_len $OPTARG)
+				if [ -z "$PKT_LEN" ]; then
+					echo "\"len\" must be a digit and in the range of $PKT_LEN_MIN and $PKT_LEN_MAX" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			d) # destination MAC address
+				DMAC=$(check_arg_dmac $OPTARG)
+				if [ -z "$DMAC" ]; then
+					echo "\"dmac\" is XX:XX:XX:XX:XX:XX (X: hexadecimal), accept broadcast/multicast/unicast" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			s) # source MAC address
+				SMAC=$(check_arg_smac $OPTARG)
+				if [ -z "$SMAC" ]; then
+					echo "\"smac\" is XX:XX:XX:XX:XX:XX (X: hexadecimal), accept unicast only" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			e) # Ether type
+				ETYPE=$(check_arg_etype $OPTARG)
+				if [ -z "$ETYPE" ]; then
+					echo "\"etype\" is XXXX (X: hexadecimal)" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			p) # payload's pattern
+				PAT=$(check_arg_pat $OPTARG)
+				if [ -z "$PAT" ]; then
+					echo "\"pat\" must be a digit and in the range of $PAT_MIN and $PAT_MAX" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			D) # delete a packet
+				DEL=true
+				;;
+			h | *)
+				usage
+				quit_ok
+				;;
+		esac
+	done
+
+	# check mandatory options
+	if [ -z "$PID" ]; then
+		echo "\"pid\" is a mandatory option" >&2
+		res=$FAIL; quit $res
+	fi
+
+	# to create/modify a test packet, more options are mandatory
+	if [ $DEL == false ]; then
+		if [ -z "$PKT_LEN" ]; then
+			echo "\"len\" is mandatory to create/modify a test packet" >&2
+			res=$FAIL; quit $res
+		fi
+		if [ -z "$DMAC" ]; then
+			echo "\"dmac\" is mandatory to create/modify a test packet" >&2
+			res=$FAIL; quit $res
+		fi
+		if [ -z "$SMAC" ]; then
+			echo "\"smac\" is mandatory to create/modify a test packet" >&2
+			res=$FAIL; quit $res
+		fi
+		if [ -z "$ETYPE" ]; then
+			echo "\"etype\" is mandatory to create/modify a test packet" >&2
+			res=$FAIL; quit $res
+		fi
+		if [ -z "$PAT" ]; then
+			echo "\"pat\" is mandatory to create/modify a test packet" >&2
+			res=$FAIL; quit $res
+		fi
+	fi
+}
+
+# init variables
+PID=
+PKT_LEN=
+DMAC=
+SMAC=
+ETYPE=
+PAT=
+DEL=false
+res=$PASS
+
+# parse incoming arguments
+parse_args $*
+
+mkdir -p data
+
+if [ $DEL == false ]; then
+	# generate test packet
+	generate_packet
+else
+	# delete test packet
+	delete_packet
+fi

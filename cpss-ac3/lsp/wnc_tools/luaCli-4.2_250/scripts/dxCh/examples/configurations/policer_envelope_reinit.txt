@@ -1,0 +1,28 @@
+// TAG: Policing; MEF10.3;
+// Short Description: rewrite policy envelope (MEF10.3) and reset counters
+// Description:       reinit buckets writing the same envelope second time and reset counters
+//set evelope of metering entries
+//parameters are:
+// ${@@test_env.stage}
+// ${@@test_env.entry_rel_index}
+// ${@@test_env.cbs}
+// ${@@test_env.ebs}
+// ${@@test_env.color_mode}
+// ${@@test_env.envelope_base}
+// ${@@test_env.envelope_size}
+// ${@@test_env.coupling_flag0}
+//
+//reinit buckets writing the same envelope second time
+end
+configure
+policy-meter prepare ${@@test_env.direction} ${@@test_env.entry_rel_index}
+conformance mef10-3 cir 0 cbs ${@@test_env.cbs} eir 0 ebs ${@@test_env.ebs} max-cir 100 max-eir 100
+conformance mef10-3 meter-color-mode ${@@test_env.color_mode}
+exit
+policy-meter set-envelope device ${dev} stage ${@@test_env.stage} prepared-index 0 envelope-size ${@@test_env.envelope_size} coupling-flag0 ${@@test_env.coupling_flag0} entry-index ${@@test_env.envelope_base}
+//reset managment and billing counters
+end
+configure
+policy-mng-conters reset device ${dev} stage ${@@test_env.stage} set 0
+policy-billing reset device ${dev} stage ${@@test_env.stage} entry-index 10-17 count-mode packet
+//

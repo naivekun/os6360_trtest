@@ -1,0 +1,101 @@
+// TAG:               micro-init
+// Short Description: Create configuration file by using the micro-init tool
+// Description:       Use the micro-init tool commands to create configuration files:
+//                    device-config command creates config-device.txt
+//                    port-map command creates config-map.txt
+//                    port-pizza-resources command creates config-pizza.txt
+//                    port-smi command creates config-smi.txt
+//                    other user defined configurations saved to config-other.txt
+
+end
+micro-init file config-aldrin-${@@tid}
+device-config deviceId CPSS_98DX8332_CNS mngInterfaceType CPSS_CHANNEL_PEX_MBUS_E coreClock 365Mhz features-list EPLR_RM EXTENDED_DSA_BYPASS_BRIDGE_RM LED_INIT
+port-map
+ethernet 0/0 type ethernet_mac txq-port 0 interface-number 0
+ethernet 0/1 type ethernet_mac txq-port 1 interface-number 1
+ethernet 0/2 type ethernet_mac txq-port 2 interface-number 2
+ethernet 0/3 type ethernet_mac txq-port 3 interface-number 3
+ethernet 0/4 type ethernet_mac txq-port 4 interface-number 4
+ethernet 0/5 type ethernet_mac txq-port 5 interface-number 5
+ethernet 0/6 type ethernet_mac txq-port 6 interface-number 6
+ethernet 0/7 type ethernet_mac txq-port 7 interface-number 7
+ethernet 0/8 type ethernet_mac txq-port 8 interface-number 8
+ethernet 0/9 type ethernet_mac txq-port 9 interface-number 9
+ethernet 0/10 type ethernet_mac txq-port 10 interface-number 10
+ethernet 0/11 type ethernet_mac txq-port 11 interface-number 11
+ethernet 0/12 type ethernet_mac txq-port 12 interface-number 12
+ethernet 0/13 type ethernet_mac txq-port 13 interface-number 13
+ethernet 0/14 type ethernet_mac txq-port 14 interface-number 14
+ethernet 0/15 type ethernet_mac txq-port 15 interface-number 15
+ethernet 0/16 type ethernet_mac txq-port 16 interface-number 16
+ethernet 0/17 type ethernet_mac txq-port 17 interface-number 17
+ethernet 0/18 type ethernet_mac txq-port 18 interface-number 18
+ethernet 0/19 type ethernet_mac txq-port 19 interface-number 19
+ethernet 0/20 type ethernet_mac txq-port 20 interface-number 20
+ethernet 0/21 type ethernet_mac txq-port 21 interface-number 21
+ethernet 0/22 type ethernet_mac txq-port 22 interface-number 22
+ethernet 0/23 type ethernet_mac txq-port 23 interface-number 23
+ethernet 0/24 type ethernet_mac txq-port 24 interface-number 24
+ethernet 0/25 type ethernet_mac txq-port 25 interface-number 25
+ethernet 0/26 type ethernet_mac txq-port 26 interface-number 26
+ethernet 0/27 type ethernet_mac txq-port 27 interface-number 27
+ethernet 0/28 type ethernet_mac txq-port 28 interface-number 28
+ethernet 0/29 type ethernet_mac txq-port 29 interface-number 29
+ethernet 0/30 type ethernet_mac txq-port 30 interface-number 30
+ethernet 0/31 type ethernet_mac txq-port 31 interface-number 31
+exit
+port-pizza-resources
+range 0/0-31 ifMode KR speed 10000
+exit
+port-smi
+auto-poll-cfg 0/0 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/1 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/2 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/3 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/4 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/5 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/6 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/7 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/8 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/9 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/10 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/11 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/12 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/13 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/14 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/15 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/16 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/17 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/18 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/19 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/20 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/21 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/22 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/23 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/24 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/25 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/26 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/27 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/28 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/29 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/30 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/31 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+phy-port-smi-init
+exit
+end
+debug-mode
+trace hw-access
+end
+// user configurations
+configure
+interface vlan device 0 vid 2
+exit
+interface range ethernet 0/0-31
+switchport pvid 2
+switchport allowed vlan add 2 tagged
+exit
+end
+debug-mode
+trace save file config-other-aldrin-${@@tid}.txt as micro-init saveToHd
+no trace hw-access mode write
+end

@@ -1,0 +1,28 @@
+# $(warning "Started") 
+
+#ifneq (A1, $(DRAGONITE_TYPE))
+#C_EXCLUDE_FILE_LIST = ALL
+#endif
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ Comm_irq.c \
+ MCom.c \
+ Mngr_Host_if.c \
+ task_host_comm.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

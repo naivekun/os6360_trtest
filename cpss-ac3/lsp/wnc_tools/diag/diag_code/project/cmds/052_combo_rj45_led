@@ -1,0 +1,223 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+STAT="off"
+XSMI_PORTS_LIST=""
+LOCAL_SOCKET=0
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - green LEDs test for combo ports
+
+SYNOPSIS
+       $prog_name [-s status] [-q] [-l] [-h]
+
+DESCRIPTION
+       The command is to test green LEDs of combe RJ45 ports. Under the diag
+       test mode, the behavior of LEDs won't depend on port status, such as
+       link up/down, but can be controlled by the diag command.
+
+       Once the test is done and the user wants to rollback the behavior of
+       LEDs, parameter \"-q\" is to quit the diag test mode and restore the MAC
+       LED interface configuration register.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -s    Status to indicate the LED on or off.
+             Available option is \"on\" or \"off\".
+
+       -q    To quit the diag test mode and restore the MAC LED interface
+             configuration register to default.
+
+       -l    Send commands to CPSS via local socket.
+
+       -h    Show this help message.
+
+PASS CRITERIA
+       - Control green LEDs of all combo RJ45 ports with correct behavior:
+           SUCCESS: green LEDs of combo ports on or off correctly
+             Display: \"=== Set all green LEDs of combo ports [ON] ===\"
+             or
+             Display: \"=== Set all green LEDs of combo ports [OFF] ===\"
+             Return code : 0
+
+       - Quit the diag test mode:
+           SUCCESS: restore the PHY LED function control register to default
+             Display: \"=== Quit the diag test mode ===\"
+             Return code : 0
+
+EXAMPLE
+       $prog_name -s off
+       $prog_name -s on
+       $prog_name -q
+       $prog_name -s off -l
+       $prog_name -s on -l
+       $prog_name -q -l
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    res=$FAIL
+    exit $res
+fi
+
+get_all_combo_ports() {
+    case $SKU in
+        OS6360-10 | OS6360-P10)
+            print_fail "SKU not supported!"
+            res=$FAIL
+            quit $res
+            ;;
+        OS6360-P24X | OS6360-PH24)
+            XSMI_PORTS_LIST="25 26"
+            ;;
+        OS6360-P48X)
+            XSMI_PORTS_LIST="49 50"
+            ;;
+        *) # OS6360-10 or OS6360-P10
+            print_fail "SKU not supported!"
+            exit 1
+            ;;
+    esac
+}
+
+while getopts "s:qlh" arg; do
+    case $arg in
+        s) # status on or off
+            STAT=$OPTARG
+            if [ "$STAT" != "on" ] && [ "$STAT" != "off" ]; then
+                usage
+                res=$FAIL
+                exit $res
+            fi
+            ;;
+        q) # to quit diag test mode, set $STAT to "quit" for simplicity 
+            STAT="quit"
+            ;;
+        l) # send commands via local socket
+            LOCAL_SOCKET=1
+            ;;
+        h | *) # display usage
+            usage
+            quit_ok
+            ;;
+    esac
+done
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    print_fail "CPSS not ready!"
+    exit 1
+fi
+
+# Get combo ports list
+get_all_combo_ports
+
+#                    P48X                  P24X/PH24
+# -------------------------------------------------------
+# dev_0/xsmi   |                     |     port 25,26
+#              |                     | (phyID: 0x0D,0x0C)
+# -------------------------------------------------------
+# dev_1/xsmi   |     port 49,50      |
+#              | (phyID: 0x0D,0x0C)  |
+# -------------------------------------------------------
+
+APICMD="do cpss-api call cpssXsmiRegisterWrite"
+
+rm -f ./tmp_combo_rj45_led
+
+dev="0"
+xsmi="CPSS_PHY_XSMI_INTERFACE_0_E"
+SOLID_ON="0x00b8"
+SOLID_OFF="0x0000"
+RESTORE_LED0="0x0138"
+RESTORE_LED1="0x0058"
+RESET="0xa01d"
+
+for idx in $XSMI_PORTS_LIST; do
+        
+    if [ "$idx" == "25" ] && [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+        # 88X3220, port 0
+        dev="0"
+        xsmi_addr="0xd"
+        portNum=26
+    elif [ "$idx" == "26" ] && [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+        # 88X3220, port 1
+        dev="0"
+        xsmi_addr="0xc"
+        portNum=24
+    elif [ "$idx" == "49" ] && [ "$SKU" == "OS6360-P48X" ]; then
+        # 88X3220, port 0
+        dev="1"
+        xsmi_addr="0xd"
+        portNum=25
+    elif [ "$idx" == "50" ] && [ "$SKU" == "OS6360-P48X" ]; then
+        # 88X3220, port 1
+        dev="1"
+        xsmi_addr="0xc"
+        portNum=24
+    fi
+
+    # LED[0](P24:green / P48:amber) : device 31, reg 0xf020
+    # LED[1](P24:amber / P48:green) : device 31, reg 0xf021
+
+    if [ $LOCAL_SOCKET -eq 1 ]; then
+        if [ "$STAT" == "quit" ]; then
+            # quit diag test mode
+            cpss_10g_phy_register_write $dev $portNum "0xf020" "31" "$xsmi_addr" "$RESTORE_LED0"
+            cpss_10g_phy_register_write $dev $portNum "0xf021" "31" "$xsmi_addr" "$RESTORE_LED1"
+        elif [ "$STAT" == "on" ]; then
+            # turn on LEDs
+            cpss_10g_phy_register_write $dev $portNum "0xf020" "31" "$xsmi_addr" "$SOLID_OFF"
+            cpss_10g_phy_register_write $dev $portNum "0xf021" "31" "$xsmi_addr" "$SOLID_ON"
+        else
+            # turn off LEDs
+            cpss_10g_phy_register_write $dev $portNum "0xf020" "31" "$xsmi_addr" "$SOLID_OFF"
+            cpss_10g_phy_register_write $dev $portNum "0xf021" "31" "$xsmi_addr" "$SOLID_OFF"
+        fi
+    else
+
+    if [ "$STAT" == "quit" ]; then
+        # quit diag test mode
+        echo "$APICMD devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0xf020 phyDev 31 data $RESTORE_LED0" >> ./tmp_combo_rj45_led
+        echo "$APICMD devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0xf021 phyDev 31 data $RESTORE_LED1" >> ./tmp_combo_rj45_led
+
+        # SW reset PHY
+        echo "$APICMD devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0xf001 phyDev 31 data $RESET" >> ./tmp_combo_rj45_led
+    elif [ "$STAT" == "on" ]; then
+        # turn on LEDs
+        echo "$APICMD devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0xf020 phyDev 31 data $SOLID_OFF" >> ./tmp_combo_rj45_led
+        echo "$APICMD devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0xf021 phyDev 31 data $SOLID_ON" >> ./tmp_combo_rj45_led
+    else
+        # turn off LEDs
+        echo "$APICMD devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0xf020 phyDev 31 data $SOLID_OFF" >> ./tmp_combo_rj45_led
+        echo "$APICMD devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0xf021 phyDev 31 data $SOLID_OFF" >> ./tmp_combo_rj45_led
+    fi
+
+    fi
+done
+
+if [ $LOCAL_SOCKET -ne 1 ]; then
+    cpss_load_config_file "tmp_combo_rj45_led" "no_show"
+fi
+
+# Display log
+if [ "$STAT" == "quit" ]; then
+    echo -e "=== Quit the diag test mode ===\n"
+elif [ "$STAT" == "on" ]; then
+    echo -e "=== Set all green LEDs of combo ports [ON] ===\n"
+else
+    echo -e "=== Set all green LEDs of combo ports [OFF] ===\n"
+fi
+
+quit_ok

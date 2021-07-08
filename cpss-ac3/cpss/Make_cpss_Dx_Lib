@@ -1,0 +1,44 @@
+# Makefile to build CPSS_LIB
+
+include $(USER_BASE)/tools/build/flag/Make_cpss_def
+
+ifeq (,$(wildcard mainTmDrv/_Makefile))
+INCLUDE_TM := TM_NO
+endif
+
+###############################################################################
+# Modules
+###############################################################################
+
+PROJ_NAME := common
+include $(ADD_MODULE_MK)
+
+PROJ_NAME := mainPpDrv
+include $(ADD_MODULE_MK)
+
+ifeq (YES, $(INCLUDE_TM))
+    PROJ_NAME := mainTmDrv
+    include $(ADD_MODULE_MK)
+endif
+
+ifeq (simulation, $(SIMULATION))
+    PROJ_NAME := simulation
+    include $(ADD_MODULE_MK)
+endif
+
+#-----------------------------------------------------------------
+DEP :=
+OBJ := $(patsubst %.c,$(OUT_DIR)/%.$(_OBJ),$(SRC))
+ifneq (DEP_NO, $(DEPENDENCY))
+	DEP += $(patsubst %.$(_OBJ),%.$(_DEP),$(OBJ))
+	-include $(DEP)
+endif
+
+###############################################################################
+
+CPSS_LIB = $(OUT_DIR)/cpssDrvLib.$(LIBEXT)
+
+$(CPSS_LIB): $(OBJ)
+	$(call make_lib)
+
+link: pre_build_objdir $(CPSS_LIB)

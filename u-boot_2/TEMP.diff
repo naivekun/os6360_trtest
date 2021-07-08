@@ -1,0 +1,496 @@
+diff --git a/board/mv_ebu/common/mv_hal/nfc/mvNfc.c b/board/mv_ebu/common/mv_hal/nfc/mvNfc.c
+index b5813fc..366599e 100644
+--- a/board/mv_ebu/common/mv_hal/nfc/mvNfc.c
++++ b/board/mv_ebu/common/mv_hal/nfc/mvNfc.c
+@@ -944,6 +944,7 @@ MV_STATUS mvNfcInit(MV_NFC_INFO *nfcInfo, MV_NFC_CTRL *nfcCtrl, struct MV_NFC_HA
+ 
+ 	/* Read the device ID */
+ 	ret = mvNfcReadIdNative(nfcCtrl->currCs, &read_id);
++printf("[DBG] NAND_ID = 0x%x \n", read_id);
+ 	if (ret != MV_OK)
+ 		return ret;
+ 
+diff --git a/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvLib.c b/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvLib.c
+index 01c8212..f4e63f5 100644
+--- a/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvLib.c
++++ b/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvLib.c
+@@ -1351,7 +1351,12 @@ MV_32 mvBoardNandWidthGet(void)
+ *	void
+ *
+ *******************************************************************************/
+-static MV_U32 gBoardId = -1;
++#ifdef CONFIG_RD_AC3S
++	static MV_U32 gBoardId = RD_MTL_AC3X_BXH_24G4G_AC3_ID;
++#else
++	static MV_U32 gBoardId = -1 ;
++#endif
++
+ MV_VOID mvBoardSet(MV_U32 boardId)
+ {
+ 	/* Marvell BobK Boards */
+diff --git a/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvSpec.c b/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvSpec.c
+index 7446c44..10361b0 100644
+--- a/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvSpec.c
++++ b/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvSpec.c
+@@ -1599,6 +1599,75 @@ MV_BOARD_INFO rd_mtl_24G_ac3Info = {
+ };
+ 
+ /***************************************************************************************/
++/* ALLEYCAT3-RD-XC3-BHX-24G-4XG BOARD                                                  */
++/***************************************************************************************/
++
++MV_BOARD_MAC_INFO pilgrim_ac3bxh_InfoBoardMacInfo[] = {
++/* {{MV_BOARD_MAC_SPEED boardMacSpeed, MV_32 boardEthSmiAddr , MV_32 boardEthSmiAddr0;}} */
++	{BOARD_MAC_SPEED_AUTO, -1, -1, MV_FALSE},
++	{BOARD_MAC_SPEED_AUTO, -1, -1, MV_FALSE}
++};
++
++MV_BOARD_MPP_INFO rd_mtl_ac3x_bxh_InfoBoardMppConfigValue[] = {
++       { {
++       RD_MTL_24G_AC3X_BXH_MPP0_7,
++       RD_MTL_24G_AC3X_BXH_MPP8_15,
++       RD_MTL_24G_AC3X_BXH_MPP16_23,
++       RD_MTL_24G_AC3X_BXH_MPP24_31,
++       RD_MTL_24G_AC3X_BXH_MPP32_39,
++       } },
++};
++
++MV_BOARD_INFO rd_mtl_ac3x_bxh_Info = {
++       .boardName                      = "HPE-Pilgrim-48G4XG[AC3-BXH]",
++       .numBoardMppTypeValue           = ARRSZ(db_dx_ac3InfoBoardModTypeInfo),
++       .pBoardModTypeValue             = db_dx_ac3InfoBoardModTypeInfo,
++       .numBoardMppConfigValue         = ARRSZ(rd_mtl_ac3x_bxh_InfoBoardMppConfigValue),
++       .pBoardMppConfigValue           = rd_mtl_ac3x_bxh_InfoBoardMppConfigValue,
++       .intsGppMaskLow                 = 0,
++       .intsGppMaskMid                 = 0,
++       .intsGppMaskHigh                = 0,
++       .numBoardDeviceIf               = ARRSZ(db_dx_ac3InfoBoardDeCsInfo),
++       .pDevCsInfo                     = db_dx_ac3InfoBoardDeCsInfo,
++       .numBoardTwsiDev                = ARRSZ(db_dx_ac3InfoBoardTwsiDev),
++       .pBoardTwsiDev                  = db_dx_ac3InfoBoardTwsiDev,
++       .numBoardMacInfo                = ARRSZ(pilgrim_ac3bxh_InfoBoardMacInfo),
++       .pBoardMacInfo                  = pilgrim_ac3bxh_InfoBoardMacInfo,
++       .numBoardGppInfo                = 0,
++       .pBoardGppInfo                  = NULL,
++       .activeLedsNumber               = 0,
++       .pLedGppPin                     = NULL,
++       .ledsPolarity                   = 0,
++
++       /* GPP values */
++       .gppOutEnValLow                 = RD_MTL_RD_AC3X_BXH_GPP_OUT_ENA_LOW,
++       .gppOutEnValMid                 = RD_MTL_RD_AC3X_BXH_GPP_OUT_ENA_MID,
++       .gppOutEnValHigh                = 0,
++       .gppOutValLow                   = RD_MTL_RD_AC3X_BXH_GPP_OUT_VAL_LOW,
++       .gppOutValMid                   = RD_MTL_RD_AC3X_BXH_GPP_OUT_VAL_MID,
++       .gppOutValHigh                  = 0,
++       .gppPolarityValLow              = RD_MTL_RD_AC3X_BXH_GPP_POL_LOW,
++       .gppPolarityValMid              = RD_MTL_RD_AC3X_BXH_GPP_POL_MID,
++       .gppPolarityValHigh             = 0,
++
++       /* External Switch Configuration */
++       .pSwitchInfo = NULL,
++       .switchInfoNum = 0,
++
++       /* NAND init params */
++       .nandFlashReadParams            = DB_DX_AC3_BOARD_NAND_READ_PARAMS,
++       .nandFlashWriteParams           = DB_DX_AC3_BOARD_NAND_WRITE_PARAMS,
++       .nandFlashControl               = DB_DX_AC3_BOARD_NAND_CONTROL,
++       /* NOR init params */
++       .norFlashReadParams             = DB_DX_AC3_BOARD_NOR_READ_PARAMS,
++       .norFlashWriteParams            = DB_DX_AC3_BOARD_NOR_WRITE_PARAMS,
++       .configAutoDetect               = MV_FALSE,      /* Enable modules auto-detection. */
++       .modelName                      = "AC3x_BXH Reference Design Board",
++       .isSmiExternalPp                = MV_FALSE
++};
++
++
++/***************************************************************************************/
+ /* ARMADA-XP AMC BOARD -  only for Linux usage (AXP family is shared with MSYS in LSP) */
+ /***************************************************************************************/
+ #define DB_78X60_AMC_BOARD_NAND_READ_PARAMS		0x000C0282
+@@ -1719,7 +1788,8 @@ MV_BOARD_INFO *marvellAC3BoardInfoTbl[] = {
+ 	&rd_mtl_4xg_ac3Info,
+ 	&rd_mtl_2xxg_2xg_ac3Info,
+ 	&db_misl_24G_4xg_ac3Info,
+-	&rd_mtl_24G_ac3Info
++	&rd_mtl_24G_ac3Info,
++        &rd_mtl_ac3x_bxh_Info
+ };
+ 
+ /* only for Linux usage (AXP family is shared with MSYS in LSP) */
+diff --git a/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvSpec.h b/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvSpec.h
+index 50487d8..71e4b17 100644
+--- a/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvSpec.h
++++ b/board/mv_ebu/msys/msys_family/boardEnv/mvBoardEnvSpec.h
+@@ -101,7 +101,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #define RD_MTL_2XXG_2XG_AC3_ID		(AC3_MARVELL_BOARD_ID_BASE + 2)
+ #define DB_MISL_24G4G_AC3_ID		(AC3_MARVELL_BOARD_ID_BASE + 3)
+ #define RD_MTL_24G_AC3_ID		(AC3_MARVELL_BOARD_ID_BASE + 4)
+-#define AC3_MARVELL_MAX_BOARD_ID	(AC3_MARVELL_BOARD_ID_BASE + 5)
++#define RD_MTL_AC3X_BXH_24G4G_AC3_ID    (AC3_MARVELL_BOARD_ID_BASE + 5)
++#define AC3_MARVELL_MAX_BOARD_ID	(AC3_MARVELL_BOARD_ID_BASE + 6)
+ #define AC3_MARVELL_BOARD_NUM		(AC3_MARVELL_MAX_BOARD_ID - AC3_MARVELL_BOARD_ID_BASE)
+ 
+ /* BobK Customer Boards */
+@@ -797,6 +798,25 @@ MPP#	NAME			IN/OUT
+ #define RD_MTL_24G_AC3_GPP_POL_LOW			RD_MTL_4XG_AC3_GPP_POL_LOW
+ #define RD_MTL_24G_AC3_GPP_POL_MID			RD_MTL_4XG_AC3_GPP_POL_MID
+ 
++/**************************************/
++/*   AC3-BXH RD-XC3-24G_AC3  (RD_MTL)        */
++/**************************************/
++#define RD_MTL_24G_AC3X_BXH_MPP0_7                     0x00042222
++#define RD_MTL_24G_AC3X_BXH_MPP8_15                    0x11000000
++#define RD_MTL_24G_AC3X_BXH_MPP16_23                   0x44444004
++#define RD_MTL_24G_AC3X_BXH_MPP24_31                   0x14444444
++#define RD_MTL_24G_AC3X_BXH_MPP32_39                   0x00000001
++
++#define RD_MTL_RD_AC3X_BXH_GPP_OUT_ENA_LOW             (~(BIT6|BIT18 | BIT12 ))
++#define RD_MTL_RD_AC3X_BXH_GPP_OUT_ENA_MID             (~(0x0))
++#define RD_MTL_RD_AC3X_BXH_GPP_OUT_VAL_LOW             BIT6
++#define RD_MTL_RD_AC3X_BXH_GPP_OUT_VAL_MID             0x0
++#define RD_MTL_RD_AC3X_BXH_GPP_POL_LOW                 0x0
++#define RD_MTL_RD_AC3X_BXH_GPP_POL_MID                 0x0
++
++
++
++
+ /**********************************************************************************/
+ /* ArmadaXP Boards : only for Linux usage (AXP family is shared with MSYS in LSP) */
+ /**********************************************************************************/
+diff --git a/board/mv_ebu/msys/mv_main_msys.c b/board/mv_ebu/msys/mv_main_msys.c
+index e1d02d2..dc8ded6 100644
+--- a/board/mv_ebu/msys/mv_main_msys.c
++++ b/board/mv_ebu/msys/mv_main_msys.c
+@@ -32,6 +32,8 @@
+    DISCLAIMED.  The GPL License provides additional details about this warranty
+    disclaimer.
+ *******************************************************************************/
++#define TEST_FOR_YORAM 1
++
+ #include "mvCommon.h"
+ #include "mvTypes.h"
+ #include "mvBoardEnvLib.h"
+@@ -262,6 +264,11 @@ int board_init (void)
+ 	/* interrupt_init(); - no interrupt handling in u-boot */
+ 	timer_init();
+ 
++#ifdef TEST_FOR_YORAM
++	/* Init the Controller CPU interface */
++	mvCpuIfInit(mvCpuAddrWinMap);
++#endif
++
+ 	/* Init the Board environment module (device bank params init) */
+ 	mvBoardEnvInit();
+ 
+@@ -279,8 +286,11 @@ int board_init (void)
+ #endif
+ 	mvBoardDebugLed(2);
+ 
++#ifndef TEST_FOR_YORAM
+ 	/* Init the Controller CPU interface */
+ 	mvCpuIfInit(mvCpuAddrWinMap);
++#endif 
++
+ #if defined(MV_NOR_BOOT)
+ 	env_init();
+ #endif
+@@ -823,6 +833,7 @@ int mv_get_arch_number(void)
+ 	case RD_MTL_2XXG_2XG_AC3_ID:
+ 	case DB_MISL_24G4G_AC3_ID:
+ 	case RD_MTL_24G_AC3_ID:
++        case RD_MTL_AC3X_BXH_24G4G_AC3_ID:
+ 	case AC3_CUSTOMER_BOARD_ID0:
+ 	case AC3_CUSTOMER_BOARD_ID1:
+ 	case BOBK_CETUS_DB_ID:
+diff --git a/boards.cfg b/boards.cfg
+index 81ad50a..4bdb4bd 100644
+--- a/boards.cfg
++++ b/boards.cfg
+@@ -65,6 +65,7 @@ bobcat2_customer0            arm         armv7       msys                mv_ebu
+ bobcat2_customer1            arm         armv7       msys                mv_ebu         pj4          msys:CUSTOMER_BOARD_1,BOBCAT2
+ ac3_db                       arm         armv7       msys                mv_ebu         pj4          msys:DB_AC3,ALLEYCAT3
+ ac3_rd                       arm         armv7       msys                mv_ebu         pj4          msys:RD_AC3,ALLEYCAT3
++ac3s_rd                      arm         armv7       msys                mv_ebu         pj4          msys:RD_AC3S,ALLEYCAT3
+ ac3_customer0                arm         armv7       msys                mv_ebu         pj4          msys:CUSTOMER_BOARD_0,ALLEYCAT3
+ ac3_customer1                arm         armv7       msys                mv_ebu         pj4          msys:CUSTOMER_BOARD_1,ALLEYCAT3
+ bobk                   arm         armv7       msys                mv_ebu         pj4          msys:BOBK
+diff --git a/build.pl b/build.pl
+index 1811098..dedfa08 100755
+--- a/build.pl
++++ b/build.pl
+@@ -114,6 +114,7 @@ if(($opt_b eq "armada_xp_dbgp") or
+ 	($opt_b eq "bobk_customer1") or
+ 	($opt_b eq "ac3_db") or
+ 	($opt_b eq "ac3_rd") or
++	($opt_b eq "ac3s_rd") or
+ 	($opt_b eq "ac3_customer0") or
+ 	($opt_b eq "ac3_customer1") )
+ {
+@@ -155,6 +156,10 @@ if(($opt_b eq "armada_xp_dbgp") or
+ 		$boardID="msys-ac3";
+ 		$targetBoard = substr $board, 8;
+ 	}
++	elsif ( (substr $board,0 , 4) eq "ac3s" ) {
++		$boardID="msys-ac3";
++		$targetBoard = substr $board, 8;
++	}
+ 	# if board string contains "customer" (Or A38x-SolidRun Clear fog board), use customer define for binary_header
+ 	if ((index($board, "customer") != -1) or (index($board, "clearfog") != -1)) {
+ 		system("echo \"#define CONFIG_CUSTOMER_BOARD_SUPPORT 1\" >> include/config.h");
+@@ -215,7 +220,7 @@ elsif  ($opt_f eq "nand"){
+ 		$img_opts   = "-P 2048 -L 128 -N SLC";
+ 	}
+ 	else {
+-		$img_opts   = "-P 4096 -L 256 -N SLC";
++		$img_opts   = "-P 2048 -L 128 -N SLC";
+ 	}
+ 	print "Image options =  $img_opts\n\n";
+ }
+diff --git a/tools/marvell/bin_hdr/base.mk b/tools/marvell/bin_hdr/base.mk
+index b7bbb9c..00ec923 100755
+--- a/tools/marvell/bin_hdr/base.mk
++++ b/tools/marvell/bin_hdr/base.mk
+@@ -180,6 +180,10 @@ ifeq "$(CONFIG_ALLEYCAT3)"  "y"
+   CFLAGS += -DCONFIG_ALLEYCAT3
+ endif
+ 
++ifeq "$(CONFIG_RD_AC3S)"  "y"
++  CFLAGS += -DCONFIG_RD_AC3S
++endif
++
+ # BobK
+ ifeq "$(CONFIG_BOBK)"  "y"
+   NEW_TIP = yes
+diff --git a/tools/marvell/bin_hdr/inc/common/mvUart.h b/tools/marvell/bin_hdr/inc/common/mvUart.h
+index 9ee653f..05e586f 100644
+--- a/tools/marvell/bin_hdr/inc/common/mvUart.h
++++ b/tools/marvell/bin_hdr/inc/common/mvUart.h
+@@ -66,6 +66,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #define __MV_UART_H__
+ 
+ 
++#define MV_DEBUG_INIT
+ /* This structure describes the registers offsets for one UART port(channel) */
+ typedef struct mvUartPort
+ {
+@@ -155,13 +156,13 @@ void putdataDec (u32 dec_num,u32 length);
+ #undef MV_DEBUG_INIT_FULL
+ #else
+ #define MV_DEBUG_INIT
++#define MV_DEBUG_INIT_FULL
+ #endif
+ 
+ 
+ /************
+  * Debug
+ */
+-
+ #ifdef MV_DEBUG_INIT
+ #define DEBUG_INIT_S(s)				putstring(s)
+ #define DEBUG_INIT_D(d, l)			putdata(d, l)
+diff --git a/tools/marvell/bin_hdr/inc/ddr3_soc/msys/ddr3_msys_ac3_topology.h b/tools/marvell/bin_hdr/inc/ddr3_soc/msys/ddr3_msys_ac3_topology.h
+index 43e0b79..0a6cbd4 100755
+--- a/tools/marvell/bin_hdr/inc/ddr3_soc/msys/ddr3_msys_ac3_topology.h
++++ b/tools/marvell/bin_hdr/inc/ddr3_soc/msys/ddr3_msys_ac3_topology.h
+@@ -109,8 +109,13 @@ MV_HWS_TOPOLOGY_MAP TopologyMap[] =
+     0x1, /* active interfaces */
+ 	/* ATTENTION - cs_mask and mirror  HAVE to be the same for all PUPs*/
+     /*cs_mask, mirror, dqs_swap, ck_swap X PUPs     speed_bin        memory_device_width  mem_size     frequency  casL casWL      temperature */
++#if 0 
+ 	{{{{0x3,2,0,0}, {0x3,2,0,0},{0x3,2,0,0}, {0x3,2,0,0}, {0x3,2,0,0}}, SPEED_BIN_DDR_1866L, BUS_WIDTH_8 , MEM_4G, DDR_FREQ_400, 0 ,   0 , MV_HWS_TEMP_LOW}},
+     INTERFACE_BUS_MASK_16BIT  /* Buses mask */
++#else 
++	{{{{0x1,0,0,0}, {0x1,0,0,0},{0x1,0,0,0}, {0x1,0,0,0}, {0x1,0,0,0}}, SPEED_BIN_DDR_1866L, BUS_WIDTH_16 , MEM_4G, DDR_FREQ_667, 0 ,   0 , MV_HWS_TEMP_LOW}},
++    INTERFACE_BUS_MASK_16BIT  /* Buses mask */
++#endif
+     },
+ 	/* 2rd Marvell board - RD_MTL_4XG  (BoardId = 0x1) */
+     {
+@@ -144,6 +149,26 @@ MV_HWS_TOPOLOGY_MAP TopologyMap[] =
+ 	{{{{0x1,0,0,0}, {0x1,0,0,0}, {0x1,0,0,0}, {0x1,0,0,0}, {0x1,0,0,0}}, SPEED_BIN_DDR_1866L, BUS_WIDTH_8 , MEM_4G, DDR_FREQ_400, 0 ,   0 , MV_HWS_TEMP_LOW}},
+     INTERFACE_BUS_MASK_16BIT  /* Buses mask */
+     },
++    /* 6th Marvell board - RD-XC3-BHX-24G-4XG - No ECC (BoardId = 0x5) */
++    {
++	0x1, /* active interfaces */
++	/* ATTENTION - cs_mask and mirror  HAVE to be the same for all PUPs*/
++	{{{
++                /*cs_mask, mirror, dqs_swap, ck_swap X PUPs */
++		{     0x1,      0,        0,       0},
++		{     0x1,      0,        0,       0},
++		{     0x1,      0,        0,       0},
++		{     0x1,      0,        0,       0},
++		{     0x1,      0,        0,       0}},
++		SPEED_BIN_DDR_1866L, /* speed_bin  */
++		BUS_WIDTH_16 ,        /* memory_device_width */
++		MEM_4G,              /* mem_size */
++		DDR_FREQ_667,        /* frequency */
++		0 ,                  /* casL */
++		0 ,                  /* casWL */
++		MV_HWS_TEMP_LOW}},   /* temperature */
++		INTERFACE_BUS_MASK_16BIT  /* Buses mask */
++    },
+ };
+ #endif /* CONFIG_CUSTOMER_BOARD_SUPPORT */
+ 
+diff --git a/tools/marvell/bin_hdr/platform/sysEnv/msys/mvSysEnvLib.c b/tools/marvell/bin_hdr/platform/sysEnv/msys/mvSysEnvLib.c
+index b30abf3..2fade77 100755
+--- a/tools/marvell/bin_hdr/platform/sysEnv/msys/mvSysEnvLib.c
++++ b/tools/marvell/bin_hdr/platform/sysEnv/msys/mvSysEnvLib.c
+@@ -114,6 +114,11 @@ MV_U32 mvBoardIdGet(MV_VOID)
+ 
+ #else	/* !CONFIG_CUSTOMER_BOARD_SUPPORT */
+ 
++#if defined CONFIG_RD_AC3S
++	gBoardId = RD_MTL_AC3X_BXH_24G4G_AC3_ID;
++	return gBoardId;
++#endif
++
+ 	MV_U8 readValue;
+ 
+ 	if (mvBoardSarBoardIdGet(&readValue) != MV_OK) {
+diff --git a/tools/marvell/bin_hdr/platform/sysEnv/msys/mvSysEnvLib.h b/tools/marvell/bin_hdr/platform/sysEnv/msys/mvSysEnvLib.h
+index 8582a93..a18a5da 100644
+--- a/tools/marvell/bin_hdr/platform/sysEnv/msys/mvSysEnvLib.h
++++ b/tools/marvell/bin_hdr/platform/sysEnv/msys/mvSysEnvLib.h
+@@ -113,7 +113,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #define RD_MTL_2XXG_2XG_AC3_ID		(AC3_MARVELL_BOARD_ID_BASE + 2)
+ #define DB_MISL_24G4G_AC3_ID		(AC3_MARVELL_BOARD_ID_BASE + 3)
+ #define RD_MTL_24G_AC3_ID			(AC3_MARVELL_BOARD_ID_BASE + 4)
+-#define AC3_MARVELL_MAX_BOARD_ID	(AC3_MARVELL_BOARD_ID_BASE + 5)
++#define RD_MTL_AC3X_BXH_24G4G_AC3_ID (AC3_MARVELL_BOARD_ID_BASE + 5)
++#define AC3_MARVELL_MAX_BOARD_ID	(AC3_MARVELL_BOARD_ID_BASE + 6)
+ #define AC3_MARVELL_BOARD_NUM		(AC3_MARVELL_MAX_BOARD_ID - AC3_MARVELL_BOARD_ID_BASE)
+ 
+ /* AlleyCat3  Family */
+diff --git a/tools/marvell/bin_hdr/src_ddr/ddr3_init.c b/tools/marvell/bin_hdr/src_ddr/ddr3_init.c
+index c822193..1af83f0 100755
+--- a/tools/marvell/bin_hdr/src_ddr/ddr3_init.c
++++ b/tools/marvell/bin_hdr/src_ddr/ddr3_init.c
+@@ -867,6 +867,9 @@ if( genericInitController == 0){
+ 	DEBUG_INIT_S("DDR3 Training Sequence - Ended Successfully \n");
+ #endif
+ 
++uiReg = MV_DFX_REG_READ(0xf8200);
++DEBUG_INIT_C("[BlueDBG] @bin_hdr SatR[0xf8200]=0x%x\n", uiReg, 1);
++
+ #if defined(MV88F68XX)
+ 	if( MV_TRUE == ddr3IfEccEnabled()){
+ 		ddr3NewTipEccScrub();
+diff --git a/tools/marvell/bin_hdr/src_ddr/ddr3libv2/src/Driver/ddr3/mvHwsDdr3Training.c b/tools/marvell/bin_hdr/src_ddr/ddr3libv2/src/Driver/ddr3/mvHwsDdr3Training.c
+index 86ab0ea..176a0ca 100755
+--- a/tools/marvell/bin_hdr/src_ddr/ddr3libv2/src/Driver/ddr3/mvHwsDdr3Training.c
++++ b/tools/marvell/bin_hdr/src_ddr/ddr3libv2/src/Driver/ddr3/mvHwsDdr3Training.c
+@@ -19,6 +19,8 @@
+ *       $Revision: 204 $
+ ******************************************************************************/
+ 
++#define MV_DEBUG
++#define DEBUG
+ #include "mvDdr3TrainingIp.h"
+ #include "mvDdr3TrainingIpFlow.h"
+ #include "mvDdr3TrainingIpEngine.h"
+@@ -2012,6 +2014,18 @@ static GT_STATUS ddr3TipSetTiming
+     ddr4TipSetTiming(devNum, accessType, interfaceId, frequency);
+ #endif
+ 
++DEBUG_TRAINING_IP(DEBUG_LEVEL_ERROR, ("[DBG] DDR setting:\
++\n\ttCKCLK %d,\
++\n\ttRAS %d,\
++\n\ttRCD %d,\
++\n\ttRP %d,\
++\n\ttWR %d,\
++\n\ttWTR %d,\
++\n\ttRRD %d,\
++\n\ttRTP %d,\
++\n\ttRFC %d,\
++\n\ttMOD %d\n",tCKCLK, tRAS,tRCD,tRP,tWR, tWTR, tRRD, tRTP, tRFC, tMOD));
++
+    return GT_OK;
+ }
+ 
+diff --git a/tools/marvell/bin_hdr/src_phy/msys/mvHighSpeedTopologySpec-ac3.c b/tools/marvell/bin_hdr/src_phy/msys/mvHighSpeedTopologySpec-ac3.c
+index 32a6c05..24bbbae 100755
+--- a/tools/marvell/bin_hdr/src_phy/msys/mvHighSpeedTopologySpec-ac3.c
++++ b/tools/marvell/bin_hdr/src_phy/msys/mvHighSpeedTopologySpec-ac3.c
+@@ -141,6 +141,19 @@ SERDES_MAP ac3SerdesRd24_Topology[MAX_SERDES_LANES] =
+ 	{ PEX0,		0,			0,			SERDES_DEFAULT_MODE,	MV_FALSE,	MV_FALSE },
+ };
+ 
++/****************************************/
++/*  Marvell AC3S(AC3-BXH) DB/RD Topology         */
++/****************************************/
++
++/* Configuration options */
++SERDES_MAP ac3sSerdesDbTopology[MAX_SERDES_LANES] =
++{ /* DB_MISL_24G4XG */
++        /* Type         Serdes          Speed                   Mode                    SwapRX          SwapTX */
++        { PEX0,         0,              __5Gbps,                SERDES_DEFAULT_MODE,    MV_FALSE,       MV_FALSE },
++        { SGMII0,       10,             __1_25Gbps,             SERDES_DEFAULT_MODE,    MV_FALSE,       MV_FALSE },
++        { SGMII1,       11,             __1_25Gbps,             SERDES_DEFAULT_MODE,    MV_FALSE,       MV_FALSE },
++};
++
+ SERDES_MAP* marvellBoardAc3SerdesTopology[] =
+ {
+ 	ac3SerdesDbTopology,
+@@ -148,8 +161,15 @@ SERDES_MAP* marvellBoardAc3SerdesTopology[] =
+ 	ac3SerdesRd48_2xxg_2xg_Topology,
+ 	ac3SerdesDb24_g46_Topology,
+ 	ac3SerdesRd24_Topology,
++	ac3sSerdesDbTopology,
+ };
+ 
++#if 0
++/* 
++BlueH, the intension of below code is to create a new array only for AC3-BXH.  
++however, the board ID leverage AC3 mechanism, so cause no index5. 
++so decide to drop below.
++*/
+ /****************************************/
+ /*  Marvell AC3S DB/RD Topology		    */
+ /****************************************/
+@@ -158,9 +178,9 @@ SERDES_MAP* marvellBoardAc3SerdesTopology[] =
+ SERDES_MAP ac3sSerdesDbTopology[MAX_SERDES_LANES] =
+ { /* DB_MISL_24G4XG */
+ 	/* Type		Serdes		Speed			Mode			SwapRX		SwapTX */
+-	{ PEX0,		0,			0,		SERDES_DEFAULT_MODE,	MV_FALSE,	MV_FALSE },
+-	{ SGMII0,	10,		__1_25Gbps,		SERDES_DEFAULT_MODE,	MV_TRUE,	MV_FALSE },
+-	{ SGMII1,	11,		__1_25Gbps,		SERDES_DEFAULT_MODE,	MV_FALSE,	MV_TRUE },
++	{ PEX0,		0,		__5Gbps,		SERDES_DEFAULT_MODE,	MV_FALSE,	MV_FALSE },
++	{ SGMII0,	10,		__1_25Gbps,		SERDES_DEFAULT_MODE,	MV_FALSE,	MV_FALSE },
++	{ SGMII1,	11,		__1_25Gbps,		SERDES_DEFAULT_MODE,	MV_FALSE,	MV_FALSE },
+ };
+ 
+ 
+@@ -169,6 +189,7 @@ SERDES_MAP* marvellBoardAc3sSerdesTopology[] =
+ {
+ 	ac3sSerdesDbTopology,
+ };
++#endif
+ 
+ #endif /* CONFIG_CUSTOMER_BOARD_SUPPORT */
+ 
+@@ -183,18 +204,11 @@ SERDES_MAP* mvHwsSerdesTopologyGet(MV_U32 boardIdIndex)
+ 	topologyArr = customerAc3BoardSerdesTopology;
+ 	arrSize = sizeof(customerAc3BoardSerdesTopology)/sizeof(SERDES_MAP*);
+ #else
+-	if (mvSysEnvCtrlStepGet()) {
+-		/* AC3S boards */
+-		topologyArr = marvellBoardAc3sSerdesTopology;
+-		arrSize = sizeof(marvellBoardAc3sSerdesTopology)/sizeof(SERDES_MAP*);
+-	} else {
+-		/* AC3 boards */
+-		topologyArr = marvellBoardAc3SerdesTopology;
+-		arrSize = sizeof(marvellBoardAc3SerdesTopology)/sizeof(SERDES_MAP*);
+-	}
+-
++	/* AC3 boards */
++	/* last id 0x5 is AC3S (AC3-BXH) board */
++	topologyArr = marvellBoardAc3SerdesTopology;
++	arrSize = sizeof(marvellBoardAc3SerdesTopology)/sizeof(SERDES_MAP*);
+ #endif
+-
+ 	if (boardIdIndex >= arrSize)
+ 	{
+ 		mvPrintf("%s: Error: board index %d is not valid\n", __func__, boardIdIndex);

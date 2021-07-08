@@ -1,0 +1,32 @@
+// for all units
+do configure
+access-list device all ingress pcl-ID 0
+rule-id  0 action trap-to-cpu source-port 0
+rule-id  1 action trap-to-cpu source-port 1
+rule-id  2 action trap-to-cpu source-port 2
+rule-id  3 action trap-to-cpu source-port 3
+rule-id  4 action trap-to-cpu source-port 4
+rule-id  5 action trap-to-cpu source-port 5
+rule-id  6 action trap-to-cpu source-port 6
+rule-id  7 action trap-to-cpu source-port 7
+rule-id  8 action trap-to-cpu source-port 8
+rule-id  9 action trap-to-cpu source-port 9
+rule-id 10 action trap-to-cpu source-port 10
+rule-id 11 action trap-to-cpu source-port 11
+rule-id 12 action trap-to-cpu source-port 12
+rule-id 13 action trap-to-cpu source-port 13
+rule-id 14 action trap-to-cpu source-port 14
+rule-id 15 action trap-to-cpu source-port 15
+rule-id 16 action trap-to-cpu source-port 16
+rule-id 17 action trap-to-cpu source-port 17
+rule-id 18 action trap-to-cpu source-port 18
+rule-id 19 action trap-to-cpu source-port 19
+rule-id 20 action trap-to-cpu source-port 20
+rule-id 21 action trap-to-cpu source-port 21
+rule-id 22 action trap-to-cpu source-port 22
+rule-id 23 action trap-to-cpu source-port 23
+rule-id 24 action trap-to-cpu source-port 24
+rule-id 25 action trap-to-cpu source-port 25
+rule-id 26 action trap-to-cpu source-port 26
+rule-id 27 action trap-to-cpu source-port 27
+end

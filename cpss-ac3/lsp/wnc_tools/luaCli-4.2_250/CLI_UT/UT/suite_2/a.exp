@@ -1,0 +1,76 @@
+#
+#   CLI_PROMPT# show interfaces status all 0
+#   ###SYNTAXOK
+#   
+#   Port  Link  Speed  Duplex   CRC
+#   ----  ----  -----  ------ -------
+#   0     Up    100    Half  Enable
+#   1     Down  10     Half  Enable
+#   2     Down  10     Half  Enable
+#   3     Down  10     Half  Enable
+#   4     Down  10     Half  Enable
+#   5     Down  10     Half  Enable
+#   6     Down  10     Half  Enable
+#   7     Down  10     Half  Enable
+#   8     Up    100    Half  Enable
+#   9     Down  10     Half  Enable
+#   10    Down  10     Half  Enable
+#   11    Down  10     Half  Enable
+#   12    Down  10     Half  Enable
+#   13    Down  10     Half  Enable
+#   14    Down  10     Half  Enable
+#   15    Down  10     Half  Enable
+#   16    Down  10     Half  Enable
+#   17    Down  10     Half  Enable
+#   18    Up    100    Half  Enable
+#   19    Down  10     Half  Enable
+#   20    Down  10     Half  Enable
+#   21    Down  10     Half  Enable
+#   22    Down  10     Half  Enable
+#   23    Up    100    Half  Enable
+#   24    Down  10     Half  Enable
+#   25    Down  10     Half  Enable
+#   26    Up    10     Half  Enable
+#   
+#   ###EXECOK#0#
+#   CLI_PROMPT#
+#
+
+
+proc suite_2_a {} {
+    #global UT_syntax_check_status
+    #global UT_command_execution_status
+    #global UT_command_output
+    #UT_do_command "show interfaces status all 0"
+    #send_user "+++UT_syntax_check_status=$UT_syntax_check_status\n"
+    #send_user "+++UT_command_execution_status=$UT_command_execution_status\n"
+    #send_user "+++UT_command_output=$UT_command_output\n"
+
+    UT_do_command_expect_syntax_error "show interfaces status all"
+    UT_do_command_expect_success "show interfaces status all 0"
+    # check that at least one line match regexp:
+    # For example:
+    #   1     Down  10     Half  Enable
+    #   2     Down  10     Half  Enable
+    # 
+
+    # Analyze all output lines:
+    #
+    # set success false
+    # foreach line [UT_command_output_lines] {
+    #     if { [ regexp {^\s*\d+\s+(Up|Down)\s+\d} $line] } {
+    #         set success true
+    #     }
+    # }
+    # if { $success } {
+    #     UT_event OK "command \"show interfaces status all 0\" output ok"
+    # } else {
+    #     UT_event FAILED "command \"show interfaces status all 0\" output doesn't match"
+    # }
+
+    # Single match
+    UT_command_output_must_match {^\s*\d+\s+(Up|Down)\s+\d}
+    return 1
+}
+
+UT_test a suite_2_a

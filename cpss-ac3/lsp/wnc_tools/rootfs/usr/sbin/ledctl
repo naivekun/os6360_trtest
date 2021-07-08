@@ -1,0 +1,49 @@
+#!/bin/bash
+
+#set -x
+
+Usage()
+{
+   echo "Usage: ledctl [color:G/A/O] "
+   echo "       G=Green, A=Amber, O=Off"
+}
+
+if [ $# -ne 1 ];
+then
+   Usage
+   exit 1
+fi
+
+TYPE=$1
+
+if [ $TYPE != "O" ] && [ $TYPE != "G" ] && [ $TYPE != "A" ];
+then   
+   Usage
+   exit 1
+fi
+
+
+EC_STR="Set all LEDs to"
+
+if [ $TYPE == "A" ];
+then
+   VAL=0x6A
+   EC_STR=$EC_STR" amber color"
+
+elif [ $TYPE == "G" ];
+then
+   VAL=0x95
+   EC_STR=$EC_STR" green color"
+else
+   VAL=0xFF
+   EC_STR=$EC_STR" off"
+fi
+
+
+#Action
+
+i2cset -y 0 0x66 0x03 $VAL
+
+echo $EC_STR
+
+exit 0

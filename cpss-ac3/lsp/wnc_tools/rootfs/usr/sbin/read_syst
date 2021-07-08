@@ -1,0 +1,68 @@
+#!/bin/bash
+
+#set -x
+
+#i2cset -y 0 0x2e 0x40 0x05
+#sleep 1
+
+#Check start bit
+#STHEX=`i2cget -y 0 0x2e 0x40`
+#STVAL=`printf "%d"  $STHEX` 
+#STBIT=$(( $STVAL%2 ))
+
+#if [ $STBIT -ne 1 ];
+#then
+#STVAL=$(( $STVAL+1 ))
+#STHEX=`printf "0x02x" $STVAL`
+#i2cset -y 0 0x2e 0x40 $STVAL
+#sleep 1
+#fi
+
+#echo $STHEX
+#echo $STVAL
+#echo $STBIT
+
+#Number after decimal point
+
+NADP=`i2cget -y 0 0x2e 0x77`
+#echo $NADP
+NADPNUM=`printf "%d" $NADP`
+I=0
+while [ $I -lt 4 ]
+do
+   BITNUM=$(( $NADPNUM%4 ))
+   NADPNUM=$(( $NADPNUM/4 ))
+   if [ $I -eq 1 ];
+   then
+      R1_NADP=$(( $BITNUM*25 ))
+   elif [ $I -eq 2 ];
+   then
+      LT_NADP=$(( $BITNUM*25 ))
+   elif [ $I -eq 3 ];
+   then 
+      R2_NADP=$(( $BITNUM*25 ))
+   fi
+   I=$(( $I+1 ))
+done
+
+
+#Remote 1 temperature
+R1HEX=`i2cget -y 0 0x2e 0x25`
+#Local temperature
+LTHEX=`i2cget -y 0 0x2e 0x26`
+#Remote 2 temperature
+R2HEX=`i2cget -y 0 0x2e 0x27`
+
+#echo $R1HEX
+#echo $LTHEX
+#echo $R2HEX
+
+R1=`printf "%d"  $R1HEX` 
+LT=`printf "%d"  $LTHEX` 
+R2=`printf "%d"  $R2HEX` 
+
+echo ADT7476 Remote 1 Temperature = $R1.$R1_NADP
+echo ADT7476 Local Temperature = $LT.$LT_NADP
+echo ADT7476 Remote 2 Temperature = $R2.$R2_NADP
+
+exit 0

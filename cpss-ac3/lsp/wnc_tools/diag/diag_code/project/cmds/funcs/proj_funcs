@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# [PURPOSE]
+#   Get temperature to display after each diag command.
+# [PARAMETERS]
+#   None
+# [NOTES]
+#   This function is for project.
+#
+function Diag_Temperature {
+    tmp_path="/sys/bus/i2c/devices/6-0048/hwmon/hwmon0/temp1_input"
+    temp=`cat ${tmp_path}`
+    tmp_int=`echo $((${temp}/1000))`
+    tmp_point=`echo $((${temp}/100-${tmp_int}*10))`
+    echo "${tmp_int}.${tmp_point} deg C"
+} 
+

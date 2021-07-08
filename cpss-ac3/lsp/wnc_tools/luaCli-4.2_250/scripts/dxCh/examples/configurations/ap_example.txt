@@ -1,0 +1,35 @@
+// TAG:               ap;
+// Short Description: Configuration for AP port.
+// Description:       Configuration for AP port.
+//
+end
+//
+// enter the config context
+config
+// must be before cpssInitSystem !!!
+ap-engine enable true
+//
+exit
+// do cpssInitSystem 
+cpssInitSystem 27,1,0
+//
+// set values
+config
+interface range ethernet ${dev}/${ports[3]},${ports[2]}
+ap-port fc_pause true fc_asm_dir symmetric fec_supported true fec_required true lane_num 0 mode1 KR speed1 10000
+ap-port fc_pause true fc_asm_dir symmetric fec_supported true fec_required true lane_num 1 mode1 KR speed1 40000
+ap-port fc_pause true fc_asm_dir symmetric fec_supported true fec_required true lane_num 2 mode1 KR speed1 10000
+exit
+//
+interface range ethernet ${dev}/${ports[1]},${ports[4]}
+ap-port fc_pause true fc_asm_dir symmetric fec_supported true fec_required true lane_num 0 mode1 KR speed1 10000
+ap-port fc_pause true fc_asm_dir symmetric fec_supported true fec_required true lane_num 1 mode1 KR speed1 10000
+ap-port fc_pause true fc_asm_dir symmetric fec_supported true fec_required true lane_num 2 mode1 KR speed1 40000
+exit
+//
+// 
+// display ap port information
+exit
+show interfaces ap ethernet ${dev}/${ports[3]},${ports[2]}
+show interfaces ap ethernet ${dev}/${ports[1]},${ports[4]}
+show interfaces ap all

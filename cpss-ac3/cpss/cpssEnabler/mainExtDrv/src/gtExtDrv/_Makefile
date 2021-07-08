@@ -1,0 +1,131 @@
+# $(warning "Started")
+#SUBDIR =
+MODULES :=
+
+ifeq (VXWORKS, $(OS_RUN))
+
+  ifeq (DUNE, $(XBAR_VENDOR))
+    ifeq (DUNE, $(BSP_VENDOR))
+      #SUBDIR = dune0011a
+      MODULES := dune0011a
+    else
+      #SUBDIR = genericDrv
+      MODULES := genericDrv
+    endif
+  endif
+
+  ifneq (,$(filter PPC603 PPC85XX ARMARCH7,$(CPU)))
+        #SUBDIR = genericDrv
+        MODULES := genericDrv
+  endif
+
+  ifeq (PPC604, $(CPU))
+        #SUBDIR = gt64260
+        MODULES := gt64260
+  endif
+  ifeq (ARMARCH4, $(CPU))
+       #SUBDIR  = gt88e6218
+        MODULES := gt88e6218
+  endif
+
+  ifeq (ARMARCH5, $(CPU))
+    ifneq (,$(filter GT_MNG_PCI GT_MNG_PCI_SMI GT_MNG_PCI_SMI_I2C,$(MANAGEMENT_BUS)))
+       #SUBDIR  = genericDrv
+        MODULES := genericDrv
+    else
+       #SUBDIR = gt88e6218
+        MODULES := gt88e6218
+    endif
+  endif
+endif
+
+ifeq (linux, $(OS_RUN))
+  GENERIC_LINUX_DRV_CPUS = PPC85XX EP3041A MIPS64 INTEL64 ARMARCH5 ARMARCH7
+  ifeq (EXISTS,$(INTEL64_DRV))
+    GENERIC_LINUX_DRV_CPUS += i386
+  endif
+  ifneq (,$(filter $(GENERIC_LINUX_DRV_CPUS),$(CPU)))
+        ifeq (6, $(KPATCHLEVEL))
+                #SUBDIR = genericLinuxDrv
+                MODULES := genericLinuxDrv
+        endif
+  endif
+
+  ifeq (PPC603, $(CPU))
+        ifeq (6, $(KPATCHLEVEL))
+                #SUBDIR = gtLinux_2_6_8245
+                MODULES := gtLinux_2_6_8245
+        endif
+  endif
+  ifeq (PPC604, $(CPU))
+        #SUBDIR = 
+  endif
+  ifeq (YES, $(LINUX_NOKM))
+        #SUBDIR = linuxNoKernelModule
+        MODULES := linuxNoKernelModule
+  endif
+endif
+ifeq (FreeBSD, $(OS_RUN))
+   #SUBDIR = gtFreeBsd85xx
+   MODULES := gtFreeBsd85xx
+endif
+ifeq (win32, $(OS_RUN))
+  #SUBDIR = simWin32
+   MODULES := simWin32
+endif
+
+ifeq (1, $(LINUX_SIM))
+    #SUBDIR = simWin32
+   MODULES := simWin32
+endif
+
+ifeq (EXISTS, $(RTOS_ON_SIM))
+  #SUBDIRS = rtosSim version
+   MODULES := rtosSim version
+  
+else
+  #SUBDIRS = $(SUBDIR) version
+   MODULES := $(MODULES) version
+endif
+
+
+#$(warning "MODULES = $(MODULES)")
+
+
+##List of subfolders to include in build
+#MODULES := \
+# version
+## bspTemplate \
+## dune0011a \
+## genericDrv \
+## genericDrvDsr \
+## genericLinuxDrv \
+## gt64260 \
+## gt88e6218 \
+## gtFreeBsd85xx \
+## gtLinux_2_6_8245 \
+## linuxNoKernelModule \
+## mv_pmc8245 \
+## rtosSim \
+## simWin32 \
+
+
+#ifeq (1, $(LINUX_SIM))
+# MODULES += simWin32
+#endif
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

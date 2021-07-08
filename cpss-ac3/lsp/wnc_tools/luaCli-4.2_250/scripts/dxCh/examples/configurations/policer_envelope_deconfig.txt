@@ -1,0 +1,54 @@
+// TAG: Policing; MEF10.3;
+// Short Description: set policy envelope (MEF10.3) configuration restore
+// Description:       general restore configuration, Qos, PCL, PLR
+// - PCL assigns QoS profile and Policig Pointer (borh metering and counting)
+// - QoS prfile 224, variable initial Policer DP, and Priority per QoS profile
+// - Policer Flow Based Envelope threshold 0, Envelope Max Size 8 MRU 10200
+// - Ingress1 Policer Stage disable
+//parameters are:
+// ${@@test_env.ingress_acl_index}
+// ${@@test_env.egress_acl_index}
+// ${@@test_env.stage}
+//
+end
+configure
+access-list device ${dev} ingress pcl-ID 11
+delete rule-id ${@@test_env.ingress_acl_index}
+exit
+interface ethernet ${dev}/${port[2]}
+no service-acl pcl-ID 11
+exit
+//restore egress PCL
+end
+configure
+access-list device ${dev} egress pcl-ID 22
+delete rule-id ${@@test_env.egress_acl_index}
+exit
+interface ethernet ${dev}/${port[4]}
+no service-acl pcl-ID 22 egress
+exit
+//restore
+// restore MRU 10200, flow-based envelope-base threshold 0, max-envelope-size 8
+// packet init color (via profile 224) to green
+// packet priority (via profile 224) to 0
+end
+configure
+policy-meter set-mru device ${dev} stage ${@@test_env.stage} mru 102400
+policy-meter flow-based-cfg device ${dev} stage ${@@test_env.stage} threshold 0 max-size 8-entries
+qos profile device ${dev} index 224 dp green
+//show management and billing counters
+end
+show policy-mng-conters device ${dev} stage ${@@test_env.stage} set 0
+show policy-billing device ${dev} stage ${@@test_env.stage} entry-index 10-17
+//clear envelope from CPU memory
+end
+configure
+no policy-meter 0-7
+//disable ingress1 stage
+end
+configure
+no policy-meter stage-enable device ${dev} stage ingress1
+
+
+
+

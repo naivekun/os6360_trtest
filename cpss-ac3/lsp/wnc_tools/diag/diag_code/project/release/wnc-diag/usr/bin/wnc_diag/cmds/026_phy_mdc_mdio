@@ -1,0 +1,229 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+res=$PASS
+SMI_PORTS_LIST_S=""
+SMI_PORTS_LIST_E=""
+XSMI_PORTS_LIST=""
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - Test MDC/MDIO via getting PHY identifier 1 and 2
+
+SYNOPSIS
+       $prog_name [-g] [-h]
+
+DESCRIPTION
+       This command will get PHYIDR1 and PHYIDR2 to test whether the MDC/MDIO
+       works normally. It will get both identifiers in order of ports that are
+       connected to the PHY device.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -g    Get PHY identifiers and list in order of ports connected to a PHY
+             device.
+
+       -h    Show this help message.
+
+PASS CRITERIA
+       - Get PHYIDR1 and PHYIDR2 in order of ports connected to a PHY device:
+           SUCCESS: all PHY identifiers of ports which should be available are 
+                    listed
+             Display: \"Result: PASS\" with further messages like
+                      \"Port 1 : PHYIDR1 [0x1041] and PHYIDR2 [0x0ED4]\" 
+             Return code : 0
+
+           ERROR: any PHY identifier can't be listed
+             Display: \"Result: FAIL\" with further messages like
+                      \"Port 1 : PHYIDR1 [UNKNOWN] and PHYIDR2 [UNKNOWN]\" 
+             Return code : 1
+
+EXAMPLE
+       $prog_name -g
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    res=$FAIL
+    quit $res
+    echo "">&2
+fi
+
+get_all_ports_with_phy() {
+    case $SKU in
+        OS6360-10 | OS6360-P10)
+            SMI_PORTS_LIST_S="1"
+            SMI_PORTS_LIST_E="10"
+            ;;
+        OS6360-P24X | OS6360-PH24)
+            SMI_PORTS_LIST_S="1"
+            SMI_PORTS_LIST_E="24"
+            XSMI_PORTS_LIST="25 26"
+            ;;
+        OS6360-P48X)
+            SMI_PORTS_LIST_S="1"
+            SMI_PORTS_LIST_E="46"
+            XSMI_PORTS_LIST="47 48 49 50"
+            ;;
+        *) # OS6360-10 or OS6360-P10
+            SMI_PORTS_LIST_S="1"
+            SMI_PORTS_LIST_E="10"
+            ;;
+    esac
+}
+
+while getopts "gh" arg; do
+    case $arg in
+        g) # get PHYIDR
+            ;;
+        h | *) # display usage
+            usage
+            quit_ok
+            ;;
+    esac
+done
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    print_fail "CPSS not ready!"
+    exit 1
+fi
+
+# Get ports list
+get_all_ports_with_phy
+
+#                 P48X              P24X/PH24      10/P10
+# ----------------------------------------------------------
+# dev_0/smi_0  |  port     1~16  |  port  1~16  |  port 1~10
+# dev_0/smi_1  |  port    17~24  |  port 17~24  |
+# dev_0/xsmi   |  port       48  |  port 25,26  |
+# dev_1/smi_0  |  port    25~40  |              |
+# dev_1/smi_1  |  port    41~46  |              |
+# dev_1/xsmi   |  port 47,49,50  |              |
+# ----------------------------------------------------------
+
+APICMD_W="do cpss-api call cpssSmiRegisterWriteShort"
+APICMD_R="do cpss-api call cpssSmiRegisterReadShort"
+
+dev="0"
+smi="CPSS_PHY_SMI_INTERFACE_0_E"
+smi_addr="0"
+for ((idx=${SMI_PORTS_LIST_S}; idx<=${SMI_PORTS_LIST_E}; idx++)); do
+    if [ "$idx" == "17" ]; then
+        smi="CPSS_PHY_SMI_INTERFACE_1_E"
+        smi_addr="0"
+    fi
+
+    # SKU: OS6360-P48X
+    if [ "$idx" == "25" ] && [ "$SKU" == "OS6360-P48X" ]; then
+        dev="1"
+        smi="CPSS_PHY_SMI_INTERFACE_0_E"
+        smi_addr="0"
+    elif [ "$idx" == "41" ] && [ "$SKU" == "OS6360-P48X" ]; then
+        smi="CPSS_PHY_SMI_INTERFACE_1_E"
+        smi_addr="0"
+    fi
+
+    # First write page to 0x0
+    send_cmd "$APICMD_W devNum $dev portGroupsBmp 0 smiInterface $smi smiAddr $smi_addr regAddr 22 data 0x0"
+
+    # PHYIDR1
+    $LUASH -c "$APICMD_R devNum $dev portGroupsBmp 0 smiInterface $smi smiAddr $smi_addr regAddr 2" | sed 's/\r//g' > ./tmp_cmd_result
+    if [ -z "`grep "result=GT_OK" ./tmp_cmd_result`" ]; then
+        PHYIDR1="UNKNOWN"
+        res=$FAIL
+    else
+        PHYIDR1="`grep data ./tmp_cmd_result | cut -d '=' -f2`"
+        # To string
+        PHYIDR1=`printf "0x%04X" $PHYIDR1`
+    fi
+
+    # PHYIDR2
+    $LUASH -c "$APICMD_R devNum $dev portGroupsBmp 0 smiInterface $smi smiAddr $smi_addr regAddr 3" | sed 's/\r//g' > ./tmp_cmd_result
+    if [ -z "`grep "result=GT_OK" ./tmp_cmd_result`" ]; then
+        PHYIDR2="UNKNOWN"
+        res=$FAIL
+    else
+        PHYIDR2="`grep data ./tmp_cmd_result | cut -d '=' -f2`"
+        # To string
+        PHYIDR2=`printf "0x%04X" $PHYIDR2`
+    fi
+
+    # Display result
+    printf "Port %2d : PHYIRD1 [%s] and PHYIDR2 [%s]\n" $idx $PHYIDR1 $PHYIDR2
+
+    rm -f ./tmp_cmd_result
+    smi_addr=`expr $smi_addr + 1`
+done
+
+if [ ! -z "$XSMI_PORTS_LIST" ]; then
+    APICMD_R="do cpss-api call cpssXsmiRegisterRead"
+    xsmi="CPSS_PHY_XSMI_INTERFACE_0_E"
+
+    for idx in $XSMI_PORTS_LIST; do
+        if [ "$idx" == "25" ] && [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+            # 88X3220, port 0
+            dev="0"
+            xsmi_addr="0xc"
+        elif [ "$idx" == "26" ] && [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+            # 88X3220, port 1
+            dev="0"
+            xsmi_addr="0xd"
+        elif [ "$idx" == "47" ] && [ "$SKU" == "OS6360-P48X" ]; then
+            # 88E2010#0
+            dev="1"
+            xsmi_addr="0x9"
+        elif [ "$idx" == "48" ] && [ "$SKU" == "OS6360-P48X" ]; then
+            # 88E2010#1
+            dev="0"
+            xsmi_addr="0xa"
+        elif [ "$idx" == "49" ] && [ "$SKU" == "OS6360-P48X" ]; then
+            # 88X3220, port 0
+            dev="1"
+            xsmi_addr="0xd"
+        elif [ "$idx" == "50" ] && [ "$SKU" == "OS6360-P48X" ]; then
+            # 88X3220, port 1
+            dev="1"
+            xsmi_addr="0xc"
+        fi
+
+        # PHYIDR1
+        $LUASH -c "$APICMD_R devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0x2002 phyDev 4" | sed 's/\r//g' > ./tmp_cmd_result
+        if [ -z "`grep "result=GT_OK" ./tmp_cmd_result`" ]; then
+            PHYIDR1="UNKNOWN"
+            res=$FAIL
+        else
+            PHYIDR1="`grep data ./tmp_cmd_result | cut -d '=' -f2`"
+            # To string
+            PHYIDR1=`printf "0x%04X" $PHYIDR1`
+        fi
+
+        # PHYIDR2
+        $LUASH -c "$APICMD_R devNum $dev xsmiInterface $xsmi xsmiAddr $xsmi_addr regAddr 0x2003 phyDev 4" | sed 's/\r//g' > ./tmp_cmd_result
+        if [ -z "`grep "result=GT_OK" ./tmp_cmd_result`" ]; then
+            PHYIDR2="UNKNOWN"
+            res=$FAIL
+        else
+            PHYIDR2="`grep data ./tmp_cmd_result | cut -d '=' -f2`"
+            # To string
+            PHYIDR2=`printf "0x%04X" $PHYIDR2`
+        fi
+
+        # Display result
+        printf "Port %2d : PHYIRD1 [%s] and PHYIDR2 [%s]\n" $idx $PHYIDR1 $PHYIDR2
+
+        rm -f ./tmp_cmd_result
+    done
+fi
+
+quit $res

@@ -1,0 +1,19 @@
+// TAG: loopback port; forwarding to loopback; vlan
+// Short Description: Disable 'Forwarding to Loopback/Service port'
+// Description:  Disable Forwarding to Loopback Port globally and for FORWARD packet type
+//               Set to zero Source/Target Loopback profiles ports 1,2.
+//
+
+end
+configure
+no forward-to-loopback enable device ${dev} rx-profile 3 tx-profile 1 traffic-classes all
+no forward-to-loopback packet-type-enable forward-from-cpu device ${dev}
+
+interface range ethernet ${dev}/${port[1]},${port[2]}
+forward-to-loopback profile rx 0 tx 0
+exit
+
+no interface vlan device ${dev} vid 5
+end
+clear bridge type ${dev} all
+

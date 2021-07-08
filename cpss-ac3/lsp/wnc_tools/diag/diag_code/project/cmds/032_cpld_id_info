@@ -1,0 +1,207 @@
+#! /bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=$(basename $0)
+
+usage () {
+echo "Usage:
+NAME
+       032_cpld_id_info - CPLD info test command
+
+SYNOPSIS
+       032_cpld_id_info [-g]
+                        [-c CPLD ID] [-b Board ID]
+                        [-h]
+
+DESCRIPTION
+       This command is used to display the CPLD info which includes
+       CPLD ID and Board ID, and verify whether info match with input
+       value which user expected or not. The ID format is hexadecimal.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -g    Display CPLD ID and Board ID info
+
+       -c    Verify CPLD ID with user input value
+
+       -b    Verify board ID with user input value
+
+       -h    Help message
+
+PASS CRITERIA
+       - Display ID info (-g) :
+           SUCCESS: could get CPLD ID and Board ID info
+             Display: PASS
+             Return code : 0
+
+           ERROR: couldn't get get CPLD ID and Board ID info
+             Display: FAIL
+             Return code : 2
+
+       - Verify ID with input value (-c, -b) :
+           SUCCESS: ID is match with user expected
+             Display: PASS
+             Return code : 0
+
+           ERROR: ID is not match with user expected
+             Display: FAIL
+             Return code : 3
+
+           ERROR: invalid argument
+             Display: FAIL
+             Return code : 4
+
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS
+             Display: FAIL
+             Return code : 1
+EXAMPLE
+       032_cpld_id_info -g
+       032_cpld_id_info -c 0x01 -b 0x71
+       032_cpld_id_info -c 0x01
+" >&2
+}
+
+# delete pattern '0x'.
+filter () {
+    echo $1 | sed s/'0[xX]'//g
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result=${PASS}
+result_cpld_id=${PASS}
+result_board_id=${PASS}
+
+# cpld id.
+cpld_id=`cat /sys/bus/i2c/devices/0-007f/cpld_rev`
+cpld_id=`printf "0x%.2x" ${cpld_id}`
+
+# board id.
+board_id=`cat /sys/bus/i2c/devices/0-007f/product_id`
+board_id=`printf "0x%.2x" ${board_id}`
+
+# sku
+sku=`cat /usr/local/sku`
+
+# test_mode status.
+test_cpld_mode=false
+test_board_mode=false
+disp_mode=false
+
+#====================================================================
+
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":gc:b:h" arg
+do
+    case ${arg} in
+        g)
+            disp_mode=true
+            ;;
+        c)
+            input_cpld=${OPTARG}
+            test_cpld_mode=true
+            ;;
+        b)
+            input_board=${OPTARG}
+            test_board_mode=true
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    quit 1
+elif [ -z ${cpld_id} ] || [ -z ${board_id} ]; then
+    echo
+    echo "======================================"
+    print_fail "No ID info get"
+    echo "======================================"
+    quit 2
+fi
+
+if [ ${disp_mode} = true ]; then
+    echo
+    echo "Display ID info:"
+    echo "======================================"
+    echo "CPLD ID: ${cpld_id}"
+    echo "Board ID: ${board_id}"
+    echo "======================================"
+fi
+
+# test cpld id.
+if [ ${test_cpld_mode} = true ]; then
+    echo
+    echo "Verify CPLD ID: ${cpld_id}"
+    echo "======================================"
+
+    # check if arg is hex and filter '0x'.
+    check_arg=`filter ${input_cpld} | grep '^[[:xdigit:]]\{2\}$'`
+    if [ -z ${check_arg} ]; then
+        print_fail "Invalid argument"
+        result_cpld_id=4
+    else
+        input_cpld=`echo ${input_cpld} | tr '[A-Z]' '[a-z]'`
+        if [ ${cpld_id} = ${input_cpld} ]; then
+            print_pass "Match with input"
+            result_cpld_id=${PASS}
+        else
+            print_fail "Not match with input"
+            result_cpld_id=3
+        fi
+    fi
+    echo "======================================"
+fi
+
+# test board id.
+if [ ${test_board_mode} = true ]; then
+    echo
+    echo "Verify Board ID: ${board_id}"
+    echo "Switch Sku: ${sku}"
+    echo "======================================"
+
+    # check if arg is hex and filter '0x'.
+    check_arg=`filter ${input_board} | grep '^[[:xdigit:]]\{2\}$'`
+    if [ -z ${check_arg} ]; then
+        print_fail "Invalid argument"
+        result_board_id=4
+    else
+        input_board=`echo ${input_board} | tr '[A-Z]' '[a-z]'`
+        if [ ${board_id} = ${input_board} ]; then
+            print_pass "Match with input"
+            result_board_id=${PASS}
+        else
+            print_fail "Not match with input"
+            result_board_id=3
+        fi
+    fi
+    echo "======================================"
+fi
+
+if [ ${result_cpld_id} -ne ${PASS} ]; then
+    result=${result_cpld_id}
+elif [ ${result_board_id} -ne ${PASS} ]; then
+    if [ ${result_cpld_id} -lt ${result_board_id} ]; then
+        result=${result_board_id}
+    fi
+else
+    result=${PASS}
+fi
+
+quit ${result}

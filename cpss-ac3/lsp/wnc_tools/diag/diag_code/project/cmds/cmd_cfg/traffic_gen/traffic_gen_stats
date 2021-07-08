@@ -1,0 +1,7 @@
+do set output nopause
+do show interfaces mac counters ethernet 1/20
+do show interfaces mac counters ethernet 1/21
+do show interfaces mac counters ethernet 1/27
+do show interfaces mac counters ethernet 0/24
+do show interfaces mac counters ethernet 1/25
+do show interfaces mac counters ethernet 1/24

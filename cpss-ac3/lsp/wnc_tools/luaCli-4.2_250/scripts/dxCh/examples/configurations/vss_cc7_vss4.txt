@@ -1,0 +1,82 @@
+// TAG:               VSS; virtual-sub-system;bc2-ac3-system;cc7-on-vss4
+// Short Description: Configuration for device 'cc5-on-vss3' in the connection of 2 VSSs.
+// Description:       Configuration for device 'cc5-on-vss3' in the connection of 2 VSSs.
+//--------------------- the system  --------------------------
+//    -----------                             -----------
+//    |cc7(vss4)|                             |cc5(vss3)|
+//    -----------                             -----------
+//         |                                   |     |
+//        36                                  36     54
+//         |                              |----|     |----|
+//         |                              |               |
+//         23                             23              23
+//         |                              |               |
+//    ------------                    ------------    ------------
+//    |lc1       |                    |lc1       |    |lc5       |
+//    ------------                    ------------    ------------
+//    |    |  |  |                    |    |          |    |   |
+//    20  18  8  0                    18   8          0    8   18
+//    |    |  |  |                    |    |          |    |   |
+//    |    |  |  |                    |    |          |    |   |
+//    |    |  |  |--------------------|    |          |    |   |
+//    |    |  |       vss-trunk            |          |    |   |
+//    |    |  |----------------------------+----------|    |   |
+//    |    |                               |               |   |
+//    |    |                               |               |   |
+//    |    ---------------|   |-------------               |   |
+//    |           network |   |                            |   |
+//    |            trunk  |   |                            |   |
+//
+//  ------------------------------------------------------------------
+//      our device in the system is : cc7 'under' vss4
+//      the actual device is 'BC2' (Bobcat2) silicon.
+//
+end
+//
+// enter the config context
+config
+//
+//set 'my info' as device "cc7" in vss 4
+vss my-info role cc name "cc7" vss-id 4
+//
+//state info about the neighbor vss-3
+vss neighbor-vss-info vss-name "vss_3" vss-id 3
+//
+// set the inter-connection ports:
+//      port per connected device.
+//  port 36 connected to 'lc1'
+//
+interface ethernet ${dev}/${port[3]}
+vss neighbor-info role lc name "lc1"
+exit
+//
+//
+// state the eports representing physical pors on lc devices
+// no need to state eports of neighbor-vss
+//  'my formula' --> eport = (dev*1000 + port)
+//
+interface ethernet ${dev}/${ePort1018}
+vss port-on-lc lc-name "lc1" lc-port ${@@vssLcPort(3)}
+exit
+interface ethernet ${dev}/${ePort1020}
+vss port-on-lc lc-name "lc1" lc-port ${@@vssLcPort(5)}
+exit
+//
+//
+// state that the 'vss trunk' that connected to 'vss_3' ,
+// hold 2 members :
+//      port 0 in "lc1"
+//      port 8 in "lc1"
+//
+vss neighbor-vss-connection add-port vss-name "vss_3" dev-name-in-local-vss "lc1" port ${@@vssLcPort(1)}
+vss neighbor-vss-connection add-port vss-name "vss_3" dev-name-in-local-vss "lc1" port ${@@vssLcPort(2)}
+//
+// state that the 'network trunk' (global eport = 4500)
+// hold 2 members :
+//      eport 1018 (local vss) (port 18 in "lc1" )
+//      eport 1008 'vss_3'     (port 8  in "lc1")
+//
+interface eport ${dev}/${ePort4500}
+vss aggregate-eports eport  ${ePort1018}
+vss aggregate-eports eport  ${ePort1008} neighbor-vss-name "vss_3"
+exit

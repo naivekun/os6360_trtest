@@ -1,0 +1,78 @@
+###########################################
+##                                       ##
+##    Top Make file for CPSS mainApp     ##
+##                                       ##
+###########################################
+
+ifeq (1, $(SHARED_MEMORY))
+PROJ_NAME = shlibTestClients
+
+include $(USER_BASE)/gtDefsTopMake.mk
+
+PROJECT_PATH =  $(OS_INCLUDE)       \
+                $(OS_PATH)          \
+                $(SYSCONFIG_PATH)   \
+                $(COMMON_PATH)      \
+                $(PP_DRV_PATH)      \
+                $(EXT_DRV_PATH)     \
+                $(EXT_MAC_PATH)     \
+                $(EXT_UTILS_PATH)   \
+                $(GALTIS_PATH)      \
+                $(UTFTRAFFIC_PATH)  \
+				$(FIS)$(SW_ROOT)/$(PROJ_NAME)/h$(FIE)
+
+PROJECT_PATH += $(FIS)$(SW_ROOT)/common/src/cpss/common/labServices/port/gop/src/port/serdes/avago/aapl/marvell$(FIE)\
+                $(FIS)$(SW_ROOT)/common/src/cpss/common/labServices/port/gop/h/port$(FIE)
+
+PROJECT_DEFS += MCD_RUN_WITH_CPSS
+
+ifeq (EXISTS, $(CHX_FAMILY))
+AD_CFLAGS += $(FD)CHX_FAMILY
+AD_CFLAGS += $(FD)CONFIG_DDR3
+PROJECT_PATH += $(PP_DRV_LABSERVICE_PATH)
+#ifneq (i386.EXISTS, $(CPU).$(ASIC_SIMULATION))
+#PROJECT_PATH += $(FIS)$(SW_ROOT)/cpssEnabler/mainSysConfig/src/appDemo/phy$(FIE)
+#PROJECT_PATH += $(FIS)$(SW_ROOT)/common/src/cpss/common/labServices/port/gop/src/port/serdes/avago/aapl/marvell/sd28firmware$(FIE)
+#endif
+endif
+
+ifeq (EXISTS,$(RTOS_ON_SIM))
+  PROJECT_PATH += $(SIMULATION_PATH)
+endif
+
+##############
+## CPSS PP  ##
+##############
+
+# check if need to use 'GM_USED'.
+#needed when 'force' image to use GM.
+#also needed for Puma2,3 where use always GM. (for simulation)
+ifeq (EXISTS, $(FORCE_GM_USE))
+  AD_CFLAGS += $(FD)GM_USED
+endif
+
+#################
+## DEBUG FLAGS ##
+#################
+ifdef PRESTERA_DEBUG
+CDEBUG = $(FD)PRESTERA_DEBUG
+endif
+
+
+include $(USER_BASE)/gtTargetsTopMake.mk
+
+############
+## CFLAGS ##
+############
+CFLAGS += $(CFLAGS1) $(CFLAGS2) $(CFLAGS_OPT) $(OS_DEFINE) $(CPU_FLAGS) $(LFLAGS) $(AD_CFLAGS) $(CDEBUG)
+
+#include $(USER_BASE)/gtTargetsTopMake.mk
+
+full: compile
+
+else
+#SHARED_MEMORY != 1
+full:
+dep:
+
+endif

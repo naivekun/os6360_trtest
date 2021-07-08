@@ -1,0 +1,10 @@
+// TAG:               PX devices(PIPE); cpu send;
+// Short Description: PIPE device : cpu send configuration.
+// Description:       PIPE device : cpu send configuration.
+//
+end
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum 0 portNum 0 state true
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum 0 portNum 1 state true
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum 0 portNum 2 state true
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum 0 portNum 4 state true
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum 0 portNum 5 state true

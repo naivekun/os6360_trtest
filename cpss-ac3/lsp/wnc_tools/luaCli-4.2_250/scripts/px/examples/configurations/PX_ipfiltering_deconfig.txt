@@ -1,0 +1,57 @@
+// TAG:               PX devices(PIPE); ip filtering;
+// Short Description: PIPE device : ip filtering deconfiguration.
+// Description:       PIPE device : ip filtering deconfiguration.
+//
+
+// Deconfigure IP2ME table
+end
+configure
+no ingress ip2me-entry device ${dev} index 1
+no ingress ip2me-entry device ${dev} index 2
+
+// Deconfigure Packet Types
+end
+configure
+packet-type-key device ${dev} ingress packet-type 0
+key-entry mask ip2me-index 0
+key-entry data ip2me-index 0
+key-entry data source-port-profile 0
+
+end
+configure
+packet-type-key device ${dev} ingress packet-type 1
+key-entry mask ip2me-index 0
+key-entry data ip2me-index 0
+key-entry data source-port-profile 1
+
+end
+configure
+packet-type-key device ${dev} ingress packet-type 2
+key-entry mask ip2me-index 0
+key-entry data ip2me-index 0
+key-entry data source-port-profile 2
+
+// Deconfigure destination port map
+end
+configure
+ingress port-map-entry destination device ${dev} indexes 0 entry 0x1FFFF
+ingress port-map-entry destination device ${dev} indexes 1 entry 0x1FFFF
+ingress port-map-entry destination device ${dev} indexes 2 entry 0x1FFFF
+
+// Deconfigure port filtering
+end
+configure
+egress port filtering device ${dev} packet-type 0
+egress port filtering device ${dev} packet-type 1
+egress port filtering device ${dev} packet-type 2
+
+// Deconfigure target ports
+end
+cpss-api call cpssPxIngressPortTargetEnableSet devNum ${dev} portNum ${port[1]} enable false
+cpss-api call cpssPxIngressPortTargetEnableSet devNum ${dev} portNum ${port[2]} enable false
+cpss-api call cpssPxIngressPortTargetEnableSet devNum ${dev} portNum ${port[3]} enable false
+
+// Link up deconfig
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum ${dev} portNum ${port[1]} state false
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum ${dev} portNum ${port[2]} state false
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum ${dev} portNum ${port[3]} state false

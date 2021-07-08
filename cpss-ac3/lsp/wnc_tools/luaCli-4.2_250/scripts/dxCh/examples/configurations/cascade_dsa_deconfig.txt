@@ -1,0 +1,15 @@
+// TAG:               cascade; DSA
+// Short Description: cascaded device test
+// Description:       reset port 36 to non-DSA mode and 
+//                    remove static MAC address
+
+end
+configure
+interface ethernet ${dev}/${port[3]}
+no cascade dsa
+exit
+
+no mac address-table static 00:11:22:33:44:55 device all vlan 1
+no mac address-table dynamic 00:A0:BB:CC:DD:EE device all vlan 1
+
+end

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+INFO_FILE=/tmp/postinfo
+
+if [ -f $INFO_FILE ];
+then
+
+cat $INFO_FILE
+
+else
+
+#CPU model name
+CPU_M=`cat /proc/cpuinfo | grep "model name" -m1`
+echo CPU $CPU_M > $INFO_FILE
+
+#Memory
+
+MTOTAL=`cat /proc/meminfo | grep "MemTotal" -m1 | awk '{ print $2,$3 }'`
+echo Memory Total Available: $MTOTAL >> $INFO_FILE
+
+#Show NAND info
+dmesg | grep " nand:" | grep " nand:" -n | grep "2:" | awk '{for(i=3;i<NF;i++)printf("%s ",$i);print $NF}'   >> $INFO_FILE
+
+fi
+

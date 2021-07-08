@@ -1,0 +1,147 @@
+#!/bin/bash
+
+source /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+INF="fiber"
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - command for EMI test
+
+SYNOPSIS
+       $prog_name [-s] [-q] [-i interface] [-h]
+
+DESCRIPTION
+       To set up for EMI test, or restore the EMI test setting.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -s    To start EMI test.
+
+       -q    To quit EMI test.
+
+       -i    To choose the interface of combo port.
+             Available options are \"0\" for fiber, \"1\" for copper.
+             Without this option default is fiber.
+
+       -h    Show this help message.
+
+EXAMPLE
+       $prog_name -s
+       $prog_name -s -i 1
+       $prog_name -q
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    exit 1
+fi
+
+while getopts "sqi:h" arg; do
+    case $arg in
+        s) # start test
+            action="START"
+            ;;
+        q) # stop test 
+            action="STOP"
+            ;;
+        i) # combo port interface
+            if [ "$OPTARG" == "1" ]; then
+                INF="copper"
+            else
+                INF="fiber"
+            fi
+            ;;
+        h | *) # display usage
+            usage
+            exit 0
+            ;;
+    esac
+done
+
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    echo "CPSS not ready!"
+    exit 1
+fi
+
+if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+    mrvl_luash -c "do load OS6360_P10_10_EMI_$action.txt" 2>&1 > /dev/null
+elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+    if [ $action == "STOP" ]; then
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power up copper
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         # power up fiber
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    elif [ "$INF" == "copper" ]; then
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power down fiber
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa840" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa840" 2>&1 > /dev/null
+         # power up copper
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    else
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power down copper
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa840" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa840" 2>&1 > /dev/null
+         # power up fiber
+         mrvl_luash -c "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    fi
+    mrvl_luash -c "do load OS6360_P24X_PH24_EMI_$action.txt" 2>&1 > /dev/null
+elif [ "$SKU" == "OS6360-P48X" ]; then
+    if [ $action == "STOP" ]; then
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power up copper
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         # power up fiber
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    elif [ "$INF" == "copper" ]; then
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power down fiber
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa840" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa840" 2>&1 > /dev/null
+         # power up copper
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    else
+         mrvl_luash -c "do debug-mode" 2>&1 > /dev/null
+         # power down copper
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xd data 0xa840" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xc data 0xa840" 2>&1 > /dev/null
+         # power up fiber
+         mrvl_luash -c "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xd data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xc data 0xa040" 2>&1 > /dev/null
+         mrvl_luash -c "end" 2>&1 > /dev/null
+    fi
+    mrvl_luash -c "do load OS6360_P48X_EMI_$action.txt" 2>&1 > /dev/null
+else
+    echo "SKU not matched, please check!"
+    exit 1
+fi
+
+echo -e "=== EMI test $action ===\n"
+
+exit 0

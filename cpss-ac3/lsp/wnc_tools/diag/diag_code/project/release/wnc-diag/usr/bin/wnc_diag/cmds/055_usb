@@ -1,0 +1,506 @@
+#!/bin/bash
+
+# ## Include ## #
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/defines
+source ${dir_path}/sh_funcs/exit
+source ${dir_path}/sh_funcs/print
+
+prog_name=`basename $0`
+
+# ## Functions ## #
+
+function usage() {
+echo "
+Usage:
+NAME
+       055_usb - USB test command
+
+SYNOPSIS
+       055_usb [-c] [-w] [-s file_size] [-h]
+
+DESCRIPTION
+       USB test command:
+         - Check if USB device list matches defined device list
+         - Test read and write
+             . Checks the integrity of written data,
+             . Predefined read and write speed benchmark check
+         - Specify the test file size
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+         - In the case of device check, none argument is required,
+           the device is specified in the test program
+
+         - In the case of device write check, none argument for -w
+           option is required
+
+OPTIONAL OPTIONS
+       -c    Check USB device list
+
+       -w    Write test for USB storage device
+	   
+       -s    (optional) Specify the test file size. It have to include
+             the unit of B (bytes), K (kilobytes), M (megabytes). 
+             Default is 10mb
+
+       -h    Help message 
+
+PASS CRITERIA
+
+       - Check USB device list (-c)
+           SUCCESS: If USB device list matches defined list
+             Display: PASS 
+             Return code: 0
+
+           Error: If USB device list does not match defined list
+             Display: FAIL 
+             Return code: 2 (option error)
+			              6 (test   error)
+
+       - Read/write USB disk test (-w):
+           SUCCESS: If integrity matches, and read/write benchmark 
+                    meets defined criteria
+             Display: PASS 
+             Return code: 0
+
+           Error: If target file system is not mounted, or integrity
+                  unmatched, or read/write benchmark does not meet
+                  criteria
+             Display: FAIL 
+             Return code: 1 (input  error)
+                          2 (option error)
+                          3 (system error)
+                          6 (test   error)
+
+Example:
+       055_usb -c
+       055_usb -w
+       055_usb -w -s 20m
+" >&2
+}
+
+function check_valid_int() {
+    
+    # 1: integer
+
+    if [[ ! ${1} =~ ^[0-9]+$ ]]; then
+        error_msg 1 "Variable \"${1}\" isn't a integer"
+    fi
+}
+
+function check_usb_device(){
+
+    local USB=("${!1}")
+    local USBLIST=`lsusb`
+    local res=${PASS}
+
+    echo ""
+    echo "====== Check USB devices ======"
+    echo ""
+   
+    i=0
+    for dev in "${USB[@]}"
+    do
+        val=`echo "$USBLIST" | grep "Bus 00[1-2]" | grep -c "${dev}"`
+        if [ ${val} -ne 1 ]; then
+            print_fail "${dev}"
+            res=${FAIL}
+        else
+            print_pass "${dev}"
+        fi
+        ((i++))
+    done
+    if [ ${res} -eq ${FAIL} ]; then
+        error_msg 6 "USB device list does not match defined list"
+    else
+        quit ${res}
+    fi
+}
+
+function get_mountable_dev() {
+
+    local sys_block_list=($(echo `find /sys/block -name "sd*"` | sed ":a;N;s/\n//g;ta"))
+    local mountable_list
+
+    local index=0
+    for i in ${sys_block_list[@]}
+    do
+        if [ `cat ${i}/removable` -eq 1 ]; then
+            mountable_list[index]=`echo ${i} | cut -d '/' -f 4`
+            ((index++))
+        fi
+    done
+
+    echo "${mountable_list[@]}"
+}
+
+function write_test_usb_device() {
+
+    local usb_dev_name=${1}
+    
+    echo ""
+    echo "====== Testing USB devices write and read ======"
+    echo ""
+    echo " device: ${usb_dev_name}"
+    echo ""
+
+    # local mount_dev=`mount | grep "${usb_dev_name}"`
+    #output example:
+    # / dev/sdb1 on / type ext4 (rw,relatime,errors=remount-ro,data=ordered)
+
+    # local mount_point=`echo "$mount_dev" | cut -d ' ' -f 3`
+    #output example
+    # /
+
+    # if [ "${mount_point}" = "" ]; then
+    #     print_fail "Unable to find mount point of ${usb_dev_name}"
+    #     res=${FAIL}
+    #     return
+    # fi
+    mkdir -p ${MOUNT_POINT} 2> /dev/null
+
+    if [ "$?" -ne "0" ]; then
+        print_fail "Create ${MOUNT_POINT}"
+        res=${FAIL}
+        recovery_env
+        return
+    fi
+
+    local tst_tmp_file="${MOUNT_POINT}/${USB_WRITE_TST_FILE_NAME}"
+
+    # local mount_dev=`mount | grep "${MOUNT_POINT}"`
+    # if [ "${mount_dev}" != "" ]; then
+    #     umount ${MOUNT_POINT}
+    # fi
+
+    mount ${usb_dev_name} ${MOUNT_POINT} 2> /dev/null
+
+    if [ "$?" -ne "0" ]; then
+        print_fail "Create ${MOUNT_POINT}"
+        res=${FAIL}
+        recovery_env
+        return
+    fi
+
+    # Create RAM disk
+
+    mkdir -p "${USB_WRITE_TST_ORG_FILE_PATH}"
+
+    if [ "$?" -ne "0" ]; then
+        print_fail "Create ${USB_WRITE_TST_ORG_FILE_PATH}"
+        res=${FAIL}
+        recovery_env
+        return
+    fi
+
+    mount -t tmpfs -o size="${USB_WRITE_TMPFS_SIZE}" tmpfs "${USB_WRITE_TST_ORG_FILE_PATH}"
+
+    if [ "$?" -ne "0" ]; then
+        recovery_env
+        error_msg 3 "Can't create and mount tmpfs"
+    fi
+
+    if [ -f "${USB_WRITE_TST_ORG_FILE}" ]; then
+        rm -f "${USB_WRITE_TST_ORG_FILE}"
+    fi
+
+    # Create temporary file
+    # dd if=/dev/urandom ibs="${USB_TST_SIZE}" count="1" of="${USB_WRITE_TST_ORG_FILE}" 2>&1 | cat > "${CREATE_DD_LOG_FILE}"
+    dd if=/dev/urandom ibs="${USB_WRITE_TST_BLOCK_SIZE}" count="${USB_WRITE_TST_BLOCK_COUNT}" of="$USB_WRITE_TST_ORG_FILE" 2>&1 | cat > "$CREATE_DD_LOG_FILE"
+    sync
+
+    if [ "$?" -ne "0" ]; then
+        print_fail "Create ${USB_WRITE_TST_ORG_FILE}"
+        res=${FAIL}
+        recovery_env
+        return
+    fi
+    # cat "${CREATE_DD_LOG_FILE}"
+
+    # ## dd output example:
+    # ##
+    # ### 200000+0 records in
+    # ### 400000+0 records out
+    # ### 204800000 bytes (205 MB, 195 MiB) copied, 4.7604 s, 43.0 MB/s
+
+    org_spent_time=`tail -n 1 "${CREATE_DD_LOG_FILE}" | cut -d ',' -f 3`
+    org_speed=`tail -n 1 "${CREATE_DD_LOG_FILE}" | cut -d ',' -f 4`
+    # echo "org, write time: ${org_spent_time}, speed: ${org_speed}"
+
+    md5_sum_org=`md5sum "${USB_WRITE_TST_ORG_FILE}" | cut -d ' ' -f 1`
+    # echo "md5 sum of ${USB_WRITE_TST_ORG_FILE} : ${md5_sum_org}"
+
+    # # Write to USB target file
+
+    dd if="${USB_WRITE_TST_ORG_FILE}" of="${tst_tmp_file}" 2>&1 | cat > "${TARGET_DD_LOG_FILE}"
+    sync
+
+    if [ "$?" -ne "0" ]; then
+        print_fail "Create file on target: ${tst_tmp_file}"
+        res=${FAIL}
+        recovery_env
+        return
+    fi
+    # cat "${TARGET_DD_LOG_FILE}"
+
+     # ## x86 ##
+    # target_spent_time=`tail -n 1 "${TARGET_DD_LOG_FILE}" | cut -d ',' -f 3`
+    # target_speed=`tail -n 1 "${TARGET_DD_LOG_FILE}" | cut -d ',' -f 4`
+    # ## ARM ##
+    target_spent_time=`tail -n 1 "${TARGET_DD_LOG_FILE}" | cut -d ',' -f 2`
+    target_speed=`tail -n 1 "${TARGET_DD_LOG_FILE}" | cut -d ',' -f 3`
+    target_spent_time_sec=`echo "${target_spent_time}"| cut -d ' ' -f 2`
+    # echo "target, write time: ${target_spent_time_sec} s, speed: $target_speed"
+
+    # time_ok=`echo "${target_spent_time_sec} <= ${WRITE_BENCHMARK_TIME_SEC}"| bc -l`
+    time_ok=`echo | awk "{print ${target_spent_time_sec} <= ${WRITE_BENCHMARK_TIME_SEC}}"`
+    # echo "time_ok = ${time_ok}"
+
+    if [ "${time_ok}" = "1" ]; then
+        print_pass "USB write time: ${target_spent_time_sec} <= ${WRITE_BENCHMARK_TIME_SEC}" 
+    else
+        recovery_env
+        error_msg 6 "USB write time: ${target_spent_time_sec} > ${WRITE_BENCHMARK_TIME_SEC}" 
+    fi
+
+    md5_sum_target=`md5sum "${tst_tmp_file}" | cut -d ' ' -f 1`
+    # echo "md5 sum of ${tst_tmp_file} : ${md5_sum_target}"
+
+    # Compare md5 sum
+
+    if [ "${md5_sum_org}" != "${md5_sum_target}" ]; then
+        print_fail "orginal md5 ${USB_WRITE_TST_ORG_FILE}: ${md5_sum_org}"
+        print_fail "target  md5 ${tst_tmp_file}: ${md5_sum_target}"
+        print_fail "MD5SUM mismatch"
+        res=${FAIL}
+        recovery_env
+        return
+    else
+        print_pass "USB write/read checksum" 
+    fi
+
+    # start_read_time=`date +%s.%N`
+    start_read_time=`cat /proc/uptime | cut -d " " -f 1`
+    cat "${tst_tmp_file}">/dev/null
+    # end_read_time=`date +%s.%N`
+    end_read_time=`cat /proc/uptime | cut -d " " -f 1`
+
+    # real_time=`echo "${end_read_time} - ${start_read_time}" | bc -l`
+    real_time=`echo | awk "{print ${end_read_time}-${start_read_time}}"`
+    read_time_sec=`echo "${real_time}" | cut -d '.' -f 1`
+    read_time_nanosec=`echo "${real_time}" | cut -d '.' -f 2`
+
+    if [ "${read_time_sec}" = "" ]; then
+        read_time_sec="0";
+    fi
+
+    # echo "real_time= ${real_time}"
+    # echo "read_time_sec=${read_time_sec}"
+    # echo "read_time_nanosec=${read_time_nanosec}"
+
+    if [ "${read_time_sec}" -gt "${READ_BENCHMARK_TIME_SEC}" ]; then
+        recovery_env
+        error_msg 6 "USB Read test size $, spent: ${read_time_sec}.${read_time_nanosec} > ${READ_BENCHMARK_TIME_SEC}.${READ_BENCHMARK_TIME_NANOSEC}"
+    fi
+
+    if [ "${read_time_sec}" -lt "${READ_BENCHMARK_TIME_SEC}" ]; then
+        print_pass "USB Read test ${read_time_sec}.${read_time_nanosec} < ${READ_BENCHMARK_TIME_SEC}.${READ_BENCHMARK_TIME_NANOSEC}"
+
+    elif [ "${read_time_sec}" -eq "${READ_BENCHMARK_TIME_SEC}" ]; then
+        if [ "${read_time_nanosec}" -gt "${READ_BENCHMARK_TIME_NANOSEC}" ]; then
+            recovery_env
+            error_msg 6 "USB Read test size $, spent: ${read_time_sec}.${read_time_nanosec} > ${READ_BENCHMARK_TIME_SEC}.${READ_BENCHMARK_TIME_NANOSEC}"
+        else
+            print_pass "USB Read test ${read_time_sec}.${read_time_nanosec} < ${READ_BENCHMARK_TIME_SEC}.${READ_BENCHMARK_TIME_NANOSEC}"
+        fi
+    fi
+
+    recovery_env
+}
+
+function recovery_env() {
+
+    [ -f "${CREATE_DD_LOG_FILE}" ] && rm -f "${CREATE_DD_LOG_FILE}"
+    [ -f "${TARGET_DD_LOG_FILE}" ] && rm -f "${TARGET_DD_LOG_FILE}"
+    [ -f "${MOUNT_POINT}/${USB_WRITE_TST_FILE_NAME}" ] && rm -f "${MOUNT_POINT}/${USB_WRITE_TST_FILE_NAME}"
+
+    local mount_dev=`mount | grep "${USB_WRITE_TST_ORG_FILE_PATH}"`
+    if [ "${mount_dev}" != "" ]; then
+        umount ${USB_WRITE_TST_ORG_FILE_PATH}
+    fi
+
+    mount_dev=`mount | grep "${MOUNT_POINT}"`
+    if [ "${mount_dev}" != "" ]; then
+        umount ${MOUNT_POINT}
+    fi
+
+    [ -d ${MOUNT_POINT} ] && rm -rf "${MOUNT_POINT}"
+}
+
+function error_msg() {
+
+    # 1: error_code, 2: error_msg
+
+    # ERROR CODE
+    #   Input error : 1
+    #   Option error: 2
+    #   System error: 3
+    #   Read error  : 4
+    #   Write error : 5 
+    #   Test error  : 6 
+
+    if [ ${1} -eq 1 ]; then
+        echo -e "\n[Input error] ${2}" >&2
+    elif [ ${1} -eq 2 ]; then
+        :
+    elif [ ${1} -eq 3 ]; then
+        echo -e "\n[System error] ${2}" >&2
+    elif [ ${1} -eq 4 ]; then
+        echo -e "\n[Read error] ${2}" >&2
+    elif [ ${1} -eq 5 ]; then
+        echo -e "\n[Write error] ${2}" >&2
+    elif [ ${1} -eq 6 ]; then
+        echo -e "\n[Test error] ${2}" >&2
+    fi
+    quit ${1}
+}
+
+# ## initial variables ## #
+
+mode=""
+
+MOUNT_POINT="/tmp/mount_usb"
+
+CREATE_DD_LOG_FILE="/tmp/usb_create_dd.log"
+TARGET_DD_LOG_FILE="/tmp/usb_target_dd.log"
+
+READ_BENCHMARK_TIME_SEC="0"
+READ_BENCHMARK_TIME_NANOSEC="500000000"
+
+WRITE_BENCHMARK_TIME_SEC="20.0"
+
+USB_WRITE_TMPFS_SIZE="300m"
+USB_WRITE_TST_ORG_FILE_PATH="/tmpfs_usb"
+USB_WRITE_TST_ORG_FILE="${USB_WRITE_TST_ORG_FILE_PATH}/org_usb_diag_file"
+
+USB_WRITE_TST_FILE_PATH="usb_tst_wr"
+USB_WRITE_TST_FILE_NAME="diag_random_file"
+
+# size=BLOCK_SIZE * BLOCK_COUNT
+# 10MB
+USB_WRITE_TST_BLOCK_SIZE=1024
+USB_WRITE_TST_BLOCK_COUNT=10000
+USB_TST_SIZE=""
+
+USB=('ID 1d6b:0002')
+
+# ## Check sys argvs ## #
+
+if [ $# -lt 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] At least one optional option is needed."
+fi
+
+while getopts ":cws:h" arg; do
+    case ${arg} in
+        c)
+            if [ -z ${mode} ]; then
+                mode=1
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        w)
+            if [ -z ${mode} ]; then
+                mode=2
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        s)
+            if [[ ${OPTARG} =~ ^[0-9]+[bBkKmM]$ ]]; then
+                if [[ ${OPTARG:-1} =~ [bB] ]]; then 
+                    USB_TST_SIZE=${OPTARG::-1}
+                elif [[ ${OPTARG:-1} =~ [kK] ]]; then
+                    USB_TST_SIZE=$((${OPTARG::-1}*1024))
+                elif [[ ${OPTARG:-1} =~ [mM] ]]; then
+                    USB_TST_SIZE=$((${OPTARG::-1}*1024*1024))
+                fi
+            else
+                error_msg 1 "Test file size format is \"<size>[B|K|M]\""
+            fi
+
+            if [ ${USB_TST_SIZE} -ge $((${USB_WRITE_TMPFS_SIZE::-1}*1024*1024)) ]; then
+                error_msg 1 "Test file size is out of range (${USB_WRITE_TMPFS_SIZE})"
+            else
+                if [ ${USB_TST_SIZE} -gt ${USB_WRITE_TST_BLOCK_SIZE} ]; then
+                    USB_WRITE_TST_BLOCK_COUNT=$((${USB_TST_SIZE}/${USB_WRITE_TST_BLOCK_SIZE}))
+                else
+                    USB_WRITE_TST_BLOCK_SIZE=${USB_TST_SIZE}
+                    USB_WRITE_TST_BLOCK_COUNT="1"
+                fi
+            fi
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        :)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Option \"-${OPTARG}\" requires an argument"
+            ;;
+        ?)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Unknown option \"-${OPTARG}\""
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] No options were passed"
+fi
+
+if [ -z ${mode} ]; then
+
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] Please select one mode"
+
+elif [ ${mode} -eq 1 ]; then
+
+    check_usb_device USB[@]
+    
+elif [ ${mode} -eq 2 ]; then
+
+    mountable_dev_list=( `get_mountable_dev` )
+
+    if [ ${#mountable_dev_list[@]} -ne 0 ]; then
+        for i in ${mountable_dev_list[@]}
+        do
+            dev_list=($(echo `find /dev -name "${i}*"` | sed ":a;N;s/\n//g;ta"))
+            for j in ${dev_list[@]}
+            do
+                res=${PASS}
+                write_test_usb_device ${j}
+                if [ ${res} -ne ${FAIL} ]; then
+                    break
+                fi
+            done
+        done
+        quit ${res}
+    else
+        error_msg 6 "Can't find mountable device"
+    fi
+fi
+

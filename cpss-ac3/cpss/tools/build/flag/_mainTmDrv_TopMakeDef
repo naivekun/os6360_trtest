@@ -1,0 +1,33 @@
+
+$(PROJ_NAME)_AD_CFLAGS := $(FD)CPSS_PRODUCT
+
+#################
+## DEBUG FLAGS ##
+#################
+ifdef PRESTERA_DEBUG
+        $(PROJ_NAME)_CDEBUG = $(FD)PRESTERA_DEBUG
+endif
+
+
+$(PROJ_NAME)_BASE_PATH := \
+        $(PROJ_NAME)/h
+
+$(PROJ_NAME)_PROJECT_PATH:=     \
+        $(PATH_TM_API)          \
+        $(PATH_TM_API_PRV)      \
+        $(PATH_TM_API_CORE)     \
+        $(PATH_TM_API_PLATFORM) \
+        $(PATH_COMMON)          \
+        $(PATH_PP_DRV)
+
+
+$(PROJ_NAME)_CDEBUG := $(CDEBUG)
+
+############
+## CFLAGS ##
+############
+
+ifeq (win32, $(OS_RUN))
+    mainTmDrv_CFLAGS_CL  := $(subst /W4,$(mainTmDrv_W_OPT),$(mainTmDrv_CFLAGS_CL))
+endif
+

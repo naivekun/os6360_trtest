@@ -1,0 +1,17 @@
+// TAG:               delete; pcl-ID; trap-to-cpu; access-list
+// Short Description: disable acl trap-to-cpu
+// Description:       delete rule-id 18, delete the binding of port 36 to pcl-ID 11,
+//		              delete pcl-ID 11 in access-list.
+end
+configure
+
+access-list device ${dev} pcl-ID 11
+delete rule-id 18
+exit
+
+interface ethernet ${dev}/${port[3]}
+no service-acl pcl-ID 11
+exit
+
+delete access-list device ${dev} pcl-id 11
+end

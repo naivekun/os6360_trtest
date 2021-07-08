@@ -1,0 +1,60 @@
+// TAG:               routing, ipv4, loose urpf, default route entry command
+// Short Description: set routing configuration
+// Description:       configure ports 1,2,3,4 and route entry
+//------------------------------------------------------------------------------
+
+end
+configure
+mac address 00:01:02:03:04:05
+ip routing device ${dev}
+
+// configure VRF-ID 100
+
+ip vrf-id 100
+
+// configure VLAN 200
+
+interface vlan device ${dev} vid 200
+ip routing
+ip vrf-id 100
+exit
+
+// configure VLAN 300
+
+interface vlan device ${dev} vid 300
+ip routing
+ip vrf-id 100
+exit
+
+mac address-table static 00:00:00:01:01:01 device ${dev} vlan 200 ethernet ${dev}/${port[1]}
+
+// configure ports 1,2,3,4
+
+interface ethernet ${dev}/${port[1]}
+switchport allowed vlan add 200 tagged
+ip routing
+exit
+
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan add 300 tagged
+ip routing
+exit
+
+interface ethernet ${dev}/${port[3]}
+switchport allowed vlan add 200 tagged
+switchport allowed vlan add 300 tagged
+ip routing
+exit
+
+interface ethernet ${dev}/${port[4]}
+switchport allowed vlan add 200 tagged
+switchport allowed vlan add 300 tagged
+ip routing
+exit
+
+// configure routing
+
+ip next-hop 101 cmd route vid 300 ethernet ${dev}/${port[2]} mac 11:11:22:33:33:33
+ip route 1.1.1.0 255.255.255.0 nexthop 101 vrf-id 100
+
+end

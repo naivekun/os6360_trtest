@@ -1,0 +1,38 @@
+// TAG:               capwap;
+// Short Description: Set capwap config
+// Description:       Configures capwap ipv4, creates vlan 10 ports 0,18, add fdb entry, configures tunnels, configures eport
+//  Note: the Falcon multi-tile need synch FDB between tiles, so need NA to CPU (by the interface and by the vlan)
+
+end
+configure
+interface vlan device ${dev} vid 10 
+vlan-mac learning
+vlan-mac na-to-cpu
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]}
+switchport allowed vlan add 10 tagged
+end
+
+configure
+mac address-table static 00:01:02:03:34:02 device ${dev} vlan 10 ethernet ${dev}/636
+//mac address-table static 00:04:05:06:07:11 device ${dev} vlan 10 ethernet ${dev}/618 --> learned
+end
+
+configure
+interface ethernet ${dev}/618
+port-mac learning controlled
+end
+
+configure
+interface ethernet ${dev}/${port[2]}
+capwap protocol ipv4 assign-eport 618 vlan 200 ap-mac-addr 98:32:21:19:18:06 ac-mac-addr 88:77:11:11:55:66 ap-ip 5.6.7.8 ac-ip 1.2.3.4
+do show capwap
+end
+
+configure
+interface ethernet ${dev}/${port[3]}
+capwap protocol ipv4 assign-eport 636 vlan 200 ap-mac-addr 98:32:21:19:18:07 ac-mac-addr 88:77:11:11:55:67 ap-ip 9.10.11.12 ac-ip 1.2.3.4
+do show capwap
+end
+
+

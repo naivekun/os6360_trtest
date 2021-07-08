@@ -1,0 +1,16 @@
+// TAG:               routing, ipv4, loose urpf, default route entry command
+// Short Description: set routing configuration
+// Description:       configure route entry used for sip lookup with DEFAULT_route_ENTRY packet command
+//------------------------------------------------------------------------------
+
+end
+configure
+
+no ip route 1.1.0.0 255.255.255.0 vrf-id 100
+no ip next-hop 102
+
+ip next-hop 102 cmd default-route-entry vid 200 ethernet ${dev}/${port[1]} mac 10:10:20:30:30:30
+ip route 1.1.0.0 255.255.255.0 nexthop 102 vrf-id 100
+
+end
+

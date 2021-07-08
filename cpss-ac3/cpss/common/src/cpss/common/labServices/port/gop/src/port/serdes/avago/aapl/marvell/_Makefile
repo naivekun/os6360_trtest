@@ -1,0 +1,37 @@
+# $(warning "Started") 
+
+#ifeq (VIPS, $(HOME_ENV))
+#
+#
+#ROOT_DIR = $(subst \,/,$(SW_ROOT))
+#include $(ROOT_DIR)/mainLabServices/gtBuild
+#
+#else
+#
+#INCLUDE_PATH += -I$(PROJ_BASE)/src/cpss/generic/labServices/port/gop/src/port/serdes/avago/aapl/include
+#
+#include $(PROJ_BASE)/gtTopMake
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ sd28firmware 
+
+#List of files to include in list
+FILES := \
+ mv_hws_avago_serdes_if.c \
+ mv_hws_memmove.c \
+ mv_hws_strtol.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+COMMON_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

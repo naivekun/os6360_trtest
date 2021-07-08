@@ -1,0 +1,69 @@
+# !!! NOTE: New info please add above "Port info table", due to port parsing done in file-portmap !!!
+
+# Total MAC units
+UNIT_CNT=2
+
+# Inter-port combination for segment
+IPORTLINK_SET=0/0i,1/6i 0/2i,1/4i 0/4i,1/2i 1/6i,0/0i 1/4i,0/2i 1/2i,0/4i
+
+# Port info table
+LPort PPort  PhyType PortType PortSpeed
+----- ------ ------- -------- ---------
+1     0/28   88E1680 COPPER   1G
+2     0/29   88E1680 COPPER   1G
+3     0/30   88E1680 COPPER   1G
+4     0/31   88E1680 COPPER   1G
+5     0/24   88E1680 COPPER   1G
+6     0/25   88E1680 COPPER   1G
+7     0/26   88E1680 COPPER   1G
+8     0/27   88E1680 COPPER   1G
+9     0/20   88E1680 COPPER   1G
+10    0/21   88E1680 COPPER   1G
+11    0/22   88E1680 COPPER   1G
+12    0/23   88E1680 COPPER   1G
+13    0/16   88E1680 COPPER   1G
+14    0/17   88E1680 COPPER   1G
+15    0/18   88E1680 COPPER   1G
+16    0/19   88E1680 COPPER   1G
+17    0/12   88E1680 COPPER   1G
+18    0/13   88E1680 COPPER   1G
+19    0/14   88E1680 COPPER   1G
+20    0/15   88E1680 COPPER   1G
+21    0/8    88E1680 COPPER   1G
+22    0/9    88E1680 COPPER   1G
+23    0/10   88E1680 COPPER   1G
+24    0/11   88E1680 COPPER   1G
+25    1/28   88E1680 COPPER   1G
+26    1/29   88E1680 COPPER   1G
+27    1/30   88E1680 COPPER   1G
+28    1/31   88E1680 COPPER   1G
+29    1/24   88E1680 COPPER   1G
+30    1/25   88E1680 COPPER   1G
+31    1/26   88E1680 COPPER   1G
+32    1/27   88E1680 COPPER   1G
+33    1/20   88E1680 COPPER   1G
+34    1/21   88E1680 COPPER   1G
+35    1/22   88E1680 COPPER   1G
+36    1/23   88E1680 COPPER   1G
+37    1/16   88E1680 COPPER   1G
+38    1/17   88E1680 COPPER   1G
+39    1/18   88E1680 COPPER   1G
+40    1/19   88E1680 COPPER   1G
+41    1/12   88E1680 COPPER   1G
+42    1/13   88E1680 COPPER   1G
+43    1/14   88E1680 COPPER   1G
+44    1/15   88E1680 COPPER   1G
+45    1/8    88E1680 COPPER   1G
+46    1/9    88E1680 COPPER   1G
+47    1/10   88E1680 COPPER   1G
+48    1/11   88E1680 COPPER   1G
+49    0/6    IntPHY  FIBER    10G
+50    0/7    IntPHY  FIBER    10G
+51    1/0    IntPHY  FIBER    10G
+52    1/1    IntPHY  FIBER    10G
+i11   0/0i   N/A     N/A      20G
+i12   0/2i   N/A     N/A      20G
+i13   0/4i   N/A     N/A      20G
+i21   1/6i   N/A     N/A      20G
+i22   1/4i   N/A     N/A      20G
+i23   1/2i   N/A     N/A      20G

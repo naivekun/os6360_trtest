@@ -1,0 +1,251 @@
+#! /bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=$(basename $0)
+
+usage() {
+    echo "Usage:
+NAME
+       058_i2c_switch_channel - Switch i2cMUX channel and probe slave address
+
+SYNOPSIS
+       058_i2c_switch_channel [-a] [-s channel] [-h]
+
+DESCRIPTION
+       This command is used to switch channel of i2cMUX , then
+       probe the slave address which is connected to corresponding
+       channel.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -a    Switch all channel, then probe slave address and check if
+             slaves exist or not
+
+       -s    Switch channel, then probe slave address and check if slaves
+             exist or not
+
+       -l    List all slave address under every channel
+
+       -h    Help message
+
+PASS CRITERIA
+       - Switch channel and probe slave address (-a, -s) :
+           SUCCESS: device is exist.
+             Display: PASS
+             Return code : 0
+
+           ERROR: device is not exist.
+             Display: FAIL
+             Return code : 2
+
+           ERROR: invalid argument
+             Display: FAIL
+             Return code : 3
+
+           ERROR: sku is not exist.
+             Display: FAIL
+             Return code : 4
+
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS.
+             Display: FAIL
+             Return code : 1
+EXAMPLE
+       058_i2c_switch_channel -a
+       058_i2c_switch_channel -s 1
+       058_i2c_switch_channel -l
+    ">&2
+}
+
+check_sku () {
+    # check sku
+    if [ ${sku} = "OS6360-P48X" ] || [ ${sku} = "OS6360-P24X" ] \
+    || [ ${sku} = "OS6360-PH24" ]; then
+        bus_addr=("${P48X_bus_addr[@]}")
+
+    elif [ ${sku} = "OS6360-10" ] || [ ${sku} = "OS6360-P10" ]; then
+        bus_addr=("${P10_bus_addr[@]}")
+    else
+        echo
+        echo "======================================"
+        print_fail "sku not exist"
+        echo "======================================"
+        quit 4
+    fi
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result=${PASS}
+
+# sku
+sku=`cat /usr/local/sku`
+
+# sensors south interface path.
+tmp_path="/sys/bus/i2c/devices/6-0048/hwmon/hwmon0/temp1_input"
+
+# channel number.
+ch_num=8
+
+# 10/P10 slave address.
+P10_bus_addr=(NA 50 50 NA NA 52 48 NA 3c)
+
+# P48X/P24X/PH24 slave address.
+P48X_bus_addr=(NA 50 50 50 50 52 48 NA 3c)
+
+# test_mode status.
+test_mode=false
+list_mode=false
+
+#====================================================================
+
+# option check.
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":has:l" arg
+do
+    case ${arg} in
+        a)
+            input_ch=1
+            test_mode=true
+            ;;
+        s)
+            input_ch=${OPTARG}
+            ch_num=${OPTARG}
+            test_mode=true
+            ;;
+        l)
+            list_mode=true
+            ;;
+
+        h)
+            usage
+            quit_ok
+            ;;
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    quit 1
+fi
+
+check_sku
+
+if [ ${test_mode} = true ]; then
+    # check arg of -s is vaild.
+    check_arg=`echo ${input_ch} | grep '^[1-8]\{1\}$'`
+    if [ -z ${check_arg} ]; then
+        echo
+        echo "===================================="
+        print_fail "Invalid argument"
+        echo "===================================="
+        quit 3
+    fi
+
+    for ((i=${input_ch};i<=${ch_num};i++))
+    do
+        if [ ${bus_addr[${i}]} = "NA" ]; then
+            continue
+        fi
+
+        echo
+        echo "========================================="
+
+        case ${i} in
+        1|2|3|4|5)
+            if [ ${i} -eq 5 ]; then
+                check_msg=`i2cget -f -y ${i} 0x52 0x01 2> /dev/null`
+            else
+                check_msg=`i2cget -f -y ${i} 0x50 0x01 2> /dev/null`
+            fi
+
+            # check eeprom.
+            if [ -z ${check_msg} ]; then
+                print_fail "eeprom: bus=${i} addr=0x${bus_addr[${i}]} not exist"
+                result=2
+            else
+                print_pass "eeprom: bus=${i} addr=0x${bus_addr[${i}]} exist"
+            fi
+            ;;
+        6)
+            # check tmp75.
+            if [ -f ${tmp_path} ]; then
+                print_pass "lm75: bus=${i} addr=0x${bus_addr[${i}]} exist"
+            else
+                print_fail "lm75: bus=${i} addr=0x${bus_addr[${i}]} not exist"
+                result=2
+            fi
+            ;;
+        8)
+            check_msg=`i2cget -f -y ${i} 0x${bus_addr[${i}]} 2> /dev/null`
+            # check pd69200.
+            if [ -z ${check_msg} ]; then
+                print_fail "pd69200: bus=${i} addr=0x${bus_addr[${i}]} not exist"
+                result=2
+            else
+                print_pass "pd69200: bus=${i} addr=0x${bus_addr[${i}]} exist"
+            fi
+            ;;
+        *)
+            continue
+            ;;
+        esac
+
+        echo "========================================="
+    done
+fi
+
+if [ ${list_mode} = true ]; then
+
+    bus_1=(`i2cdetect -y 1`)
+    bus_2=(`i2cdetect -y 2`)
+    bus_3=(`i2cdetect -y 3`)
+    bus_4=(`i2cdetect -y 4`)
+    bus_5=(`i2cdetect -y 5`)
+    bus_6=(`i2cdetect -y 6`)
+    bus_7=(`i2cdetect -y 7`)
+    bus_8=(`i2cdetect -y 8`)
+
+    for ((i=1;i<=8;i++))
+    do
+        list_ary=()
+        pre_header=0
+        header=0
+        body=0
+
+        for ((j=16;j<141;j++))
+        do
+           eval value=\${bus_${i}[${j}]}
+           if [ ${value} = "${pre_header}0:" ]; then
+                header=${pre_header}
+                pre_header=$((${pre_header}+1))
+                body=0
+           elif [ ${value} = "--" ]; then
+                body=$((${body}+1))
+           else
+                hex_body=`printf "%x" ${body}`
+                list_ary+=("${header}${hex_body}")
+                body=$((${body}+1))
+           fi
+        done
+
+        echo "bus ${i}: ${list_ary[@]}"
+    done
+
+    quit_ok
+fi
+
+quit ${result}

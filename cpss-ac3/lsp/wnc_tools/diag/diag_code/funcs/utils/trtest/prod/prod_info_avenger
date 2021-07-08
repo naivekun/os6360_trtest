@@ -1,0 +1,148 @@
+#!/bin/bash
+
+LUASH='/usr/bin/mrvl_luash'
+COUNTER_RESULT_FILE="metadata/counters_per_port.log"
+PORT_ST_RESULT_FILE="metadata/all_port_status.log"
+
+PROD_SKU="PROD_NA"
+if [ -f /usr/local/sku ]; then
+	PROD_SKU=`cat /tmp/sku`
+fi
+
+function add_ch_at_suffix() {
+	local cmd=$1
+	$cmd | tr '\n' '$'
+}
+
+function get_prod_name() {
+	echo "$PROD_SKU"
+}
+
+function get_prod_sn() {
+	if [ -f ./prod/prod_sn ]; then
+        # prod_sn is generated only if calling diag command from a7040
+        PROD_SN="`cat ./prod/prod_sn`"
+	else
+		PROD_SN="SN_NA"
+	fi
+
+	echo "$PROD_SN"
+}
+
+function get_os_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	add_ch_at_suffix "cat /proc/sys/kernel/osrelease"
+}
+
+function get_kernel_info() {
+	add_ch_at_suffix "uname -a"
+}
+
+function get_sensor_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# various data from "sensors" command, that requires lm-sensors
+	# package installed, plus extra sensor points in switch chip or
+	# somewhere else
+	#sensors > tmp.log
+	#cat -E tmp.log; rm -f tmp.log
+
+	#read_adt7476_temp >> tmp.log
+	#echo "" >> tmp.log
+	local a385_cpu_temp=`cat /sys/class/thermal/thermal_zone*/temp | sed 's/\(.\)..$//'`
+	echo "CPU temperature:" >> tmp.log
+	echo " $a385_cpu_temp deg C" >> tmp.log
+	echo "" >> tmp.log
+
+	echo "Thermal sensor:" >> tmp.log
+	echo " Not support" >> tmp.log
+	echo "" >> tmp.log
+
+	echo "ASIC temperature:" >> tmp.log
+	local DEVNUM
+	local SENSORNUM
+	local unit
+	local sensor
+	local sType
+	if [ "$PROD_SKU" == "AVG-10G" ]; then
+		DEVNUM=1
+		SENSORNUM=4
+	else	# AVG-48T and AVG-48P
+		DEVNUM=2
+		SENSORNUM=1
+	fi
+	for((unit=0; unit<$DEVNUM; unit++)); do
+		for((sensor=0; sensor<$SENSORNUM; sensor++)); do
+			sType="sensorType CPSS_DXCH_DIAG_TEMPERATURE_SENSOR_${sensor}_E"
+			$LUASH -c "do cpss-api call cpssDxChDiagDeviceTemperatureSensorsSelectSet devNum $unit $sType" 2>&1 > /dev/null
+			asic_temp=`$LUASH -c "do cpss-api call cpssDxChDiagDeviceTemperatureGet devNum $unit" | \
+						grep temperature | cut -d '=' -f2 | tr -d '\r'`
+			echo "  unit $unit, sensor $sensor : $asic_temp deg C" >> tmp.log
+		done
+	done
+	add_ch_at_suffix "cat tmp.log"; rm -f tmp.log
+}
+
+function get_fan_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return present status, RPM
+
+	#fanrpm > tmp.log
+	echo "Not support" > tmp.log
+
+	add_ch_at_suffix "cat tmp.log"; rm -f tmp.log
+}   
+
+function get_psu_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return present status, power good, etc
+	echo "Not support" > tmp.log
+	#cat tmp.log; rm -f tmp.log
+	add_ch_at_suffix "cat tmp.log"; rm -f tmp.log
+}
+
+function get_port_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return MAC+PHY status from switch driver, plus transceiver EEPROM
+	# and DMI data
+	echo "Port status:" > tmp.log
+
+	# all_port_status.log is generated at prod_stop
+	cat $PORT_ST_RESULT_FILE >> tmp.log
+	rm -f $PORT_ST_RESULT_FILE
+	#cat -E tmp.log; rm -f tmp.log
+	add_ch_at_suffix "cat tmp.log";rm -f tmp.log
+}
+
+function get_counters() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return all counters from switch driver
+
+	# counters_per_port.log is generated at prod_stop
+	cat $COUNTER_RESULT_FILE >> tmp.log
+	rm -f $COUNTER_RESULT_FILE
+	#cat -E tmp.log; rm -f tmp.log
+	add_ch_at_suffix "cat tmp.log";rm -f tmp.log
+}
+
+function get_prod_lb_modes() {
+	# return all available loopbck modes of the product
+	echo "mac phy"
+}

@@ -1,0 +1,11 @@
+// TAG:               mac; pdu; bpdu; lacp; pae; lldp; gmrp; gvrp; providerBPDU; providerGVRP;
+// Short Description: Set forward mode on dev#0 for all mac pdu protocols
+// Description:       Configures forward mode on dev#0 for all mac pdu protocols
+//                    and show current mode
+end
+configure
+mac pdu protocol all forward device ${dev}
+do show mac pdu device ${dev}
+exit
+exit
+end

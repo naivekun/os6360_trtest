@@ -1,0 +1,148 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+USR_SBIN="/usr/sbin"
+
+# find absolute directory
+ABSPATH=$(realpath $0)
+ABSDIR=$(dirname "$ABSPATH")
+ABSCMDD_DIR=${ABSDIR}/../cmdd
+
+source ${DIR}/const
+source ${DIR}/conf
+source ${DIR}/app_funcs
+
+usage() {
+echo "Usage:
+NAME
+       final_func - Final functional test with command list
+
+SYNOPSIS
+       final_func [-f cmd_list] [-l log_prefix] [-i] [-m config_list] [-h]
+
+DESCRIPTION
+       final_func is a command to test group command set(s) with command
+       list for cmdd.
+
+OPTIONAL OPTIONS
+       -f    Command List file name. Default is ./cmdset/cmd_list .
+
+       -l    Log prefix. Default is /cmdd .
+
+       -i    Display current conf, include command list path and log directory. If the option is 
+             set, it will not run final functional test.
+
+       -m    Modify config with input
+
+       -h    Display this usage.
+
+PASS CRITERIA
+       - Wrong options :
+           ERROR  : Input option is none or not matching OPTIONAL OPTIONS
+             Display : FAIL
+             Return code: 1
+			 
+       - Make group command set fail :
+           ERROR: Command list file is not existing .
+             Display: FAIL
+             Return code: 2
+
+       - Run cmdd daemon fail:
+           ERROR: wrong application confing or wrong project functions.
+             Display: FAIL
+             Return code: 3
+EXAMPLE
+       final_func
+       final_func -f /cmdset/test_cmd_list
+       final_func -l /tmp/test_log
+       final_func -f /cmdset/test_cmd_list -m LOG_LITE=\"true\",DEBUG_LV=1
+">&2
+}
+
+# default.
+CMD_SET=${DIR}/${CFG_CMD_SET_DIR}
+CMD_LIST=${CMD_SET}/${CFG_CMD_LIST_FILE}
+SHOW_FINAL_FUNC_INFO=0
+MODIFY_CONFIG_MODE=0
+
+# input.
+CMD_LIST_INPUT=${CMD_LIST}
+LOG_PREFIX_INPUT=""
+
+# input option
+while getopts "f:l:im:h" arg
+do
+case ${arg} in
+        f)
+            CMD_LIST_INPUT=${OPTARG}
+            ;;
+        l)
+            LOG_PREFIX_INPUT=${OPTARG}
+            ;;
+        i)
+            SHOW_FINAL_FUNC_INFO=1
+            ;;
+        m)
+            MODIFY_CONFIG_MODE=1
+            CONFIG_LIST_INPUT="${OPTARG}"
+            ;;
+        h)
+            usage
+            exit 0
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# modify config in runtime
+if [ "${MODIFY_CONFIG_MODE}" -eq 1 ]; then
+  update_config "${DIR}/conf" "${CONFIG_LIST_INPUT}"
+  source ${DIR}/conf
+fi
+
+# If option i is set, display the log directory.
+if [ "$SHOW_FINAL_FUNC_INFO" -eq 1 ]; then
+	Get_final_func_info "$CMD_LIST_INPUT" "$LOG_PREFIX_INPUT"
+    exit 0
+fi
+
+# link final functional conf and funcs
+Link_final_func
+
+# run make_cmdset for make group command set with command list
+${ABSCMDD_DIR}/make_cmdset $CMD_LIST_INPUT
+make_cmdset_result=`echo $?`
+if [ "$make_cmdset_result" -ne 0 ]; then
+	echo "make group command set fail!"
+	Unlink_final_func
+	exit 2
+fi
+
+# set log prefix LOG_PREFIX.
+if [ -z "${LOG_PREFIX_INPUT}" ]; then
+	LOG_PREFIX=${CFG_LOG_PREFIX}${LOG_POE}
+else
+	LOG_PREFIX=${LOG_PREFIX_INPUT}${LOG_POE}
+fi
+
+# run cmdd daemon
+${ABSCMDD_DIR}/cmdd_main ${LOG_PREFIX}
+cmdd_main_result=`echo $?`
+if [ "$cmdd_main_result" -ne 0 ]; then
+	echo "run cmdd daemon fail!"
+	Unlink_final_func
+	exit 3
+fi
+
+# unlink final functional conf and funcs
+Unlink_final_func
+
+#Sync memory to storage
+sync
+
+# final functional test complete message
+echo "-----------------------------------------------------"
+echo "final functional test complete!"

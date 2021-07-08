@@ -1,0 +1,38 @@
+#!/bin/sh
+
+echo Initial diag....
+
+DIAG_VER=/usr/local/diagver
+
+if [ ! -f $DIAG_VER ];then
+    NOT_INST_FLAG=/opt/diag/donotinstalldiag
+    if [ -f "$NOT_INST_FLAG" ];then
+        echo Not install diagnostics automatically.
+    else
+        DIAG_INSTALL=`ls /opt/diag/wnc-diag*.install`
+        bash -c $DIAG_INSTALL
+
+		SKU=`cat /sys/bus/i2c/devices/0-007f/product_id`
+		CMD_LIST_FAN_PH24="cmd_list_fan_ph24"
+		CMD_LIST_FAN_P24X="cmd_list_fan_p24x"
+		CMD_LIST_FAN_P48="cmd_list_fan_p48"
+		CMD_LIST_FANLESS="cmd_list_fanless"
+		CMD_LIST_FANLESS_NO_POE="cmd_list_fanless_no_poe"
+
+		cd /usr/bin/wnc_diag/final_func/cmdset
+		case $SKU in
+		    0x70) ln -fs $CMD_LIST_FANLESS_NO_POE ./cmd_list;; # OS6360-10
+		    0x71) ln -fs $CMD_LIST_FANLESS ./cmd_list;;        # OS6360-P10
+		    0x74) ln -fs $CMD_LIST_FAN_P24X ./cmd_list;;       # OS6360-P24X
+		    0x77) ln -fs $CMD_LIST_FAN_P48 ./cmd_list;;        # OS6360-P48X
+		    0x78) ln -fs $CMD_LIST_FAN_PH24 ./cmd_list;;       # OS6360-PH24
+		    *)    ln -fs $CMD_LIST_FANLESS ./cmd_list;;        # OS6360-P10
+		esac
+
+        echo Diagnostics has been installed automatically.
+    fi
+fi
+
+sync
+
+exit 0

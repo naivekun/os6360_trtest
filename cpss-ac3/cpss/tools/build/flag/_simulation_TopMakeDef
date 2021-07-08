@@ -1,0 +1,52 @@
+###########################################
+##                                       ##
+##    Top Make file for Galileo drivers  ##
+##                                       ##
+###########################################
+
+$(PROJ_NAME)_PROJECT_PATH := \
+           $(PATH_SIM)       \
+           $(PATH_MAINOS)    \
+           $(ADD_PATH)
+
+ifneq (EXISTS, $(FORCE_GM_USE))
+     $(PROJ_NAME)_AD_CFLAGS += $(FD)NO_GM_USED
+endif
+
+ifneq (EXISTS, $(FORCE_SUB20_USE))
+     $(PROJ_NAME)_AD_CFLAGS += $(FD)STUB_SUB20_USED
+endif
+
+ifeq (EXISTS, $(CM_USED))
+#notify we need communication module
+ $(PROJ_NAME)_AD_CFLAGS += $(FD)COM_MODULE_USED
+endif
+
+$(PROJ_NAME)_AD_CFLAGS += $(FD)$(OS_RUN)
+
+
+ifeq (NL, $(EXTERNAL_TCAM_TYPE))
+#notify we have external TCAM (currently only for EXMXPM)
+   $(PROJ_NAME)_AD_CFLAGS += $(FD)EXTERNAL_TCAM_EXISTS
+endif
+
+ifeq (IDT, $(EXTERNAL_TCAM_TYPE))
+#notify we have external TCAM (currently only for EXMXPM)
+   $(PROJ_NAME)_AD_CFLAGS += $(FD)EXTERNAL_TCAM_EXISTS
+endif
+
+ifeq (EXISTS, $(IMPL_PRINT_CALL_STACK))
+#notify we need implementation of "print call stack" (currently needed only for VC compilation)
+#when this flag is set the application must add "StackWalker.obj" into linker process!
+ $(PROJ_NAME)_AD_CFLAGS += $(FD)PRINT_CALL_STACK_USED
+endif
+
+#$(warning "simulation_BASE_PATH=$($(PROJ_NAME)_BASE_PATH)")
+#$(warning "OS_RUN=$(OS_RUN)")
+#$(warning "FORCE_SUB20_USE=$(FORCE_SUB20_USE)")
+#$(warning "FORCE_GM_USE=$(FORCE_GM_USE)")
+#$(warning "PRESTERA_FAMILY=$(PRESTERA_FAMILY)")
+#$(warning "EXMXPM_FAMILY=$(EXMXPM_FAMILY)")
+#$(warning "PM_FAMILY=$(PM_FAMILY)")
+#$(warning "simulation_AD_CFLAGS=$($(PROJ_NAME)_AD_CFLAGS)")
+

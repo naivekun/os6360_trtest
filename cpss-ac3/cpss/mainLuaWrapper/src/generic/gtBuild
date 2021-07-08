@@ -1,0 +1,63 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      = NONE
+#wraplED.c \
+
+COMMON_FILES := \
+         cmdLuaBitwizeFunctions.c \
+         wraplGtU64.c \
+         wraplOsMsgQ.c \
+         wraplOsSem.c \
+         wraplTFTPC.c \
+         wraplTaskCreate.c \
+         wraplTrace.c \
+         wraplWriteBin.c \
+         wraplReadJSON.c
+
+COMMON_FILES_DX := \
+         all_common_lua_c_type_manual_wrappers.c \
+         all_common_lua_c_type_wrappers.c
+
+COMMON_FILES_PX := \
+         all_common_noppdrv_lua_c_type_manual_wrappers.c \
+         all_common_noppdrv_lua_c_type_wrappers.c
+
+COMMON_FILES_DXPX := \
+         all_common_lua_c_type_manual_wrappers.c \
+         all_common_noppdrv_lua_c_type_manual_wrappers.c \
+         all_common_dxpx_lua_c_type_wrappers.c
+
+
+C_FILE_LIST = $(COMMON_FILES)
+ifneq (yes,$(LUACLI_STANDALONE_BUILD))
+  C_FILE_LIST += \
+    wraplCpssGenEvents.c \
+    wraplGaltisWrapper.c
+endif
+
+## the PX not supports next files
+ifeq (EXISTS,$(CHX_FAMILY))
+ifneq (EXISTS,$(PX_FAMILY))
+  C_FILE_LIST += $(COMMON_FILES_DX)
+else
+  C_FILE_LIST += $(COMMON_FILES_DXPX)
+endif
+endif
+
+
+ifeq (EXISTS,$(PX_FAMILY))
+ifneq (EXISTS,$(CHX_FAMILY))
+  C_FILE_LIST += $(COMMON_FILES_PX)
+endif
+endif
+
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

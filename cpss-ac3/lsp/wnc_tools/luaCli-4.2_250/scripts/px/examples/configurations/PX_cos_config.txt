@@ -1,0 +1,21 @@
+// TAG:               PX devices(PIPE); CoS attributes;
+// Short Description: PIPE device: CoS test configuration.
+// Description:       PIPE device: CoS test configuration.
+//
+do configure
+counters egress-queue device ${dev} mode tail-drop
+
+// Configuration for CoS Format Entry test
+cos format-entry entry-mode entry device ${dev} packet-type ${@@COS_EXAMPLE_FORMAT_ENTRY.txPortNum} dp ${@@COS_EXAMPLE_FORMAT_ENTRY.dp} tc ${@@COS_EXAMPLE_FORMAT_ENTRY.tc}
+
+// Configuration for CoS Port test
+cos format-entry entry-mode port device ${dev} packet-type ${@@COS_EXAMPLE_PORT.txPortNum}
+interface ethernet ${dev}/${@@COS_EXAMPLE_PORT.txPortNum}
+cos port-attributes dp ${@@COS_EXAMPLE_PORT.dp} tc ${@@COS_EXAMPLE_PORT.tc}
+exit
+
+// Configuration for CoS Packet test
+cos format-entry entry-mode packet type mpls device ${dev} packet-type ${@@COS_EXAMPLE_PACKET.txPortNum} num-bits 1
+cos map type mpls device 0 entry 0 dp ${@@COS_EXAMPLE_PACKET.dp} tc ${@@COS_EXAMPLE_PACKET.tc}
+
+end

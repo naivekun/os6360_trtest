@@ -1,0 +1,17 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH = -ID:/os/mainOs/h
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+C_EXCLUDE_FILE_LIST = ALL
+
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

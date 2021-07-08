@@ -1,0 +1,20 @@
+To generate/update iDebug file for device:
+1. Open in WEB browser Cider
+2. Goto
+    Cider =>
+        EBU =>
+            device(Fx: BobK) =>
+                chip (Fx: BobK {Current}) =>
+                    iDebug =>
+                        instances
+3. Select "Generate code" => "Generate CPSS XML"
+4. Wait for a main with instances_*.tgz
+5. Save file and extract instances.xml
+6. Prepare it for luaCLI:
+    python iDebugPrepareXml.py -o iDebug_bobK.xml instances.xml
+7. Check it:
+    ./iDebugCheckXml.sh iDebug_bobK.xml
+
+8. Add file (iDebug_bobK.xml) to luaCLI files
+9. Update iDebug_list.txt
+

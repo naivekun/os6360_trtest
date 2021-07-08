@@ -1,0 +1,17 @@
+#!/bin/bash
+
+cmd_dir=$(dirname $0)
+
+function Get_AppCmd() {
+    local appcode=$1
+    
+    case $appcode in
+    1)
+      echo "burn_in"
+      ;;
+    *)
+      echo "Error: no $appcode appcode"
+      ;; 
+  esac 
+}
+

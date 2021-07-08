@@ -1,0 +1,41 @@
+#!/bin/bash
+source /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl
+
+PORT_LINK_TIMEOUT=120
+cnt=0
+
+echo "Wait CPSS init..."
+wait_cpss
+
+echo "Wait Port Link Up..."
+mrvl_luash -c "set output nopause">/dev/null
+
+SKU=`cat /sys/bus/i2c/devices/0-007f/product_id`
+
+function all_port_link_up() {
+	local rtn="no"   # default all ports are not link up
+
+	if [ "$SKU" == "0x77" ]; then
+		`mrvl_luash -c "show interfaces status ethernet 0/0-27,1/0-21,24-27" |grep -q Down`
+	else
+		`mrvl_luash -c "show interfaces status all" |grep -q Down`
+	fi
+	if [ $? -ne 0 ]; then
+		rtn="yes"   # all ports are link up
+	fi
+
+	echo $rtn
+}
+
+while [ "`all_port_link_up`" == "no" ]; do
+	sleep 1
+	cnt=$(($cnt + 1))
+
+	if [ $cnt -gt $PORT_LINK_TIMEOUT ]; then
+		echo "Error: Some Port cannot link up!"
+		mrvl_luash -c "show interfaces status all"
+		exit 10
+	fi
+done
+
+echo "Success: All Ports Link Up!"

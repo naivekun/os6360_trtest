@@ -1,0 +1,35 @@
+// TAG:               tti; pclid; rule; Ethernet; redirect;
+// Short Description: Configure basic TTI Ethernet key rule
+// Description:       Configure TTI ethernet key rule with redirection to egress interface
+end
+configure 
+interface vlan device ${dev} vid 10
+exit 
+
+interface range ethernet ${dev}/${port[1]},${port[2]}
+switchport allowed vlan add 10 untagged 
+exit 
+
+interface ethernet ${dev}/${port[1]}
+tti enable legacy-ethernet 
+exit 
+
+interface vlan device ${dev} vid 20
+exit 
+
+interface range ethernet ${dev}/${port[3]},${port[4]}
+switchport allowed vlan add 20 tagged
+exit 
+
+tti pclid ${dev} legacy-ethernet 444
+
+tti rule create ${dev} ${@@validTtiIndex(123)} legacy-ethernet 
+
+tti rule-key input-interface ${port[1]}/0xff
+
+tti rule-action redirect egress-interface ethernet ${dev}/${port[3]}
+tti rule-action vlan0-assign tagged 20
+tti rule-action bridge-bypass
+
+exit
+end

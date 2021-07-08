@@ -1,0 +1,127 @@
+#!/bin/bash
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/include
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+DUR="10"
+PORTS_LIST_S=""
+PORTS_LIST_E=""
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - traffic across two switch chips with two
+                                internal ports a loop
+
+SYNOPSIS
+       $prog_name [-d duration] [-h]
+
+DESCRIPTION
+       The command is a traffic tester for internal ports. It will group two
+       internal ports a loop and generate the traffic flow in each loop. The
+       amount of packets sent are designed to nearly reach the line rate of the
+       port. After reaching the test timeout, the command will retrieve packets
+       for each port and check contents to determine whether they are correctly
+       delivered and received.
+
+       Parameter \"-d\" is to set the running duration of traffic flow from send-
+       ing out packets to capturing packets, including the environment setup
+       time. However, the execution time of the command will also include the
+       time of analyzing received packets, which is correlated to the number of
+       internal ports that the DUT has and the number of packets we send.    
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -d    Duration between starting to send packets and stopping the traffic
+             flow. Acceptable value is from 10 to 86400 seconds.  
+
+       -h    Show this help message.
+
+PASS CRITERIA
+       - Test internal ports with two ports a loop:
+           SUCCESS: all internal ports send and receive packets correctly
+             Display: \"Result: PASS\" with traffic rates and Tx/Rx packet counts
+                      of ports that are tested
+             Return code : 0
+
+           ERROR: any inter-port fails to send, or receives packets incorrectly
+             Display: \"Result: FAIL\" with further messages like
+                      \"FAIL: Get MAC link-down on port i1!\"
+                      or
+                      \"FAIL: Not got packet# 1 that CPU injects to port i1\"
+                      \"FAIL: Packet checking failed on port i1\"
+             Return code : 1
+
+EXAMPLE
+       $prog_name -d 60
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    res=$FAIL
+    quit $res
+    echo "">&2
+fi
+
+while getopts "d:h" arg; do
+    case $arg in
+        d) # test duration
+            DUR=$OPTARG
+            ;;
+        h | *) # display usage
+            usage
+            quit_ok
+            ;;
+    esac
+done
+
+if [ "$SKU" != "OS6360-P48X" ]; then
+    print_fail "Get port configuration FAIL, or DUT is not supported! Please check diag version or board ID."
+    res=$FAIL
+    quit $res
+else
+    # OS6360-P48X
+    PORTS_LIST_S="1"
+    PORTS_LIST_E="1"
+fi
+
+# To ensure in the right folder, since the relative path is used
+pushd ${dir_path} >/dev/null
+
+res=$PASS
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    print_fail "CPSS not ready!"
+    exit 1
+fi
+
+# Clean previous generated files
+rm -rf ./trtest/data
+
+# Generate a 1518B unicast packet with random pattern
+./traffic-test edit-pkt -i 1 -l 1514 -d 00:00:00:00:00:01 -s 00:00:00:00:00:02 -e 0800 -p 5
+
+# Copy loop files from data_plan to trtest/data
+for ((idx=${PORTS_LIST_S}; idx<=${PORTS_LIST_E}; idx++)); do
+    cp ./cmd_cfg/data_plan/${idx}_iport_lb ./trtest/data/${idx}_loop
+done
+
+# Run traffic tester with timeout setting (default 10 sec)
+./traffic-test run -l all -d "$DUR"
+if [ "$?" != "0" ]; then
+    res=$FAIL
+fi
+
+# Back to the folder where the command is executed
+popd >/dev/null
+
+exit $res

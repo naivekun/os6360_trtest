@@ -1,0 +1,43 @@
+// TAG:               traffic_generator_emulated; wirespeed; CPU;
+// Short Description: stop generate wirespeed traffic to CPU
+// Description:       1. stop generate wirespeed traffic on port 18 by command of 'traffic-generator emulation'
+//					  2. disable mac loopback
+//					  3. stop capturing
+//					  4. making delay of one second in order to allow simulation to drain the queues
+//					  5. show that there is no traffic any more (based on port and CPU rates)
+end
+//
+traffic
+//
+// stop generate continuous wirespeed from port 18
+//
+no traffic-generator emulate port ${dev}/${port[2]}
+//
+// disable mac loopback
+//
+do shell-execute cpssDxChPortInternalLoopbackEnableSet ${dev},${port[4]},0
+//
+// stop capture
+//
+capture stop
+//
+exit
+//
+// allow simulation to drain the queues
+//
+shell-execute osTimerWkAfter 1000
+//
+// show there are no ports generating wirespeed
+//
+show traffic traffic-generator emulate all
+//
+// show rates on the ports 
+//
+//show no traffic on ports
+show traffic rates ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]},63
+//
+exit
+end
+configure
+do clear bridge type ${dev} all
+end

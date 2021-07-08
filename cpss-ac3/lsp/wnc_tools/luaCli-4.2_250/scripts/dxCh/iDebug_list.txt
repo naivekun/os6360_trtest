@@ -1,0 +1,55 @@
+# file            devId      applicable revisions
+iDebug_xCat3.xml  0xf40011ab 1
+iDebug_xCat3.xml  0xf41311ab 1
+iDebug_xCat3.xml  0xf41211ab 1
+iDebug_xCat3.xml  0xf41111ab 1
+iDebug_xCat3.xml  0xf41011ab 1
+iDebug_xCat3.xml  0xf40311ab 1
+iDebug_xCat3.xml  0xf40211ab 1
+iDebug_xCat3.xml  0xf40111ab 1
+iDebug_BC2_A0.xml 0xfc0011ab 0
+iDebug_BC2_B0.xml 0xfc0011ab
+iDebug_BC2_B0.xml 0xfc0211ab 1
+iDebug_BC2_B0.xml 0xfc0311ab 1
+iDebug_BC2_B0.xml 0xfc0411ab 1
+iDebug_BC2_B0.xml 0xfc0511ab 1
+iDebug_BC2_B0.xml 0xfc0611ab 1
+iDebug_BC2_B0.xml 0xfc0711ab 1
+iDebug_BC2_B0.xml 0xfc0911ab 1
+iDebug_BC2_B0.xml 0xec0011ab 1
+iDebug_bobK.xml   0xbc0011ab
+iDebug_bobK.xml   0xbc0111ab
+iDebug_bobK.xml   0xbc1011ab
+iDebug_bobK.xml   0xbc1111ab
+iDebug_bobK.xml   0xbe0011ab
+iDebug_bobK.xml   0xbe0111ab
+iDebug_bobK.xml   0xbe1011ab
+iDebug_bobK.xml   0xbe1111ab
+iDebug_bobK.xml   0xbe0011ab
+iDebug_Aldrin.xml 0xc80011ab
+iDebug_Aldrin.xml 0xc80111ab
+iDebug_Aldrin.xml 0xc80411ab
+iDebug_Aldrin.xml 0xc80511ab
+iDebug_Aldrin.xml 0xc80611ab
+iDebug_Aldrin.xml 0xc80711ab
+iDebug_Aldrin.xml 0xc80811ab
+iDebug_Aldrin.xml 0xc80f11ab
+iDebug_Aldrin.xml 0xc81811ab
+iDebug_Aldrin.xml 0xc81911ab
+iDebug_Aldrin.xml 0xc81c11ab
+iDebug_Aldrin.xml 0xc81d11ab
+iDebug_Aldrin.xml 0xc81e11ab
+iDebug_Aldrin.xml 0xc81f11ab
+iDebug_Aldrin.xml 0xbc1f11ab
+iDebug_BC3.xml    0xd40011ab
+iDebug_BC3.xml    0xd40811ab
+iDebug_BC3.xml    0xd40911ab
+iDebug_BC3.xml    0xd40a11ab
+iDebug_BC3.xml    0xd40b11ab
+iDebug_BC3.xml    0xd40c11ab
+iDebug_BC3.xml    0xd40d11ab
+iDebug_BC3.xml    0xd40e11ab
+iDebug_BC3.xml    0xd40f11ab
+iDebug_Aldrin2.xml 0xCC0F11AB
+iDebug_Aldrin2.xml 0xCC1F11AB
+iDebug_Aldrin2.xml 0xCC1E11AB

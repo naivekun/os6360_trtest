@@ -1,0 +1,15 @@
+// TAG:               acl; pcl-ID; cnc; access-list;
+// Short Description: Configures acl cnc counters
+// Description:       Configures for pcl-ID 1 with rule-id 6 an action that
+//                    will enable cnc counters for acl client.
+//		      in addition, binding port 0 to pcl-ID 1
+end
+configure
+access-list device ${dev} pcl-ID 1
+rule-id 6 action permit counters
+exit
+
+interface ethernet ${dev}/${port[1]}
+service-acl pcl-ID 1 lookup 0
+
+end

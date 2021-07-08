@@ -1,0 +1,10 @@
+#set UT_root_dir [ file join [ file dirname $argv0 ] UT ]
+
+source [ file join $UT_root_dir UT_main.exp ]
+
+# suite types
+source [ file join $UT_root_dir types all.exp ]
+# suite syntax
+source [ file join $UT_root_dir syntax all.exp ]
+# suite suite_2
+source [ file join $UT_root_dir suite_2 all.exp ]

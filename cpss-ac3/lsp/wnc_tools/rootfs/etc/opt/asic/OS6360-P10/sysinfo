@@ -1,0 +1,26 @@
+# !!! NOTE: New info please add above "Port info table", due to port parsing done in file-portmap !!!
+
+# Total MAC units
+UNIT_CNT=1
+
+# Inter-port combination for segment
+IPORTLINK_SET=
+
+# Total front port number
+LPORT_NUM=12
+
+# Port info table
+LPort Dev/PPort PhyType     PortType    MaxSpeed    SupportedSpeed      PhyAddr
+----- --------- ----------  --------    --------    --------------      -------
+1     0/0       88E1680     COPPER      1G          10,100,1000         0x0
+2     0/1       88E1680     COPPER      1G          10,100,1000         0x1
+3     0/2       88E1680     COPPER      1G          10,100,1000         0x2
+4     0/3       88E1680     COPPER      1G          10,100,1000         0x3
+5     0/4       88E1680     COPPER      1G          10,100,1000         0x4
+6     0/5       88E1680     COPPER      1G          10,100,1000         0x5
+7     0/6       88E1680     COPPER      1G          10,100,1000         0x6
+8     0/7       88E1680     COPPER      1G          10,100,1000         0x7
+9     0/24      88E1543     COPPER      1G          10,100,1000         0x8
+10    0/25      88E1543     COPPER      1G          10,100,1000         0x9
+11    0/26      IntPHY      FIBER       1G          10,100,1000         N/A
+12    0/27      IntPHY      FIBER       1G          10,100,1000         N/A

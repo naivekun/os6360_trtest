@@ -1,0 +1,4 @@
+// TAG:               FDB; flush; clearBridge;
+// Short Description: flush all the dynamic FDB entries in the device
+// Description:       flush all the dynamic FDB entries in the device
+do clear bridge interface ${dev} dynamic

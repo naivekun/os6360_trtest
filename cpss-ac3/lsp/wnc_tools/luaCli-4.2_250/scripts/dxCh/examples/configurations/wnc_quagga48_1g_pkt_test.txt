@@ -1,0 +1,220 @@
+end
+con
+interface vlan device 0 vid 1
+exit
+interface range ethernet 0/0-27
+switchport allowed vlan remove 1
+switchport pvid 1
+exit
+interface vlan device 1 vid 1
+exit
+interface range ethernet 1/0-27
+switchport allowed vlan remove 1
+switchport pvid 1
+exit
+end
+configure
+interface range vlan device 0 vid 101-113
+exit
+interface range vlan device 1 vid 113-128
+exit
+interface ethernet 0/1
+switchport allowed vlan add 102 untagged
+switchport pvid 102
+exit
+interface ethernet 0/2
+switchport allowed vlan add 102 untagged
+switchport pvid 102
+exit
+interface ethernet 0/3
+switchport allowed vlan add 103 untagged
+switchport pvid 103
+exit
+interface ethernet 0/4
+switchport allowed vlan add 103 untagged
+switchport pvid 103
+exit
+interface ethernet 0/5
+switchport allowed vlan add 104 untagged
+switchport pvid 104
+exit
+interface ethernet 0/6
+switchport allowed vlan add 104 untagged
+switchport pvid 104
+exit
+interface ethernet 0/7
+switchport allowed vlan add 105 untagged
+switchport pvid 105
+exit
+interface ethernet 0/8
+switchport allowed vlan add 105 untagged
+switchport pvid 105
+exit
+interface ethernet 0/9
+switchport allowed vlan add 106 untagged
+switchport pvid 106
+exit
+interface ethernet 0/10
+switchport allowed vlan add 106 untagged
+switchport pvid 106
+exit
+interface ethernet 0/11
+switchport allowed vlan add 107 untagged
+switchport pvid 107
+exit
+interface ethernet 0/12
+switchport allowed vlan add 107 untagged
+switchport pvid 107
+exit
+interface ethernet 0/13
+switchport allowed vlan add 108 untagged
+switchport pvid 108
+exit
+interface ethernet 0/14
+switchport allowed vlan add 108 untagged
+switchport pvid 108
+exit
+interface ethernet 0/15
+switchport allowed vlan add 109 untagged
+switchport pvid 109
+exit
+interface ethernet 0/16
+switchport allowed vlan add 109 untagged
+switchport pvid 109
+exit
+interface ethernet 0/17
+switchport allowed vlan add 110 untagged
+switchport pvid 110
+exit
+interface ethernet 0/18
+switchport allowed vlan add 110 untagged
+switchport pvid 110
+exit
+interface ethernet 0/19
+switchport allowed vlan add 111 untagged
+switchport pvid 111
+exit
+interface ethernet 0/20
+switchport allowed vlan add 111 untagged
+switchport pvid 111
+exit
+interface ethernet 0/21
+switchport allowed vlan add 112 untagged
+switchport pvid 112
+exit
+interface ethernet 0/22
+switchport allowed vlan add 112 untagged
+switchport pvid 112
+exit
+interface ethernet 0/23
+switchport allowed vlan add 113 untagged
+switchport pvid 113
+exit
+interface ethernet 0/26
+switchport allowed vlan add 113 untagged
+switchport pvid 113
+exit
+interface ethernet 0/24
+switchport allowed vlan add 113 untagged
+switchport pvid 113
+exit
+interface ethernet 1/26
+switchport allowed vlan add 113 untagged
+switchport pvid 113
+exit
+interface ethernet 1/27
+switchport allowed vlan add 113 untagged
+switchport pvid 113
+exit
+interface ethernet 1/23
+switchport allowed vlan add 113 untagged
+switchport pvid 113
+exit
+interface ethernet 1/1
+switchport allowed vlan add 114 untagged
+switchport pvid 114
+exit
+interface ethernet 1/2
+switchport allowed vlan add 114 untagged
+switchport pvid 114
+exit
+interface ethernet 1/3
+switchport allowed vlan add 115 untagged
+switchport pvid 115
+exit
+interface ethernet 1/4
+switchport allowed vlan add 115 untagged
+switchport pvid 115
+exit
+interface ethernet 1/5
+switchport allowed vlan add 116 untagged
+switchport pvid 116
+exit
+interface ethernet 1/6
+switchport allowed vlan add 116 untagged
+switchport pvid 116
+exit
+interface ethernet 1/7
+switchport allowed vlan add 117 untagged
+switchport pvid 117
+exit
+interface ethernet 1/8
+switchport allowed vlan add 117 untagged
+switchport pvid 117
+exit
+interface ethernet 1/9
+switchport allowed vlan add 118 untagged
+switchport pvid 118
+exit
+interface ethernet 1/10
+switchport allowed vlan add 118 untagged
+switchport pvid 118
+exit
+interface ethernet 1/11
+switchport allowed vlan add 119 untagged
+switchport pvid 119
+exit
+interface ethernet 1/12
+switchport allowed vlan add 119 untagged
+switchport pvid 119
+exit
+interface ethernet 1/13
+switchport allowed vlan add 120 untagged
+switchport pvid 120
+exit
+interface ethernet 1/14
+switchport allowed vlan add 120 untagged
+switchport pvid 120
+exit
+interface ethernet 1/15
+switchport allowed vlan add 121 untagged
+switchport pvid 121
+exit
+interface ethernet 1/16
+switchport allowed vlan add 121 untagged
+switchport pvid 121
+exit
+interface ethernet 1/17
+switchport allowed vlan add 122 untagged
+switchport pvid 122
+exit
+interface ethernet 1/18
+switchport allowed vlan add 122 untagged
+switchport pvid 122
+exit
+interface ethernet 1/19
+switchport allowed vlan add 123 untagged
+switchport pvid 123
+exit
+interface ethernet 1/20
+switchport allowed vlan add 123 untagged
+switchport pvid 123
+exit
+interface ethernet 1/21
+switchport allowed vlan add 124 untagged
+switchport pvid 124
+exit
+interface ethernet 1/22
+switchport allowed vlan add 124 untagged
+switchport pvid 124
+exit

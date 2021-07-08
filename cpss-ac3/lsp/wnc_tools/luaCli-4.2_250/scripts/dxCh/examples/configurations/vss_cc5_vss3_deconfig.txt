@@ -1,0 +1,96 @@
+// TAG:               VSS; virtual-sub-system;bc2-ac3-system;cc5-on-vss3
+// Short Description: Deconfiguration for device 'cc5-on-vss3' in the connection of 2 VSSs.
+// Description:       Deconfiguration for device 'cc5-on-vss3' in the connection of 2 VSSs.
+//--------------------- the system  --------------------------
+//    -----------                             -----------
+//    |cc7(vss4)|                             |cc5(vss3)|
+//    -----------                             -----------
+//         |                                   |     |
+//        36                                  36     54
+//         |                              |----|     |----|
+//         |                              |               |
+//         23                             23              23
+//         |                              |               |
+//    ------------                    ------------    ------------
+//    |lc1       |                    |lc1       |    |lc5       |
+//    ------------                    ------------    ------------
+//    |    |  |  |                    |    |          |    |   |
+//    20  18  8  0                    18   8          0    8   18
+//    |    |  |  |                    |    |          |    |   |
+//    |    |  |  |                    |    |          |    |   |
+//    |    |  |  |--------------------|    |          |    |   |
+//    |    |  |       vss-trunk            |          |    |   |
+//    |    |  |----------------------------+----------|    |   |
+//    |    |                               |               |   |
+//    |    |                               |               |   |
+//    |    ---------------|   |-------------               |   |
+//    |           network |   |                            |   |
+//    |            trunk  |   |                            |   |
+//
+//  ------------------------------------------------------------------
+//      our device in the system is : cc5 'under' vss3
+//      the actual device is 'BC2' (Bobcat2) silicon.
+//
+end
+//
+// enter the config context
+config
+//
+// state that the 'network trunk' (global eport = 4500)
+// hold 2 members :
+//      eport 1008 (local vss) (port 8  in "lc1" )
+//      eport 1008 'vss_4'     (port 18 in "lc1")
+//
+interface eport ${dev}/${ePort4500}
+no vss aggregate-eports eport  ${ePort1008}
+no vss aggregate-eports eport  ${ePort1018} neighbor-vss-name "vss_4"
+exit
+
+//
+//
+// state that the 'vss trunk' that connected to 'vss_4' ,
+// hold 2 members :
+//      port 18 in "lc1"
+//      port 0 in "lc5"
+//
+vss neighbor-vss-connection remove-port vss-name "vss_4" dev-name-in-local-vss "lc1" port ${@@vssLcPort(3)}
+vss neighbor-vss-connection remove-port vss-name "vss_4" dev-name-in-local-vss "lc5" port ${@@vssLcPort(1)}
+
+//
+//
+// state the eports representing physical pors on lc devices
+// no need to state eports of neighbor-vss
+//  'my formula' --> eport = (dev*1000 + port)
+//
+interface ethernet ${dev}/${ePort1008}
+no vss port-on-lc
+exit
+interface ethernet ${dev}/${ePort5008}
+no vss port-on-lc
+exit
+interface ethernet ${dev}/${ePort5018}
+no vss port-on-lc
+exit
+
+//
+// set the inter-connection ports:
+//      port per connected device.
+//  port 36 connected to 'lc1'
+//  port 54 connected to 'lc5'
+//
+interface ethernet ${dev}/${port[3]}
+no vss neighbor-info
+exit
+interface ethernet ${dev}/${port[4]}
+no vss neighbor-info
+exit
+
+//
+//state info about the neighbor vss-4
+no vss neighbor-vss-info vss-name "vss_4"
+
+//
+//set 'my info' as device "cc5" in vss 3
+no vss my-info
+
+

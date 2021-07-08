@@ -1,0 +1,39 @@
+// TAG:               wirespeed; shaper; traffic_generator_emulated
+// Short Description: De-Configures shaper and stop generated wirespeed traffic
+// Description:       De-Configure 3 egress ports from shaper , stop the generated
+//                    wirespeed traffic from forth port
+end
+configure
+//
+interface ethernet ${dev}/${port[1]}
+no qos traffic shape
+exit
+interface ethernet ${dev}/${port[2]}
+no qos traffic shape
+exit
+interface ethernet ${dev}/${port[3]}
+no qos traffic shape
+exit
+//
+end
+// Enable Tail Drop DBA (Aldrin2 only - for othjer devices function does nothing)
+do shell-execute appDemoDxAldrin2TailDropDbaEnableRestore ${dev}
+//
+traffic
+//
+// stop the generate continuous wirespeed from XG port 58
+//
+no traffic-generator emulate port ${dev}/${port[4]}
+//
+exit
+//
+// show which ports are generating wirespeed
+//
+show traffic traffic-generator emulate all
+//
+// show rates on the ports
+//
+//show traffic rates all
+show traffic rates ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]},${port[5]},${port[6]}
+//
+

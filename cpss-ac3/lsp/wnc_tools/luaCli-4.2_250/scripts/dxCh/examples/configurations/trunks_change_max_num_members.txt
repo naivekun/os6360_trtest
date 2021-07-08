@@ -1,0 +1,38 @@
+// TAG:               trunk; channel-group; port-channel; trunk-max-num-of-members
+// Short Description: Allow to re-init the Trunk lib to have new number of trunks 
+//                    all with new max number of members
+// Description:       Allow to re-init the Trunk lib to have new number of trunks 
+//                    all with new max number of members
+end
+// show how the trunk LIB was initialized                 
+do cpss-api call cpssDxChTrunkDbInitInfoGet devNum ${dev} 
+//
+// save the init values so we can restore at the 'deconfig'
+//
+${@@trunkOrigInitSave()}
+//
+configure
+// state to have 50 trunks with 16 members each
+port-channel fixed-num-members device ${dev} num-of-trunks 50 max-members 16
+// show how the trunk LIB was initialized
+do cpss-api call cpssDxChTrunkDbInitInfoGet devNum ${dev}
+// we expect 'OK' on trunk 50 , and see that trunk may hold the 16 members
+do cpss-api call cpssDxChTrunkDbFlexInfoGet devNum 0 trunkId 50
+// we expect 'error' on trunk 51
+do cpss-api call cpssDxChTrunkDbFlexInfoGet devNum 0 trunkId 51
+//
+// create trunk 45 with 16 members (existing ports)
+//
+interface range ethernet ${dev}/${@@getExistingPortsRange(16)}
+channel-group 45
+exit
+//
+// show the trunk members , via several options :
+//
+// option 1: 'direct call' to cpssDxChTrunkTableEntryGet
+do cpss-api call cpssDxChTrunkTableEntryGet devNum ${dev} trunkId 45 
+// option 2: show command for trunk 45
+do show interfaces port-channel 45
+// option 3: show command for all trunk
+do show interfaces port-channel
+end

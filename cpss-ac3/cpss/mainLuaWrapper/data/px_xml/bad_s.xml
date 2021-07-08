@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CpssFunctionPrototypes>
+ <Functions count="71">
+  <Function name="cpssPpConfigDevDataExport" srcpath="common/h/cpss/common/cpssHwInit/cpssHwInit.h">
+   <Error>Wrong class for parameter configDevDataBufferPtr: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssBmPoolStatsPrint" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>Wrong class for parameter poolId: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssBmPoolExpand" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>Wrong class for parameter poolId: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssTmDropConvertBWToBytes" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmDrop.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssLogPointerFormatGet" srcpath="common/h/cpss/generic/log/cpssLog.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssTmNamedAsymPortCreate" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmLogicalLayer.h">
+   <Error>Wrong class for parameter GT_8_PTR: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityEventMaskSet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrity.h">
+   <Error>Parameter memEntryPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssDxChMultiPortLpEnableDisableTest" srcpath="embeddedCommands/dx/dxEC/h/cpssDxEmbCom.h">
+   <Error>Wrong class for parameter fec: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssLogStackSizeGet" srcpath="common/h/cpss/generic/log/cpssLog.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssLogHistoryFileNameSet" srcpath="common/h/cpss/generic/log/cpssLog.h">
+   <Error>Wrong class for parameter char: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssTmGetLogicalNodeIndex" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmLogicalLayer.h">
+   <Error>Wrong class for parameter GT_8_PTR: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssPxEgressHeaderAlterationEntrySet" srcpath="mainPxDrv/h/cpss/px/egress/cpssPxEgress.h">
+   <Error>Wrong class for parameter operationInfoPtr: union</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityTableEntryFix" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrityTables.h">
+   <Error>Parameter locationPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssPpDumpCpuMemory" srcpath="common/h/cpssDriver/pp/config/generic/cpssDrvPpGenDump.h">
+   <Error>Wrong parameter direction for GT_U8: &quot;&quot;</Error>
+  </Function>
+  <Function name="cpssTmNamedBnodeToCnodeCreate" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmLogicalLayer.h">
+   <Error>Wrong class for parameter GT_8_PTR: UNKNOWN</Error>
+  </Function>
+  <Function name="shmResvdAreaRegRead" srcpath="common/h/cpss/generic/ipc/mvShmIpc.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssBmPoolDelete" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>Wrong class for parameter poolId: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssPxMicroInitBasicCodeGenerate" srcpath="mainPxDrv/h/cpss/px/cpssHwInit/cpssPxHwInit.h">
+   <Error>Parameter initParamsPtr of unsupported type CPSS_PX_INIT_INFO_STC</Error>
+  </Function>
+  <Function name="cpssFormatConvertRawToStc" srcpath="common/h/cpssCommon/cpssFormatConvert.h">
+   <Error>Parameter fieldsInfoArrPtr of unsupported type CPSS_FORMAT_CONVERT_FIELD_INFO_STC</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityProtectionTypeGet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrity.h">
+   <Error>Parameter memEntryPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssTmDropConvertBytesToBW" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmDrop.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityEventMaskGet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrity.h">
+   <Error>Parameter memEntryPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="getCfgSeqOp" srcpath="common/h/cpss/common/labServices/port/gop/common/configElementDb/mvCfgSeqDbIf.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssTmNamedCnodeToPortCreate" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmLogicalLayer.h">
+   <Error>Wrong class for parameter GT_8_PTR: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssTmNodesCtlReadNextChange" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmNodesCtl.h">
+   <Error>Parameter changePtr of unsupported type CPSS_TM_TREE_CHANGE_STC</Error>
+  </Function>
+  <Function name="cpssBmPoolDebugBufIndexGet" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityErrorCountEnableGet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrity.h">
+   <Error>Parameter memEntryPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssHwDriverSlaveSmiConfigure" srcpath="common/h/cpss/generic/hwDriver/cpssHwDriverGeneric.h">
+   <Error>Wrong class for parameter char: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssBmPoolReCreate" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>Wrong class for parameter poolId: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssTmNamedAnodeToBnodeCreate" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmLogicalLayer.h">
+   <Error>Wrong class for parameter GT_8_PTR: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssPpConfigDevDataImport" srcpath="common/h/cpss/common/cpssHwInit/cpssHwInit.h">
+   <Error>Wrong class for parameter configDevDataBufferPtr: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityErrorInfoGet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrity.h">
+   <Error>Parameter memEntryPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssTmCtlWriteRegister" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmCtl.h">
+   <Error>Parameter regAddr is structure by value</Error>
+  </Function>
+  <Function name="cpssTmEligPrioFuncQueueConfig" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmEligPrioFunc.h">
+   <Error>Wrong class for parameter funcOutArr: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssLogApiFormatGet" srcpath="common/h/cpss/generic/log/cpssLog.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssTmEligPrioFuncConfigAllLevels" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmEligPrioFunc.h">
+   <Error>Wrong class for parameter funcOutArr: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityErrorInjectionConfigGet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrity.h">
+   <Error>Parameter memEntryPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssHwDriverDestroy" srcpath="common/h/cpss/generic/hwDriver/cpssHwDriverAPI.h">
+   <Error>Parameter drv of unsupported type CPSS_HW_DRIVER_STC</Error>
+  </Function>
+  <Function name="cpssPxNetIfInit" srcpath="mainPxDrv/h/cpss/px/networkIf/cpssPxNetIf.h">
+   <Error>Parameter netIfCfgPtr of unsupported type CPSS_NET_IF_CFG_STC</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityTableScan" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrityTables.h">
+   <Error>Parameter locationPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssBmPoolBufSizeGet" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssFormatConvertStcToRaw" srcpath="common/h/cpssCommon/cpssFormatConvert.h">
+   <Error>Parameter fieldsInfoArrPtr of unsupported type CPSS_FORMAT_CONVERT_FIELD_INFO_STC</Error>
+  </Function>
+  <Function name="cpssBmPoolBufFreeCntGet" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssDrvHwAccessObjectBind" srcpath="common/h/cpssDriver/pp/hardware/cpssDriverPpHw.h">
+   <Error>Parameter hwAccessObjPtr of unsupported type CPSS_DRV_HW_ACCESS_OBJ_STC</Error>
+  </Function>
+  <Function name="cpssTmCtlReadRegister" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmCtl.h">
+   <Error>Parameter regAddr is structure by value</Error>
+  </Function>
+  <Function name="cpssGenEventGppIsrConnect" srcpath="common/h/cpss/generic/events/cpssGenEventCtrl.h">
+   <Error>Wrong class for parameter isrFuncPtr: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssHwDriverAddAlias" srcpath="common/h/cpss/generic/hwDriver/cpssHwDriverAPI.h">
+   <Error>Parameter drv of unsupported type CPSS_HW_DRIVER_STC</Error>
+  </Function>
+  <Function name="cpssLogEnableGet" srcpath="common/h/cpss/generic/log/cpssLog.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssTm2TmLcConfig" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTm2Tm.h">
+   <Error>Parameter qmapHeader is structure by value</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityErrorInjectionConfigSet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrity.h">
+   <Error>Parameter memEntryPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityErrorCountEnableSet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrity.h">
+   <Error>Parameter memEntryPtr of unsupported type CPSS_PX_LOCATION_SPECIFIC_INFO_STC</Error>
+  </Function>
+  <Function name="cpssPxCncUploadInit" srcpath="mainPxDrv/h/cpss/px/cnc/cpssPxCnc.h">
+   <Error>Parameter cncCfgPtr of unsupported type CPSS_DMA_QUEUE_CFG_STC</Error>
+  </Function>
+  <Function name="cpssPxEgressTargetPortEntrySet" srcpath="mainPxDrv/h/cpss/px/egress/cpssPxEgress.h">
+   <Error>Wrong class for parameter portInfoPtr: union</Error>
+  </Function>
+  <Function name="cpssHwDriverRegister" srcpath="common/h/cpss/generic/hwDriver/cpssHwDriverAPI.h">
+   <Error>Parameter drv of unsupported type CPSS_HW_DRIVER_STC</Error>
+  </Function>
+  <Function name="cpssGenEventInterruptConnect" srcpath="common/h/cpss/generic/events/cpssGenEventCtrl.h">
+   <Error>Wrong class for parameter intRoutine: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssDrvInterruptsTreeGet" srcpath="common/h/cpssDriver/pp/interrupts/cpssDrvInterrupts.h">
+   <Error>Parameter notAccessibleBeforeStartInitPtrPtr is double pointer</Error>
+  </Function>
+  <Function name="cpssBmPoolBufFree" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>Wrong class for parameter poolId: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssTmEligPrioFuncNodeConfig" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmEligPrioFunc.h">
+   <Error>Wrong class for parameter funcOutArr: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssPxPortSerdesEyeMatrixGet" srcpath="mainPxDrv/h/cpss/px/port/cpssPxPortCtrl.h">
+   <Error>Parameter eye_resultsPtr of unsupported type CPSS_PX_PORT_SERDES_EYE_RESULT_STC</Error>
+  </Function>
+  <Function name="cpssLogLineNumberEnableGet" srcpath="common/h/cpss/generic/log/cpssLog.h">
+   <Error>return type is not GT_STATUS/void</Error>
+  </Function>
+  <Function name="cpssEventIsrBind" srcpath="common/h/cpss/generic/events/cpssGenEventRequests.h">
+   <Error>Parameter uniEventArr[] is array</Error>
+   <Error>Wrong class for parameter isrCbPtr: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssPxEgressSourcePortEntrySet" srcpath="mainPxDrv/h/cpss/px/egress/cpssPxEgress.h">
+   <Error>Wrong class for parameter portInfoPtr: union</Error>
+  </Function>
+  <Function name="cpssTmNamedQueueToAnodeCreate" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmLogicalLayer.h">
+   <Error>Wrong class for parameter GT_8_PTR: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssDxChMultiPortUpDownTest" srcpath="embeddedCommands/dx/dxEC/h/cpssDxEmbCom.h">
+   <Error>Wrong class for parameter fec: UNKNOWN</Error>
+  </Function>
+  <Function name="shmResvdAreaRegWrite" srcpath="common/h/cpss/generic/ipc/mvShmIpc.h">
+   <Error>Wrong parameter direction for *shm: &quot;&quot;</Error>
+   <Error>Wrong parameter direction for regPtr: &quot;&quot;</Error>
+   <Error>Wrong parameter direction for reg: &quot;&quot;</Error>
+   <Error>Wrong parameter direction for data: &quot;&quot;</Error>
+  </Function>
+  <Function name="cpssPxCncBlockClientRangesSet" srcpath="mainPxDrv/h/cpss/px/cnc/cpssPxCnc.h">
+   <Error>Parameter indexRangesBmp is structure by value</Error>
+  </Function>
+  <Function name="cpssPxDiagDataIntegrityShadowTableSizeGet" srcpath="mainPxDrv/h/cpss/px/diag/cpssPxDiagDataIntegrityTables.h">
+   <Error>Parameter tablesInfoPtr of unsupported type CPSS_PX_LOGICAL_SHADOW_TABLES_INFO_STC</Error>
+  </Function>
+  <Function name="eomTest2" srcpath="common/h/cpss/common/labServices/port/gop/port/serdes/comPhyH28nm/mvComPhyH28nmEomIf.h">
+   <Error>Wrong parameter direction for devNum: &quot;&quot;</Error>
+   <Error>Wrong parameter direction for serdesNum: &quot;&quot;</Error>
+   <Error>Wrong parameter direction for timeout: &quot;&quot;</Error>
+  </Function>
+  <Function name="cpssBmPoolDebugDumpBusyMemory" srcpath="common/h/cpssCommon/cpssBuffManagerPool.h">
+   <Error>Wrong class for parameter poolId: UNKNOWN</Error>
+  </Function>
+  <Function name="cpssTmNamedPortCreate" srcpath="mainPpDrv/h/cpss/generic/tm/cpssTmLogicalLayer.h">
+   <Error>Wrong class for parameter GT_8_PTR: UNKNOWN</Error>
+  </Function>
+  <Function name="tfp_sprintf" srcpath="common/h/cpss/common/labServices/port/gop/common/os/freeRTOSEnv.h">
+   <Error>Wrong parameter direction for * s: &quot;&quot;</Error>
+   <Error>Wrong parameter direction for *fmt: &quot;&quot;</Error>
+  </Function>
+ </Functions>
+ <Structures count="27">
+  <Structure family="none" name="CPSS_OS_RAND_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_RAND_BIND_STC -
+   structure that hold the "os random numbers" functions needed be bound to cpss
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_RAND_FUNC osRandFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_SRAND_FUNC osSrandFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_HW_IF_SMI_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_HW_IF_SMI_STC -
+    structure that hold the "external driver SMI interface" functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_INIT_DRIVER_FUNC extDrvHwIfSmiInitDriverFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_WRITE_REG_FUNC extDrvHwIfSmiWriteRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_READ_REG_FUNC extDrvHwIfSmiReadRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_TASK_REG_RAM_READ_FUNC extDrvHwIfSmiTaskRegRamReadFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_TASK_REG_RAM_WRITE_FUNC extDrvHwIfSmiTaskRegRamWriteFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_TASK_REG_VEC_READ_FUNC extDrvHwIfSmiTaskRegVecReadFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_TASK_REG_VEC_WRITE_FUNC extDrvHwIfSmiTaskRegVecWriteFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_TASK_WRITE_REG_FUNC extDrvHwIfSmiTaskWriteRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_TASK_READ_REG_FUNC extDrvHwIfSmiTaskReadRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_INTERRUPT_READ_REG_FUNC extDrvHwIfSmiIntReadRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_INTERRUPT_WRITE_REG_FUNC extDrvHwIfSmiIntWriteRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_DEV_VENDOR_ID_GET_FUNC extDrvHwIfSmiDevVendorIdGetFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_SMI_TASK_WRITE_REG_FIELD_FUNC extDrvHwIfSmiTaskWriteFieldFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_MEM_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_MEM_BIND_STC -
+    structure that hold the "os memory" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_BZERO_FUNC osMemBzeroFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MEM_SET_FUNC osMemSetFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MEM_CPY_FUNC osMemCpyFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MEM_MOVE_FUNC osMemMoveFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MEM_CMP_FUNC osMemCmpFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STATIC_MALLOC_FUNC osMemStaticMallocFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MALLOC_FUNC osMemMallocFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_REALLOC_FUNC osMemReallocFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_FREE_FUNC osMemFreeFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_CACHE_DMA_MALLOC_FUNC osMemCacheDmaMallocFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_CACHE_DMA_FREE_FUNC osMemCacheDmaFreeFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_PHY_TO_VIRT_FUNC osMemPhyToVirtFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_VIRT_TO_PHY_FUNC osMemVirtToPhyFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_INT_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_INT_STC -
+    structure that hold the "external driver interrupts" functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_INT_CONNECT_FUNC extDrvIntConnectFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_INT_DISCONNECT_FUNC extDrvIntDisconnectFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_INT_ENABLE_FUNC extDrvIntEnableFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_INT_DISABLE_FUNC extDrvIntDisableFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_INT_LOCK_MODE_SET_FUNC extDrvIntLockModeSetFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_HW_IF_TWSI_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_HW_IF_TWSI_STC -
+    structure that hold the "external driver TWSI interface" functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_TWSI_INIT_DRIVER_FUNC extDrvHwIfTwsiInitDriverFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_TWSI_WRITE_REG_FUNC extDrvHwIfTwsiWriteRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HW_IF_TWSI_READ_REG_FUNC extDrvHwIfTwsiReadRegFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_SOCKET_SELECT_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_SOCKET_SELECT_BIND_STC -
+    structure that hold the "socket select" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_CREATE_SET_FUNC osSelectCreateSetFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_ERASE_SET_FUNC osSelectEraseSetFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_ZERO_SET_FUNC osSelectZeroSetFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_ADD_FD_TO_SET_FUNC osSelectAddFdToSetFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_CLEAR_FD_FROM_SET_FUNC osSelectClearFdFromSetFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_IS_FD_SET_FUNC osSelectIsFdSetFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_COPY_SET_FUNC osSelectCopySetFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_FUNC osSelectFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SELECT_GET_SOCKET_FD_SIZE_FUNC osSocketGetSocketFdSetSizeFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_PM_AP_PORT_ATTR_STC">
+   <Member class="int" name="validAttrsBitMask" type="GT_U32"/>
+   <Member class="bool" name="nonceDisable" type="GT_BOOL"/>
+   <Member class="bool" name="fcPause" type="GT_BOOL"/>
+   <Member class="enum" name="fcAsmDir" type="CPSS_PORT_AP_FLOW_CONTROL_ENT"/>
+   <Member class="int" name="negotiationLaneNum" type="GT_U32"/>
+   <!-- error: unhandled line CPSS_PM_AP_LANE_OVERRIDE_PARAM_STC overrideLaneParams[2][8]; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_PCI_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_PCI_STC -
+    structure that hold the "external driver PCI " functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_PCI_CONFIG_WRITE_REG_FUNC extDrvPciConfigWriteRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_PCI_CONFIG_READ_REG_FUNC extDrvPciConfigReadRegFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_PCI_DEV_FIND_FUNC extDrvPciDevFindFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_PCI_INT_VEC_GET_FUNC extDrvPciIntVecFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_INT_MASK_GET_FUNC extDrvPciIntMaskFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_PCI_COMBINED_ACCESS_ENABLE_FUNC extDrvPciCombinedAccessEnableFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_PCI_DOUBLE_WRITE_FUNC extDrvPciDoubleWriteFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_PCI_DOUBLE_READ_FUNC extDrvPciDoubleReadFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_INT_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_INT_BIND_STC -
+    structure that hold the "os interrupts" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_INT_ENABLE_FUNC osIntEnableFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_INT_DISABLE_FUNC osIntDisableFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_INT_MODE_SET_FUNC osIntModeSetFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_INT_CONNECT_FUNC osIntConnectFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_INT_DISCONNECT_FUNC osIntDisconnectFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_STR_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_STR_BIND_STC -
+    structure that hold the "os strings" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_STR_LEN_FUNC osStrlenFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_CPY_FUNC osStrCpyFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_N_CPY_FUNC osStrNCpyFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_CHR_FUNC osStrChrFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_STR_FUNC osStrStrFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_REV_CHR_FUNC osStrRevChrFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_CMP_FUNC osStrCmpFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_N_CMP_FUNC osStrNCmpFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_CAT_FUNC osStrCatFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_N_CAT_FUNC osStrStrNCatFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_TO_UPPER_FUNC osStrChrToUpperFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_TO_32_FUNC osStrTo32Func; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_TO_U32_FUNC osStrToU32Func; -->
+   <!-- error: cannot identify type class CPSS_OS_STR_TOL_FUNC osStrTolFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_ETH_PORT_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_ETH_PORT_STC -
+    structure that hold the "external driver Ethernet port" functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_RX_INIT_FUNC extDrvEthPortRxInitFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_RAW_SOCKET_MODE_SET_FUNC extDrvEthRawSocketModeSetFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_RAW_SOCKET_MODE_GET_FUNC extDrvEthRawSocketModeGetFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_LINUX_MODE_SET_FUNC extDrvLinuxModeSetFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_LINUX_MODE_GET_FUNC extDrvLinuxModeGetFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_TX_INIT_FUNC extDrvEthPortTxInitFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_ENABLE_FUNC extDrvEthPortEnableFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_DISABLE_FUNC extDrvEthPortDisableFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_TX_FUNC extDrvEthPortTxFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_INPUT_HOOK_ADD_FUNC extDrvEthPortInputHookAddFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_RAW_SOCKET_RX_HOOK_ADD_FUNC extDrvEthRawSocketRxHookAddFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_TX_COMPLETE_HOOK_ADD_FUNC extDrvEthPortTxCompleteHookAddFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_RX_PACKET_FREE_FUNC extDrvEthPortRxPacketFreeFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_PORT_TX_MODE_SET_FUNC extDrvEthPortTxModeSetFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_CPU_CODE_TO_QUEUE extDrvEthCpuCodeToQueueFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_ETH_CPU_PREPEND_TWO_BYTES_FUNC extDrvEthPrePendTwoBytesHeaderSetFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_MGMT_HW_IF_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_MGMT_HW_IF_STC -
+    structure that hold the "external driver interrupts" functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_I2C_MGMT_MASTER_INIT_FUNC extDrvI2cMgmtMasterInitFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_MGMT_READ_REGISTER_FUNC extDrvMgmtReadRegisterFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_MGMT_WRITE_REGISTER_FUNC extDrvMgmtWriteRegisterFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_MGMT_ISR_READ_REGISTER_FUNC extDrvMgmtIsrReadRegisterFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_MGMT_ISR_WRITE_REGISTER_FUNC extDrvMgmtIsrWriteRegisterFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_MSGQ_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_MSGQ_BIND_STC -
+    structure that hold the "os msgq" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_MSGQ_CREATE_FUNC osMsgQCreateFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MSGQ_DELETE_FUNC osMsgQDeleteFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MSGQ_SEND_FUNC osMsgQSendFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MSGQ_RECV_FUNC osMsgQRecvFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MSGQ_NUM_MSGS_FUNC osMsgQNumMsgsFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_TASK_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_TASK_BIND_STC -
+    structure that hold the "os Task" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_TASK_CREATE_FUNC osTaskCreateFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_TASK_DELETE_FUNC osTaskDeleteFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_TASK_GET_SELF_FUNC osTaskGetSelfFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_TASK_LOCK_FUNC osTaskLockFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_TASK_UNLOCK_FUNC osTaskUnLockFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_DRAGONITE_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_DRAGONITE_STC -
+    structure that hold the "external driver DMA " functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_DRAGONITE_GET_BASE_ADDRESS_FUNC extDrvDragoniteShMemBaseAddrGetFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_MGMT_CACHE_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_MGMT_CACHE_STC -
+    structure that hold the "external driver cache manage" functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXT_DRV_MGMT_CACHE_FLUSH_FUNC extDrvMgmtCacheFlush; -->
+   <!-- error: cannot identify type class CPSS_EXT_DRV_MGMT_CACHE_INVALIDATE_FUNC extDrvMgmtCacheInvalidate; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_INET_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_INET_BIND_STC -
+    structure that hold the "os Inet" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_INET_NTOHL_FUNC osInetNtohlFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_INET_HTONL_FUNC osInetHtonlFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_INET_NTOHS_FUNC osInetNtohsFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_INET_HTONS_FUNC osInetHtonsFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_INET_NTOA_FUNC osInetNtoaFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_SEM_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_SEM_BIND_STC -
+    structure that hold the "os semaphore" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_MUTEX_CREATE_FUNC osMutexCreateFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MUTEX_DELETE_FUNC osMutexDeleteFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MUTEX_LOCK_FUNC osMutexLockFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_MUTEX_UNLOCK_FUNC osMutexUnlockFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_SIG_SEM_BIN_CREATE_FUNC osSigSemBinCreateFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_SIG_SEM_M_CREATE_FUNC osSigSemMCreateFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_SIG_SEM_C_CREATE_FUNC osSigSemCCreateFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_SIG_SEM_DELETE_FUNC osSigSemDeleteFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_SIG_SEM_WAIT_FUNC osSigSemWaitFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_SIG_SEM_SIGNAL_FUNC osSigSemSignalFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_IO_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_IO_BIND_STC -
+    structure that hold the "os I/O" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_IO_BIND_STDOUT_FUNC osIoBindStdOutFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_PRINTF_FUNC osIoPrintfFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_VPRINTF_FUNC osIoVprintfFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_SPRINTF_FUNC osIoSprintfFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_VSPRINTF_FUNC osIoVsprintfFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_SNPRINTF_FUNC osIoSnprintfFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_VSNPRINTF_FUNC osIoVsnprintfFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_PRINT_SYNC_FUNC osIoPrintSynchFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_GETS_FUNC osIoGetsFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_F_LAST_ERROR_STR_FUNC osIoFlastErrorStrFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_FOPEN_FUNC osIoFopenFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_FCLOSE_FUNC osIoFcloseFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_REWIND_FUNC osIoRewindFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_FPRINTF_FUNC osIoFprintfFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_FGETS_FUNC osIoFgets; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_FWRITE_FUNC osIoFwriteFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_FREAD_FUNC osIoFreadFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_IO_FGET_LENGTH_FUNC osIoFgetLengthFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_FATAL_ERROR_FUNC osIoFatalErrorFunc; -->
+  </Structure>
+  <Structure family="px" name="CPSS_EMBEDDED_COMMAND_TEST_RESULT_STC">
+   <Comment>
+<![CDATA[/**
+* @struct  CPSS_EMBEDDED_COMMAND_TEST_RESULT_STC
+ *
+ * @brief Defines embedded commands test result
+*/]]>   </Comment>
+   <Member class="int" name="portNum" type="GT_PHYSICAL_PORT_NUM"/>
+   <Member class="int" name="counter" type="GT_U32"/>
+   <!-- error: unhandled line char *testStateString; -->
+   <!-- error: unhandled line char *rcString; -->
+  </Structure>
+  <Structure family="none" name="CPSS_SOCKET_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_SOCKET_BIND_STC -
+    structure that hold the "socket" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_SOCKET_LAST_ERROR_FUNC osSocketLastErrorFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_LAST_ERROR_STR_FUNC osSocketLastErrorStrFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_TCP_CREATE_FUNC osSocketTcpCreateFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_UDP_CREATE_FUNC osSocketUdpCreateFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_TCP_DESTROY_FUNC osSocketTcpDestroyFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_UDP_DESTROY_FUNC osSocketUdpDestroyFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_CREATE_ADDR_FUNC osSocketCreateAddrFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_DESTROY_ADDR_FUNC osSocketDestroyAddrFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_BIND_FUNC osSocketBindFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_LISTEN_FUNC osSocketListenFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_ACCEPT_FUNC osSocketAcceptFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_CONNECT_FUNC osSocketConnectFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SET_NONBLOCK_FUNC osSocketSetNonBlockFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SET_BLOCK_FUNC osSocketSetBlockFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SEND_FUNC osSocketSendFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SENDTO_FUNC osSocketSendToFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_RECV_FUNC osSocketRecvFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_RECVFROM_FUNC osSocketRecvFromFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SET_SOCKET_NOLINGER_FUNC osSocketSetSocketNoLingerFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_EXTRACT_IPADDR_FROM_SOCKET_ADDR_FUNC osSocketExtractIpAddrFromSocketAddrFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_GET_ADDR_SIZE_FUNC osSocketGetSocketAddrSizeFunc; -->
+   <!-- error: cannot identify type class CPSS_SOCKET_SHUTDOWN_FUNC osSocketShutDownFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_STDLIB_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_STDLIB_BIND_STC -
+    structure that hold the "os stdlib" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_STDLIB_QSORT_FUNC osQsortFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STDLIB_BSEARCH_FUNC osBsearchFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_TIME_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_OS_TIME_BIND_STC -
+    structure that hold the "os time" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_TIME_WK_AFTER_FUNC osTimeWkAfterFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_TIME_TICK_GET_FUNC osTimeTickGetFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_TIME_GET_FUNC osTimeGetFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_TIME_RT_FUNC osTimeRTFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_GET_SYS_CLOCK_RATE_FUNC osGetSysClockRateFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_DELAY_FUNC osDelayFunc; -->
+   <!-- error: cannot identify type class CPSS_OS_STRF_TIME_FUNC osStrftimeFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_OS_LOG_BIND_STC">
+   <Comment>
+<![CDATA[/**
+* @struct CPSS_OS_LOG_BIND_STC
+ *
+ * @brief Structure of "os log" funcation, needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_OS_LOG_FUNC osLogFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_DMA_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_DMA_STC -
+    structure that hold the "external driver DMA " functions needed be
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_DMA_WRITE_FUNC extDrvDmaWriteDriverFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_DMA_READ_FUNC extDrvDmaReadFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_TRACE_HW_ACCESS_FUNC_BIND_STC">
+   <Comment>
+<![CDATA[/* CPSS_TRACE_HW_ACCESS_FUNC_BIND_STC -
+    structure that hold the "Trace HW" functions needed be bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_TRACE_HW_ACCESS_WRITE_FUNC traceHwAccessWriteFunc; -->
+   <!-- error: cannot identify type class CPSS_TRACE_HW_ACCESS_READ_FUNC traceHwAccessReadFunc; -->
+   <!-- error: cannot identify type class CPSS_TRACE_HW_ACCESS_DELAY_FUNC traceHwAccessDelayFunc; -->
+  </Structure>
+  <Structure family="none" name="CPSS_EXT_DRV_HSU_DRV_STC">
+   <Comment>
+<![CDATA[/* CPSS_EXT_DRV_HSU_DRV_STC -
+    structure that hold the "external driver HSU functions" that are
+    bound to cpss.
+*/]]>   </Comment>
+   <!-- error: cannot identify type class CPSS_EXTDRV_HSU_MEM_BASE_ADDR_GET_FUNC extDrvHsuMemBaseAddrGetFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HSU_WARM_RESTART_FUNC extDrvHsuWarmRestartFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HSU_INBOUND_SDMA_ENABLE_FUNC extDrvHsuInboundSdmaEnableFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HSU_INBOUND_SDMA_DISABLE_FUNC extDrvHsuInboundSdmaDisableFunc; -->
+   <!-- error: cannot identify type class CPSS_EXTDRV_HSU_INBOUND_SDMA_STATE_GET_FUNC extDrvHsuInboundSdmaStateGetFunc; -->
+  </Structure>
+ </Structures>
+</CpssFunctionPrototypes>

@@ -1,0 +1,38 @@
+// TAG:               TTI; transit; vlan; restore
+// Short Description: Restore rule default configurations
+// Description:       Disable (restore default) legacy-ethernet rule
+
+//REMOVING CONFIGURATIONS
+
+end
+clear bridge type ${dev} all
+configure
+
+interface range ethernet ${dev}/${port[2]},${port[3]}
+switchport allowed vlan remove 5,7
+exit
+
+interface range ethernet ${dev}/${port[2]},${port[3]}
+tti disable legacy-ethernet
+exit
+
+tti mac-mode ${dev} legacy-ethernet mac-mode-da
+
+tti rule create ${dev} 123 legacy-ethernet
+no tti rule-key mac
+no tti rule-key tag0
+no tti rule-key vlan0
+no tti rule-key tag1
+no tti rule-key vlan1
+no tti rule-action bridge-bypass
+no tti rule-action packet-command
+no tti rule-action redirect
+no tti rule-action vlan0-assign
+no tti rule-action vlan1-assign
+exit
+
+no interface range vlan device ${dev} vid 5,6,7,8
+
+end
+
+

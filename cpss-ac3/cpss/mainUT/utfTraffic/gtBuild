@@ -1,0 +1,25 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+
+
+ifneq (YES, $(INCLUDE_ENHANCED_UTF))
+  SUBDIRS = NONE
+endif
+
+ifneq (EXISTS, $(CHX_FAMILY))
+  ifeq (EXISTS, $(PX_FAMILY))
+    SUBDIRS = NONE
+  endif
+endif
+
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

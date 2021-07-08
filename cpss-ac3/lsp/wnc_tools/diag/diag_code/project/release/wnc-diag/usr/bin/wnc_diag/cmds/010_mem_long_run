@@ -1,0 +1,202 @@
+#!/bin/bash
+
+# ## Include ## #
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/defines
+source ${dir_path}/sh_funcs/exit
+source ${dir_path}/sh_funcs/print
+
+prog_name=`echo ${0} | awk -F / '{print $NF}'`
+
+# ## Functions ## #
+
+function usage() {
+echo "
+Usage:
+NAME
+        ${prog_name} - confirm the parameter of memory was set correctly
+
+SYNOPSIS
+        ${prog_name} [-m memory_size] [-l loop_time] [-h]
+
+DESCRIPTION
+        ${prog_name} is used to perform a memory test program
+        for a long duration to ensure that the parameter of DDR3L
+        memory was set correctly.
+
+MANDATORY OPTIONS
+        At least one optional option is needed.
+
+OPTIONAL OPTIONS
+        -m    The amount of memory to allocate and test. It have to include
+              the unit of B (bytes), K (kilobytes), M (megabytes), or G (gigabytes)
+
+        -l    (optional) The number of loops. Default is 1.
+
+        -h    Help message
+
+PASS CRITERIA
+        - Memory long run test (-m) :
+            SUCCESS: Memory work normally
+                Display: PASS
+                Return code: 0
+
+            ERROR: Find some memory faults
+                Display: FAIL
+                Return code: 1 (input  error)
+                             2 (option error)
+                             3 (system error)
+                             6 (test   error)
+
+Example:
+        ${prog_name} -m 20M
+        ${prog_name} -m 500K -l 3
+" >&2
+}
+
+function error_msg() {
+
+    # 1: error_code, 2: error_msg
+
+    # ERROR CODE
+    #   Input error : 1
+    #   Option error: 2
+    #   System error: 3
+    #   Read error  : 4
+    #   Write error : 5 
+    #   Test error  : 6 
+
+    if [ ${1} -eq 1 ]; then
+        echo -e "\n[Input error] ${2}" >&2
+    elif [ ${1} -eq 2 ]; then
+        :
+    elif [ ${1} -eq 3 ]; then
+        echo -e "\n[System error] ${2}" >&2
+    elif [ ${1} -eq 4 ]; then
+        echo -e "\n[Read error] ${2}" >&2
+    elif [ ${1} -eq 5 ]; then
+        echo -e "\n[Write error] ${2}" >&2
+    elif [ ${1} -eq 6 ]; then
+        :
+    fi
+    quit ${1}
+}
+
+function check_valid_int() {
+
+    # 1: integer
+
+    if [[ ! ${1} =~ ^[0-9]+$ ]]; then
+        error_msg 1 "Variable \"${1}\" isn't a integer"
+    fi
+}
+
+# ## initial variables ## #
+
+memory_size=""
+loop_time=1
+
+reserved_buffer=1000
+test_items=18
+
+# ## Check sys argvs ## #
+
+if [ $# -lt 1 ]; then
+
+    usage
+    error_msg 2
+    # error_msg 2 "At least one optional option is needed."
+fi
+
+while getopts ":m:l:h" arg
+do
+    case ${arg} in      
+        m)
+            if [[ ${OPTARG} =~ ^[0-9]+[bBkKmMgG]$ ]]; then
+
+                if [[ ${OPTARG:-1} =~ [bB] ]]; then
+
+                    memory_size=${OPTARG::-1}
+                
+                elif [[ ${OPTARG:-1} =~ [kK] ]]; then
+
+                    memory_size=$((${OPTARG::-1}*1024))
+                
+                elif [[ ${OPTARG:-1} =~ [mM] ]]; then
+                
+                    memory_size=$((${OPTARG::-1}*1024*1024))
+                
+                elif [[ ${OPTARG:-1} =~ [gG] ]]; then
+                
+                    memory_size=$((${OPTARG::-1}*1024*1024*1024))
+                fi
+            else
+                error_msg 1 "Input memory size format is \"<mem>[B|K|M|G]\""
+            fi
+            ;;
+        
+        l)
+            check_valid_int ${OPTARG}
+            if [ ${OPTARG} -gt 0 ]; then 
+                loop_time=${OPTARG}
+            else
+                error_msg 1 "Input number of loops is illegal"
+            fi
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        :)
+            usage
+            error_msg 2
+            # error_msg 2 "Option \"-${OPTARG}\" requires an argument"
+            ;;
+        ?)
+            usage
+            error_msg 2
+            # error_msg 2 "Unknown option \"-${OPTARG}\""
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "No options were passed"
+fi
+
+free_memory=`echo $(free -b | grep "Mem") | cut -d " " -f 4`
+max_memory_size=$((${free_memory}-${reserved_buffer}))
+if [ ${max_memory_size} -le 0 ]; then
+    error_msg 3 "Out of memory"
+fi
+
+page_size=`getconf PAGESIZE`
+
+if [ -z ${memory_size} ]; then
+
+    error_msg 1 "Please use \"-m\" to input memory size for memory test"
+
+elif [ ${memory_size} -lt ${page_size} ]; then
+
+    error_msg 1 "Input memory size need to greater than ${page_size}B"
+
+elif [ ${memory_size} -gt ${max_memory_size} ]; then
+
+    error_msg 1 "Input memory size is out of range"
+
+else
+    echo "Memory test start, please wait..."
+    test_info=`memtester ${memory_size}b ${loop_time}`
+    echo "Memory test complete"
+    result=`echo "${test_info}" | grep -c "ok$"`
+    if [ ${result} -eq $((${test_items} * ${loop_time})) ]; then
+        quit ${PASS}
+    else
+        error_msg 6
+    fi
+fi
+
+

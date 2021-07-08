@@ -1,0 +1,30 @@
+# $(warning "Started") 
+
+#ifeq (BROKER_ONLY, $(DISTRIBUTED_SIMULATION_ROLE))
+#    SUBDIRS = NONE
+#    C_EXCLUDE_FILE_LIST = ALL
+#endif
+#ifeq (EXISTS,$(GALTIS_NO_APP_DEMO))
+#    SUBDIRS      = NONE
+#    C_EXCLUDE_FILE_LIST = ALL
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ src 
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

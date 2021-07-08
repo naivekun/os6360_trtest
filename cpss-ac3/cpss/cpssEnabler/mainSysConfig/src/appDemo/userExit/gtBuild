@@ -1,0 +1,32 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+SUBDIRS = NONE
+
+ifeq (EXISTS, $(CHX_FAMILY))
+    USE_DXCH=USE
+    SUBDIRS =
+endif
+
+ifeq (USE,$(USE_DXCH))
+    SUBDIRS += dxCh
+endif
+
+ifeq (EXISTS, $(PX_FAMILY))
+    SUBDIRS += px
+endif
+
+
+LIB_NAME = mainSysConfig.lib
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

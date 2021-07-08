@@ -1,0 +1,37 @@
+end 
+configure
+no interface range vlan device 0 vid 101-113
+end
+configure
+interface range vlan device 0 vid 101-113
+exit
+interface ethernet 0/24
+switchport allowed vlan add 102 untagged
+switchport pvid 102
+exit
+interface ethernet 0/25
+switchport allowed vlan add 102 untagged
+switchport pvid 102
+exit
+interface ethernet 0/25
+switchport allowed vlan add 103 untagged
+switchport pvid 103
+exit
+interface ethernet 0/26
+switchport allowed vlan add 103 untagged
+switchport pvid 103
+exit
+interface ethernet 0/26
+switchport allowed vlan add 104 untagged
+switchport pvid 104
+exit
+interface ethernet 0/27
+switchport allowed vlan add 104 untagged
+switchport pvid 104
+exit
+interface range vlan device 0 vid 105
+exit
+interface ethernet 0/27
+switchport allowed vlan add 105 untagged
+switchport pvid 105
+exit

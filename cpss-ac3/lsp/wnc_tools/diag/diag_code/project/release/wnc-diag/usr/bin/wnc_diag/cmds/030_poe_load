@@ -1,0 +1,184 @@
+#!/bin/bash
+
+dir_path=$(dirname $0)
+prog_name=$(basename $0)
+product=$(cat /usr/local/sku)
+
+source ${dir_path}/sh_funcs/defines
+source ${dir_path}/sh_funcs/exit
+source ${dir_path}/sh_funcs/print
+
+case $product in
+    OS6360-P10)
+        number_poe_port=8
+        ;;
+    OS6360-P24X | OS6360-PH24)
+        number_poe_port=24
+        ;;
+    OS6360-P48X)
+        number_poe_port=48
+        ;;
+    *)
+        echo "This sku don't support PoE."
+        quit $FAIL
+        ;;
+esac
+
+function usage() {
+echo "
+Usage:
+NAME
+       030_poe_load - Display PoE loading and test
+
+SYNOPSIS
+       030_poe_load [-g -p port]
+                    [-t Lower,Upper -p port]
+                    [-h]
+
+DESCRIPTION
+       The command is used to display this device supply how much power
+       and verify the power is within the criteria. Before starting
+       this command, you should plug PD loader. Then this command will
+       enable port's poe function.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -g    Display mode
+
+       -t    Test mode. Need input a range.
+             Lower/Upper bound: Unit is Watt and floating integer
+
+       -p    Port number. The input can be numbers, ranges or both,
+             and split by \",\" if two or more ports. The number is 
+             from 0 to $number_poe_port. 0 is all port, and default value.
+             Example: 1,3,9-20
+
+       -h    Help message
+
+PASS CRITERIA
+       - Test loading is within the criteria (-t) :
+           SUCCESS: The loading is within the criteria
+             Display: PASS
+             Return code: 0
+
+           ERROR: The loading is out of criteria
+             Display: FAIL
+             Return code: 1
+
+EXAMPLE
+       030_poe_load -g -p 1,3,5,9-12
+       030_poe_load -t 7.5,8.5 -p 1,3,9-12
+" >&2
+}
+
+res=$PASS
+action=0
+port=0
+
+if [ $# -lt 1 ]; then
+    usage
+    exit 1
+fi
+
+while getopts ":gt:p:h" arg
+do
+    case ${arg} in      
+	g)
+            if [ $action -eq 0 ]; then
+                action=1
+            else
+                echo "You set operation previous"
+                exit 1
+            fi
+            ;;
+    	t)
+            if [ $action -eq 0 ]; then
+                action=2
+            else
+                echo "You set operation previous"
+                exit 1
+            fi
+
+            number_pattern=$(echo ${OPTARG} | grep "^[0-9]*\.[0-9]*,[0-9]*\.[0-9]*$")
+            lower=$(echo ${OPTARG} | cut -d ',' -f 1)
+	    upper=$(echo ${OPTARG} | cut -d ',' -f 2)
+
+            result=$(echo $lower $upper | awk '{if($1>$2) {printf "FALSE"}}')
+	    if [ "$result" == "FALSE" ] || [ -z $number_pattern ]; then
+                echo "Wrong criteria"
+                exit 1
+            fi
+            ;;
+        p)
+            if [ $port -ne 0 ]; then
+                echo "You set two or more '-p'"
+                exit 1
+            fi
+
+            number_pattern=$(echo ${OPTARG} | grep -o , | wc -l)
+            for ((i = 0; i < $(($number_pattern+1)); i++))
+            do
+                temp=$(echo ${OPTARG} | cut -d ',' -f $(($i+1)))
+                pattern=$(echo $temp | grep "^[0-9]*$\|^[0-9]*-[0-9]*$")
+                start_port=$(echo $pattern | cut -d '-' -f 1)
+                end_port=$(echo $pattern | cut -d '-' -f 2)
+
+                if [ -z "$pattern" ] || [ $start_port -gt $end_port ]; then
+                    echo "Syntax error"
+                    exit 1
+                elif [ $start_port -gt $number_poe_port ] || [ $end_port -gt $number_poe_port ]; then
+                    echo "Port number out of range"
+                    exit 1
+                fi
+
+                if [ $start_port -eq 0 ]; then
+                    port=$(((1<<48)-1))
+                else
+                    for ((j = $start_port; j <= $end_port; j++))
+                    do
+                        temp=$(($j-1))
+                        port=$(((1<<$temp)|$port))
+                    done
+                fi
+
+            done
+	    ;;
+        *)
+            usage
+            exit
+            ;;
+    esac
+done
+
+if [ $port -ne 0 ] && [ $action -ne 0 ]; then
+    for ((k = 0; k < $number_poe_port; k++))
+    do
+        select_port=$(($((1<<$k))&$port))
+        if [ $select_port -ne 0 ]; then
+            poe -e $(($k+1)) > /dev/null
+
+            if [ $action -eq 1 ]; then
+                echo port$(($k+1)):
+                poe -p $(($k+1))
+                echo
+            elif [ $action -eq 2 ]; then
+                loading=$(poe -p $(($k+1)) | grep MeasuredPortPower | cut -d '=' -f 2 | head -n 1)
+                result=$(echo $loading $lower $upper | awk '{if(($1>$2)&&($1<$3)) {printf "TRUE"} else {printf "FALSE"}}')
+
+                if [ "$result" == "TRUE" ]; then
+                    print_pass "port$(($k+1)) = $(printf %3.1f $loading)"
+                else
+                    print_fail "port$(($k+1)) = $(printf %3.1f $loading)"
+                    res=$FAIL
+                fi
+            fi
+        fi
+    done
+else
+    echo "Syntax error"
+    res=$FAIL
+fi
+
+quit $res

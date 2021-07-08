@@ -1,0 +1,19 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+ifeq (yes.yes,$(CMD_FS).$(CMDFS_NIX))
+  AD_CFLAGS += $(FD)GENFS_NIX
+endif
+
+C_EXCLUDE_FILE_LIST = cmdStreamGeneric.c
+
+##################################################
+include $(PROJ_BASE)/gtTopMake

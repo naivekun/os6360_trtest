@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#This command to get link status of ethernet interface
+
+E_TOOL=/usr/bin/ethtool
+
+if [ ! -f $E_TOOL ];
+then
+   echo Error: There is no ethtool command. 
+fi
+
+IFACE=eth2
+
+if [ $# -eq 1 ]
+then
+   IFACE=$1
+   #echo $IFACE
+fi
+
+
+ST=`ethtool $IFACE | grep "Link detected"  | awk '{print $3}'`
+
+echo $ST
+
+exit 0

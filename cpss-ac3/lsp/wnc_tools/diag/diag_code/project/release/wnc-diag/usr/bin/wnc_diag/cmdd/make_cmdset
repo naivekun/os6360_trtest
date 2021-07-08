@@ -1,0 +1,380 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+
+# include files
+source ${DIR}/const
+source ${DIR}/conf
+
+#cmdset settings
+CMD_LIST=${DIR}/${CFG_CMD_SET_DIR}/${CFG_CMD_LIST_FILE}
+CMD_PREFIX=${PAR_CMD_PREFIX}
+CMD_IDX_FILE=${CFG_PARCMD_TMPFS_MNT}/${CFG_CMD_IDX_FILE}
+
+function new_par_cmd (){
+
+local file_name=$1
+local id=$2
+
+echo "#!/bin/bash
+
+errno=0
+
+STOP_MODE=\$1
+#Todo how to map those parameters in const
+STOP_NEVER=1
+STOP_ON_ERROR=2
+GROUP=${id}
+
+RET_FILE=\$2
+FLAG_FILE=\$3
+
+#check result function.
+function check_ret() {
+local cmd=\$1
+local rc=\$2
+local cmd_idx=\$3
+
+[ \$errno -eq 0 ] && errno=\$rc
+
+if [ \$rc -eq 0 ]; then
+  printf \"%04d:%s:%s;\" \$cmd_idx \"\$cmd\" \"ps\" >> \$RET_FILE
+else
+  printf \"%04d:%s:%s;\" \$cmd_idx \"\$cmd\" \"fa\" >> \$RET_FILE
+fi
+
+if [ \$STOP_MODE -eq \$STOP_ON_ERROR ] && [ \$errno -ne 0 ]
+then
+  write_flag \"\${cmd}\"
+  exit 1
+fi
+}
+
+function post_func() {
+    sync
+    [ \$errno -ne 0 ] && exit 1 || exit 0
+}
+
+function check_flag() {
+  local flag_error=\$(cat \${FLAG_FILE})
+  if [ \"\${flag_error}\" != \"PASS\" ]; then
+    echo \"Stop testing group\${GROUP}, because \${flag_error}\"
+    echo
+    exit 1
+  fi
+}
+
+function write_flag() {
+  local tmp_cmd=\"\$1\"
+  flock -x 9
+  echo \"\${tmp_cmd} FAIL\" > \"\${FLAG_FILE}\"
+} 9>/var/lock/flag_lock
+
+
+#Commands
+" > $file_name
+
+echo "$file_name"
+
+}
+
+function new_par_cmd_now() {
+  local file_name=$1
+  local id=$2
+
+echo "#!/bin/bash
+
+errno=0
+
+STOP_MODE=\$1
+#Todo how to map those parameters in const
+STOP_NEVER=1
+STOP_ON_ERROR=2
+GROUP=${id}
+
+RET_FILE=\$2
+FLAG_FILE=\$3
+LOG_FILE=\$4
+LITE_LOG=\$5
+TMP_LOG_FILE=\"/mnt/cmdd_parcmd/tmp_log_${id}.log\"
+DOTTED_LINE='-------------------------------------------------'
+
+#check result function.
+function check_ret() {
+local cmd=\$1
+local rc=\$2
+local cmd_idx=\$3
+
+[ \$errno -eq 0 ] && errno=\$rc
+
+if [ \$rc -eq 0 ]; then
+  printf \"%04d:%s:%s;\" \$cmd_idx \"\$cmd\" \"ps\" >> \$RET_FILE
+else
+  printf \"%04d:%s:%s;\" \$cmd_idx \"\$cmd\" \"fa\" >> \$RET_FILE
+fi
+
+if [ \$STOP_MODE -eq \$STOP_ON_ERROR ] && [ \$errno -ne 0 ]
+then
+  write_flag \"\${cmd}\"
+  exit 1
+fi
+}
+
+function post_func() {
+    sync
+    [ \$errno -ne 0 ] && exit 1 || exit 0
+}
+
+function check_flag() {
+  local flag_error=\$(cat \${FLAG_FILE})
+  if [ \"\${flag_error}\" != \"PASS\" ]; then
+    echo \"Stop testing group\${GROUP}, because \${flag_error}\"
+    echo
+    exit 1
+  fi
+}
+
+function write_flag() {
+  local tmp_cmd=\"\$1\"
+  flock -x 9
+  echo \"\${tmp_cmd} FAIL\" > \"\${FLAG_FILE}\"
+} 9>/var/lock/flag_lock
+
+function save_log() {
+  local tmp_msg=\$1
+  flock -x 9
+  cat \"\${tmp_msg}\" >> \"\${LOG_FILE}\"
+  rm -f \"\${tmp_msg}\"
+} 9>/var/lock/burn_in
+
+
+#Commands
+" > $file_name
+
+echo "$file_name"
+}
+
+function add_wait_cmd() {
+  local file_name=$1
+  local line=$2
+
+  local cmd_full=`echo $line | awk -F";" '{print $1}'`
+  local cmd_desc=`echo $line | awk -F";" '{print $2}'`
+  local cmd=`echo $cmd_full | awk -F"+" '{print $1}'`
+  local opt=`echo $cmd_full | cut -d'+' -f 2-`
+  local cmd_exec="$cmd $opt"
+
+  echo 'echo ' '"'$cmd_desc'"' >> $file_name
+  echo "$cmd_exec" >> $file_name
+}
+
+function add_cmds() {
+  local file_name=$1
+  local line=$2
+  local cmd_idx=$3
+  local cmd_idx_file=$CMD_IDX_FILE
+
+  local cmd_full=`echo $line | awk -F";" '{print $1}'`
+  local cmd_desc=`echo $line | awk -F";" '{print $2}'`
+  local cmd_sfcs=`echo $line | awk -F";" '{print $3}'`
+  local cmd=`echo $cmd_full | awk -F"+" '{print $1}'`
+  local opt=`echo $cmd_full | cut -d'+' -f 2-`
+  local cmd_exec="$cmd $opt"
+
+  echo 'check_flag' >> $file_name
+  echo 'echo '"$'\n'"'Test started at `date "+%F %T"`'  $'\n' >> $file_name
+  echo "echo 'Test Command: $cmd_exec'" >> $file_name
+  if [[ -n "$cmd_desc" ]]; then
+    echo 'echo ' 'Test Description: '$cmd_desc'' >> $file_name
+  fi
+  echo "$cmd_exec" >> $file_name
+  echo 'rc=$?' >> $file_name
+  echo 'echo Test ended at `date "+%F %T"`' "$'\n'"  $'\n' >> $file_name
+  echo 'echo "-------------------------------------------------"' >> $file_name
+
+  if [ "${SFCS_FLAG}" == "true" ] && [ -z "$cmd_sfcs" ]; then
+    echo "Invalid cmdset."
+    exit 1
+  fi
+
+  if [[ -z "$cmd_desc" ]]; then
+    echo "check_ret '$cmd_exec' \$rc $cmd_idx" >> $file_name
+    if [ "${SFCS_FLAG}" == "true" ] && [ -n "$cmd_sfcs" ]; then
+      printf "%04d:%s:%s\n" $cmd_idx "$cmd_exec" "$cmd_sfcs" >> $cmd_idx_file
+    else
+      printf "%04d:%s\n" $cmd_idx "$cmd_exec" >> $cmd_idx_file
+    fi
+  else
+    echo "check_ret '$cmd_desc' \$rc $cmd_idx" >> $file_name
+    if [ "${SFCS_FLAG}" == "true" ] && [ -n "$cmd_sfcs" ]; then
+      cmd_sfcs=`echo "$cmd_sfcs" | sed 's/^[ \t]*//g' | sed 's/[ \t]*$//g' | sed 's/[[:space:]]/_/g'`
+      printf "%04d:%s:%s\n" $cmd_idx "$cmd_desc" "$cmd_sfcs" >> $cmd_idx_file
+    else
+      printf "%04d:%s\n" $cmd_idx "$cmd_desc" >> $cmd_idx_file
+    fi
+  fi
+}
+
+function add_cmds_now () {
+  local file_name=$1
+  local line=$2
+  local cmd_idx=$3
+  local cmd_idx_file=$CMD_IDX_FILE
+
+  local cmd_full=`echo $line | awk -F";" '{print $1}'`
+  local cmd_desc=`echo $line | awk -F";" '{print $2}'`
+  local cmd_sfcs=`echo $line | awk -F";" '{print $3}'`
+  local cmd=`echo $cmd_full | awk -F"+" '{print $1}'`
+  local opt=`echo $cmd_full | cut -d'+' -f 2-`
+  local cmd_exec="$cmd $opt"
+
+  echo 'rm -f ${TMP_LOG_FILE}' >> $file_name
+  echo 'check_flag' >> $file_name
+  echo 'echo "Test started at $(date "+%F %T")" >> ${TMP_LOG_FILE}' >> $file_name
+  echo "echo 'Test Command: $cmd_exec' >> \${TMP_LOG_FILE}" >> $file_name
+  if [[ -n "$cmd_desc" ]]; then
+    echo 'echo ' 'Test Description: '$cmd_desc' >> ${TMP_LOG_FILE}' >> $file_name
+  fi
+  echo "$cmd_exec &>> \${TMP_LOG_FILE}" >> $file_name
+  echo 'rc=$?' >> $file_name
+  echo 'echo "Test ended at $(date "+%F %T")" >> ${TMP_LOG_FILE}' >> $file_name
+  echo 'echo "-------------------------------------------------" >> ${TMP_LOG_FILE}' >> $file_name
+  echo 'if [ ${LITE_LOG} == "true" ]; then' >> $file_name
+  echo '  if [ ${rc} -ne 0 ]; then' >> $file_name
+  echo '    cat ${TMP_LOG_FILE}' >> $file_name
+  echo '  else' >> $file_name
+  echo '    cat ${TMP_LOG_FILE} | grep "Test started\|Test Command\|Result:\|Test ended\|${DOTTED_LINE}"' >> $file_name
+  echo '  fi' >> $file_name
+  echo 'else' >> $file_name
+  echo '  cat ${TMP_LOG_FILE}' >> $file_name
+  echo 'fi' >> $file_name
+  echo 'save_log ${TMP_LOG_FILE}' >> $file_name
+
+  if [ "${SFCS_FLAG}" == "true" ] && [ -z "$cmd_sfcs" ]; then
+    echo "Invalid cmdset."
+    exit 1
+  fi
+
+  if [[ -z "$cmd_desc" ]]; then
+    echo "check_ret '$cmd_exec' \$rc $cmd_idx" >> $file_name
+    echo >> $file_name
+    if [ "${SFCS_FLAG}" == "true" ] && [ -n "$cmd_sfcs" ]; then
+      printf "%04d:%s:%s\n" $cmd_idx "$cmd_exec" "$cmd_sfcs" >> $cmd_idx_file
+    else
+      printf "%04d:%s\n" $cmd_idx "$cmd_exec" >> $cmd_idx_file
+    fi
+  else
+    echo "check_ret '$cmd_desc' \$rc $cmd_idx" >> $file_name
+    echo >> $file_name
+    if [ "${SFCS_FLAG}" == "true" ] && [ -n "$cmd_sfcs" ]; then
+      cmd_sfcs=`echo "$cmd_sfcs" | sed 's/^[ \t]*//g' | sed 's/[ \t]*$//g' | sed 's/[[:space:]]/_/g'`
+      printf "%04d:%s:%s\n" $cmd_idx "$cmd_desc" "$cmd_sfcs" >> $cmd_idx_file
+    else
+      printf "%04d:%s\n" $cmd_idx "$cmd_desc" >> $cmd_idx_file
+	  fi
+  fi
+}
+
+function add_cmd_post () {
+  local PAR_CMDSET=`ls ${CFG_PARCMD_TMPFS_MNT}/$CMD_PREFIX* 2>/dev/null`
+
+  for cmd_file in $PAR_CMDSET; do
+    echo "post_func" >> $cmd_file
+    chmod +x $cmd_file
+  done
+
+  sync
+}
+
+function del_old_files () {
+  local del_old=$1
+
+  if [ $del_old -ne 1 ]; then
+    printf "It will delete all existing command set files! (y/n):"
+    read input
+
+    if [ "$input" == "y" ]; then
+      echo "Deleting..."
+    else
+      echo "Exit program."
+      exit 0
+    fi
+  else
+    echo "Deleting..."
+  fi
+
+  local PAR_CMDSET=`ls ${CFG_PARCMD_TMPFS_MNT}/$CMD_PREFIX* 2>/dev/null`
+  for cmd_file in $PAR_CMDSET; do
+    rm -f $cmd_file
+    echo "$cmd_file"
+  done
+
+  local cmd_idx_file=$CMD_IDX_FILE
+  rm -f $cmd_idx_file
+
+}
+
+# mount a tmpfs space for saving parcmd script
+function Tmpfs_mount_parcmd() {
+	local mnt=$CFG_PARCMD_TMPFS_MNT
+	local size=$CFG_PARCMD_TMPFS_SIZE
+
+	if [ -z "`mount | grep \"$mnt type tmpfs\"`" ]; then
+		mkdir -p $mnt
+		mount -t tmpfs -o size=$size tmpfs $mnt
+	fi
+}
+
+del_old=1
+CMD_LIST=$1
+
+#Check if command list is existing
+if [ ! -f $CMD_LIST ]; then
+  echo "Command list file ($CMD_LIST) is NOT existing."
+  exit 1
+fi
+
+#Remove old files
+del_old_files $del_old
+
+echo $'\n'"Creating..."
+
+file_name=
+group_id=0
+cmd_idx=0
+
+# mount a tmpfs space for saving parcmd script
+Tmpfs_mount_parcmd
+
+# init stop_on_error flag
+echo "PASS" > "${STOP_FLAG_FILE}"
+
+#Remove blank line and trim spaces in front the line
+#Remove the line which is beginning with '#'
+#Parse each commands
+sed '/^[ \t]*$/d' $CMD_LIST | sed '/^#/d'| while IFS= read -r line;
+do
+  if [[ ${line:0:1} == "[" ]]; then
+    group_id=$((group_id+1))
+    file_name=`echo "$line" | sed 's/[][]//g'`
+	file_name=$CFG_PARCMD_TMPFS_MNT/$CMD_PREFIX$group_id"_"$file_name.sh
+    if [ "${DUMP_LOG_NOW}" == "true" ]; then
+      new_par_cmd_now "$file_name" "$group_id"
+    else
+      new_par_cmd "$file_name" "$group_id"
+    fi
+  elif [[ ${line:0:5} == "sleep" ]]; then
+    add_wait_cmd "$file_name" "$line"
+  else
+    cmd_idx=$((cmd_idx+1))
+    if [ "${DUMP_LOG_NOW}" == "true" ]; then
+      add_cmds_now "$file_name" "$line" $cmd_idx
+    else
+      add_cmds "$file_name" "$line" $cmd_idx
+    fi
+  fi
+done
+
+add_cmd_post
+
+exit 0

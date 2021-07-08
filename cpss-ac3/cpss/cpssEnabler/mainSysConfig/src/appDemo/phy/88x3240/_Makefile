@@ -1,0 +1,54 @@
+# $(warning "Started")
+
+
+#List of files to include in list
+FILES := \
+ mtdAPI.c \
+ mtdAPIInternal.c \
+ mtdCunit.c \
+ mtdDebug.c \
+ mtdDiagnostics.c \
+ mtdDiagnosticsRegDumpData.c \
+ mtdEEE.c \
+ mtdFwDownload.c \
+ mtdHXunit.c \
+ mtdHunit.c \
+ mtdHwCntl.c \
+ mtdHwMsecCntl.c \
+ mtdXgFastRetrain.c \
+ mtdXunit.c 
+
+
+cpssEnabler_CFLAGS_CL += $(FD)C_LINKAGE=1
+LIB_NAME = mainSysConfig.lib
+
+ifeq (EXISTS, $(CHX_FAMILY))
+  DX_FAMILY = EXIST
+endif
+ifneq (EXIST, $(DX_FAMILY))
+    #C_EXCLUDE_FILE_LIST = ALL
+    FILES :=
+endif
+
+#List of subfolders to include in build
+MODULES := 
+
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainSysConfig.lib
+    cpssEnabler_mainSysConfig_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

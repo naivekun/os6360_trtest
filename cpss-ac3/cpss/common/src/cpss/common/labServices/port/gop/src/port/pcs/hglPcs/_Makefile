@@ -1,0 +1,45 @@
+# $(warning "Started") 
+
+#ifeq (VIPS, $(HOME_ENV))
+#
+#
+#
+#
+#ROOT_DIR = $(subst \,/,$(SW_ROOT))
+#include $(ROOT_DIR)/mainLabServices/gtBuild
+#
+#else
+#
+#
+#LIB_NAME = cpssGenPortHwConfig.lib
+#
+#ifeq ($(ARM_CPU), 78200)
+#ifeq (linux,$(OS_RUN))
+#ifeq (EXISTS, $(PM_FAMILY))
+#  mainPpDrv_AD_CFLAGS += -O0
+#endif
+#endif
+#endif
+#include $(PROJ_BASE)/gtTopMake
+#endif
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ mvHwsHglPcsDb.c \
+ mvHwsHglPcsIf.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+COMMON_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

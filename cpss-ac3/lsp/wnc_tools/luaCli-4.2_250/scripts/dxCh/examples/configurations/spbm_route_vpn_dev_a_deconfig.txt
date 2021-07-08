@@ -1,0 +1,197 @@
+// TAG:               L2VPN, L3VPN, PE-device, BEB, PBB, routing, IEEE802.1ah
+// Short Description: clear a configuration of a PE-device A in L2VPN network
+//                    transmitting a routed traffic.
+// Description:       configure a PE-device A in the L2VPN network (see a
+//                    diagram below) transmitting a routed traffic.
+//                    The client's traffic is routed on the PE-devices and is
+//                    transfered (if necessary) to a remote router(PE-device)
+//                    through the backbone network.
+//                    I.e. a transmitting of traffic of two VPNs over
+//                    Backbone network is implemented.
+//------------------------------------------------------------------------------
+// SPBM Core Network
+//------------------------------------------------------------------------------
+//  VPN1: VLAN 1000, 172.16.1/24
+//    |  VPN1: VLAN 2000, 172.16.2/24
+//    |   |  VPN2: VLAN 3000, 172.16.3/24
+//    |   |   |
+//   0| 18| 36|
+// |--|---|---|------|            VPN2: VLAN 1000, 172.16.1/24
+// |   dev A         |             |   VPN2: VLAN 2000, 172.16.2/24
+// |                 |54           |    |  VPN1: VLAN 3000, 172.16.3/24
+// |00:00:00:00:DE:AA|----|        |    |    |
+// |-----------------|    |        |    |    |
+//                        \       0|  18|  36|
+//                         \    |--|----|----|----|
+//                          \---|   dev B         |
+//                            54|                 |
+//                              |00:00:00:00:DE:BB|
+//                              |-----------------|
+//                               /5
+// |-----------------|          /
+// |    dev C        |54       /
+// |                 |--------/
+// |00:00:00:00:DE:CC|
+// |--|----|---------|
+//   0|  18|
+//    |    |
+//    |   VPN2: VLAN 3000, 172.16.4/24
+//  VPN1: VLAN 3000, 172.16.4/24
+//
+// Core  (backbone) ports are A/54,      B/54,5,    C/54
+// Customer network ports are A/0,18,36, B/0,18,36, C/0,18
+// PVIDs:
+// A/36, PVID 3000
+// B/36, PVID 3000
+// C/0, PVID 1000
+// C/18, PVID 2000
+//
+// B-VID = 511
+//
+// Every remote PE-device is mapped to special ePort. Unicast packets intended
+// to some remote PE-device (through backbone)are forwarded to special egress
+// ePort that specifies a tunnel header fields. Multicast packets are forwarded
+// to special ePort too (other than UC packets are):
+//
+// UC ePort A/0x302 -> port A/4 B-DA 00:00:00:00:DE:BB
+// UC ePort A/0x303 -> port A/4 B-DA 00:00:00:00:DE:CC
+// MC ePort A/0x311 -> port A/4 B-DA A1:00:0A:XX:XX:XX
+// UC ePort B/0x301 -> port B/4 B-DA 00:00:00:00:DE:AA
+// UC ePort B/0x303 -> port B/5 B-DA 00:00:00:00:DE:CC
+// MC ePort B/0x311 -> port B/4 B-DA A1:00:0B:XX:XX:XX
+// MC ePort B/0x222 -> port B/5 B-DA A1:00:0B:XX:XX:XX
+// UC ePort C/0x301 -> port C/4 B-DA 00:00:00:00:DE:AA
+// UC ePort C/0x302 -> port C/4 B-DA 00:00:00:00:0D:EB
+// MC ePort C/0x311 -> port C/4 B-DA A1:00:0C:XX:XX:XX
+//
+// Every VPN (see the diagrma above) is routed by separate Virtual Router
+// VPN 1 <=> VRF-ID 1
+// VPN 2 <=> VRF-ID 2
+//
+// dev A, VPN 1: I-SID 0x010000 -> VID 1000 -> vrf-id 1
+// dev A, VPN 2: I-SID 0x020000 -> VID 3000 -> vrf-id 2
+// dev B, VPN 1: I-SID 0x010000 -> VID 3000 -> vrf-id 1
+// dev B, VPN 2: I-SID 0x020000 -> VID 1000 -> vrf-id 2
+// dev C, VPN 1: I-SID 0x010000 -> VID 1000 -> vrf-id 1
+// dev C, VPN 2: I-SID 0x020000 -> VID 2000 -> vrf-id 2
+//
+// VRF-ID 1 route entries (device, IP -> next hop):
+// dev A,     172.16.1.1  -> port 1     eVLAN 1000, ARP 00:00:00:00:01:11
+// dev A,     172.16.2.1  -> port 2     eVLAN 2000, ARP 00:00:00:00:01:21
+// dev A,     172.16.3/24 -> ePort 0x302  eVLAN 1000, ARP 00:00:00:00:DE:BB
+// dev A,     172.16.4/24 -> ePort 0x303  eVLAN 1000, ARP 00:00:00:00:DE:CC
+// dev B,     172.16.3.1  -> port 3     eVLAN 3000, ARP 00:00:00:00:01:31
+// dev C,     172.16.4.1  -> port 1     eVLAN 1000, ARP 00:00:00:00:01:41
+// dev A,     224.1.1.1   -> port A/2   eVLAN 2000
+// dev B,     224.1.1.1   -> port B/3   eVLAN 3000
+// dev C,     224.1.1.1   -> port C/1   eVLAN 1000
+//
+// VRF-ID 2 route entries (device, IP -> next hop):
+// dev B,     172.16.1.1  -> port 1     eVLAN 1000, ARP 00:00:00:00:02:11
+// dev B,     172.16.2.1  -> port 2     eVLAN 2000, ARP 00:00:00:00:02:21
+// dev B,     172.16.3/24 -> ePort 0x301 eVLAN 1000, ARP 00:00:00:00:DE:BA
+// dev B,     172.16.4/24 -> ePort 0x303 eVLAN 1000, ARP 00:00:00:00:DE:CC
+// dev A,     172.16.3.1  -> port 3     eVLAN 3000, ARP 00:00:00:00:02:31
+// dev C,     172.16.4.1  -> port 2     eVLAN 2000, ARP 00:00:00:00:02:41
+// dev A,B,C, 224.1.1.1   -> none
+end
+configure
+interface eport ${dev}/0x311
+no spbm provider-flood-eport i-sid 0x010000
+exit
+no ip route 172.16.3.1 255.255.255.255 vrf-id 2
+no ip next-hop 21
+no ip vrf-id 2
+
+no ip route 172.16.1.1 255.255.255.255 vrf-id 1
+no ip route 172.16.2.1 255.255.255.255 vrf-id 1
+no ip route 172.16.3.0 255.255.255.0   vrf-id 1
+no ip route 172.16.4.0 255.255.255.0   vrf-id 1
+
+no ip next-hop 11
+no ip next-hop 12
+no ip next-hop 13
+no ip next-hop 14
+
+no ip mc-route 224.1.1.1/32 vrf-id 1
+no ip mc-next-hop 31
+
+no ip vrf-id 1
+
+interface range vlan device ${dev} vid 1000,2000,3000
+no ip routing
+no ip mc-routing
+exit
+interface eport ${dev}/0x303
+no ip routing
+no ip mc-routing
+exit
+interface eport ${dev}/0x302
+no ip routing
+no ip mc-routing
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]}
+no ip routing
+no ip mc-routing
+exit
+
+interface vlan device ${dev} vid 1000
+no bridge multicast mac address group 01:00:5E:01:01:01
+exit
+
+//flush FDB
+do clear bridge interface ${dev} all
+
+interface eport ${dev}/0x311
+tpid tunnel-start bind 0
+exit
+interface eport ${dev}/0x303
+tpid tunnel-start bind 0
+exit
+interface eport ${dev}/0x302
+tpid tunnel-start bind 0
+exit
+
+interface ethernet ${dev}/${port[4]}
+no spbm pe-node uc-eport 0x302
+no spbm pe-node uc-eport 0x303
+no spbm provider-flood-port flood-eport 0x311
+exit
+
+interface range ethernet ${dev}/${port[4]}
+no bridge multicast unregistered
+tpid egress bind 0 ether_type_index 0
+switchport allowed vlan remove 511
+exit
+
+interface ethernet ${dev}/${port[3]}
+no switchport pvid
+exit
+
+interface ethernet ${dev}/${port[3]}
+switchport allowed vlan remove 3000
+exit
+
+interface range ethernet ${dev}/${port[1]},${port[2]}
+switchport allowed vlan remove 1000,2000
+exit
+
+no spbm service-vlan i-sid 0x010000
+no spbm service-vlan i-sid 0x020000
+
+interface vlan device ${dev} vid 3000
+no ip vrf-id
+exit
+
+interface range vlan device ${dev} vid 1000,2000
+no ip vrf-id
+exit
+
+no interface range vlan device ${dev} vid 511,1000,2000,3000
+
+// bind profile 5 with single tpid index : 0..7
+tpid ingress profile 5 device ${dev} ether_type_index 0 tpid-range 0,1,2,3,4,5,6,7
+
+tpid device ${dev} direction ingress index 7 etherType 0x8100
+tpid device ${dev} direction egress  index 7 etherType 0x8100
+no mac address

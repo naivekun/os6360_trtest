@@ -1,0 +1,65 @@
+#!/bin/bash
+
+#This command to mount ubi0_4 to /usr/data
+
+TMPF=/tmp/tmpmtd
+DATA_FOLDER=/usr/data
+
+cat /proc/mtd > $TMPF
+
+MTD_SPI=`grep "ubi" $TMPF`
+
+COLON_MARK=${MTD_SPI:4:1}
+if [ "$COLON_MARK" == ":" ];
+then
+   MTD_NUM=${MTD_SPI:3:1}
+else
+  COLON_MARK=${MTD_SPI:5:1}
+  if [ "$COLON_MARK" == ":" ];
+  then  
+      MTD_NUM=${MTD_SPI:3:2}
+  else
+      #echo There is no MTD for ubi. Use default value. 
+      MTD_NUM=6
+  fi
+fi
+
+#echo $MTD_NUM
+rm -f $TMPF
+sync
+
+ls /dev/ubi* > $TMPF
+
+UBI0=`grep "ubi0" $TMPF`
+UBICTRL=`grep "ubi_ctrl" $TMPF`
+
+if [ -z "$UBI0" ]; 
+then
+  if [ -z "$UBICTRL" ];
+  then
+     echo "Error:There is no ubi_ctrl"	
+     exit 1
+  else	  
+     /usr/bin/ubiattach /dev/ubi_ctrl -m $MTD_NUM
+     ls /dev/ubi* > $TMPF
+     UBIDATA=`grep "ubi0_4" $TMPF`
+   
+     if [ -z "$UBIDATA" ];
+     then
+        echo "Error:There is no ubi0_4 data section"	
+        touch /tmp/no_ubi0_4
+        sync
+        exit 1
+     else
+        mkdir $DATA_FOLDER
+        mount -t ubifs /dev/ubi0_4 $DATA_FOLDER 
+     fi
+  fi
+else
+  if [ ! -d $DATA_FOLDER ];
+  then
+  mkdir $DATA_FOLDER
+  fi
+fi
+
+exit 0

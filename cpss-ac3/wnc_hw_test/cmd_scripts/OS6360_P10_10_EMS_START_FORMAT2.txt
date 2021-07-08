@@ -1,0 +1,49 @@
+do configure
+interface range ethernet 0/0,1,2,3,4,5,6,7,24,25,26,27
+switchport allowed vlan remove 1
+end
+do configure
+interface vlan device 0 vid 300
+exit
+do configure
+interface vlan device 0 vid 2
+exit
+interface range ethernet 0/0,1
+switchport allowed vlan add 2 untagged
+switchport pvid 2
+end
+do configure
+interface vlan device 0 vid 3
+exit
+interface range ethernet 0/2,3
+switchport allowed vlan add 3 untagged
+switchport pvid 3
+end
+do configure
+interface vlan device 0 vid 4
+exit
+interface range ethernet 0/4,5
+switchport allowed vlan add 4 untagged
+switchport pvid 4
+end
+do configure
+interface vlan device 0 vid 5
+exit
+interface range ethernet 0/6,7
+switchport allowed vlan add 5 untagged
+switchport pvid 5
+end
+do configure
+interface vlan device 0 vid 6
+exit
+interface range ethernet 0/24,25
+switchport allowed vlan add 6 untagged
+switchport pvid 6
+end
+do configure
+interface vlan device 0 vid 7
+exit
+interface range ethernet 0/26,27
+switchport allowed vlan add 7 untagged
+switchport pvid 7
+end

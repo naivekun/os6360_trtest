@@ -1,0 +1,5 @@
+#!/bin/bash
+
+VER=`cat /usr/local/quaggaver`
+echo SW VERSION = $VER
+

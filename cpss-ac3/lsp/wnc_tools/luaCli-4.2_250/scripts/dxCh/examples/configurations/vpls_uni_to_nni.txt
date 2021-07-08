@@ -1,0 +1,23 @@
+// TAG:               vpls, uni, nni;
+// Short Description: set vpls config
+// Description:       configure ports 1 as uni and 2 as nni. All interfaces with vsi 1000
+
+end
+configure
+
+interface vlan device ${dev} vid 20
+exit
+interface vlan device ${dev} vid 200
+exit
+
+interface ethernet ${dev}/${port[1]}
+uni vsi 1000 assign-eport 662 eport-pvid 200 vid 20 src-mac 00:00:00:24:00:02 tag-state untagged
+exit
+
+interface ethernet ${dev}/${port[2]}
+nni vpls vsi 1000 assign-eport 653 pw-label 0x55552 in-tunnel-label 0x66662 out-tunnel-label 0x77772 pw-tag-mode tag-mode p-tag 101 c-tag-state tagged nexthop-mac-addr 00:00:00:B0:1A:11
+exit
+
+mac address 00:01:02:03:04:05
+ 
+//mac address-table static 00:00:00:24:00:04 device ${dev} vlan 4001 eport ${dev}/653

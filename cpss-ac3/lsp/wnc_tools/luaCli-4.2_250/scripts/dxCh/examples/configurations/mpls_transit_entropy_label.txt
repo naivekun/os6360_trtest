@@ -1,0 +1,35 @@
+// TAG:               entropy label; mpls; transit; LSR; swap;
+// Short Description: entropy label:
+// Description:       configure MPLS transit
+
+//Test description:
+//
+//configure a trunk index 10 with 2 ports in it: port[2] and port[3]
+//Ingress: Two MPLS packets with entropy label. the only difference between the packets is that they have
+//         different entropy labels
+//Action: The packet will have a match in the TTI table according to the MPLS labels configured in the command.
+//        it will not NOT be TT but redirected to the trunk, the packet will get properties from TS.
+//        my-mac-addr 00:01:02:03:34:02 is used to configure macToMe entry.
+//Egress: one packet will egress to port[2] and the other will egress to port[3] according to load balancing
+//        done due to different entropy labels.
+//        egress-mac-sa-addr 00:04:05:06:07:12 is the mac SA in the egress packet
+//        (if the mpls-command is SWAP, PUSH1, POP_AND_SWAP then the SA is taken form the TS,
+//        otherwise it is taken from the ARP table), nexthop-mac-da-addr 00:01:02:03:34:03 is the mac DA of the egress packet
+
+end
+clear bridge type ${dev} all
+
+configure
+
+interface ethernet ${dev}/${port[2]}
+channel-group 10
+exit
+
+interface ethernet ${dev}/${port[3]}
+channel-group 10
+exit
+
+interface ethernet ${dev}/${port[1]}
+mpls-transit assign-eport 0x200 vid 1 my-mac-addr 00:01:02:03:34:02 egress-mac-sa-addr 00:04:05:06:07:12 nexthop-mac-da-addr 00:01:02:03:34:03 ingress-labels-values-list 0x333 entropy-labels-locations-list 0 mpls-command SWAP mpls-new-label 0x123 egress_port_channel 10
+do show mpls-transit
+end

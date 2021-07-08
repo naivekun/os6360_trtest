@@ -1,0 +1,19 @@
+// TAG:               vlan, evlan
+// Short Description: set evlan config
+// Description:       set pvid 4097 on port 1 and enable mac address learning on ports 1,2
+
+end
+
+configure
+mac address 00:00:00:00:11:23
+interface vlan device ${dev} vid 4097
+exit
+interface ethernet ${dev}/${port[1]}
+switchport pvid 4097
+port-mac learning
+exit
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan add 4097 tagged
+port-mac learning
+exit
+exit

@@ -1,0 +1,29 @@
+// TAG:               SLAN; disconnect;
+// Short Description: Delete vlan10 and disconnect ports 0,64,66,80 from SLAN
+// Description:       Delete vlan10 and disconnect ports 0,64,66,80 from SLAN
+end
+configure
+interface vlan device ${dev} vid 10
+exit
+interface ethernet ${dev}/${port[1]}
+switchport allowed vlan remove 10
+exit
+interface ethernet ${dev}/${ext_port1}
+switchport allowed vlan remove 10
+exit
+interface ethernet ${dev}/${ext_port2}
+no shutdown
+switchport allowed vlan remove 10
+exit
+interface ethernet ${dev}/${ext_port3}
+switchport allowed vlan remove 10
+exit
+no interface vlan device ${dev} vid 10
+end
+debug
+no simulation slan connect ethernet ${dev}/${ext_port1}
+no simulation slan connect ethernet ${dev}/${ext_port2}
+no simulation slan connect ethernet ${dev}/${ext_port3}
+end
+show simulation slan all
+end

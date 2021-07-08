@@ -1,0 +1,63 @@
+
+set cli_parser_path [file join $lua_cli_dir tools cli_parser.py]
+set cli_parser_input [file join $lua_cli_dir CLI_UT cli_parser_input.txt]
+if {![file exists $cli_parser_path]} {
+    puts $report_errors_file "*****************"
+    puts $report_errors_file "*****************"
+    puts $report_errors_file " script not found: $cli_parser_path"
+    puts $report_errors_file "*****************"
+    puts $report_errors_file "*****************"
+}
+if {![file exists $cli_parser_input]} {
+    puts $report_errors_file "*****************"
+    puts $report_errors_file "*****************"
+    puts $report_errors_file " Syntax input file not found: $cli_parser_input"
+    puts $report_errors_file "*****************"
+    puts $report_errors_file "*****************"
+}
+set testfile [open "| python $cli_parser_path -U $cli_parser_input"]
+
+# single test, execute each line till "return"
+proc UT_do_test_P { } {
+    global testfile
+    while {[gets $testfile line] >= 0} {
+        if { [string equal -length 6 "return" [string trim $line]] } {
+            return
+        }
+        # reset UT log to keep error only
+        UT_log_reset
+        eval "$line"
+    }
+}
+
+# Test wrapper, run UT_do_test_P, then read pipe till end of test
+proc UT_test_P { testname unused { description "" }} {
+    global testfile
+    UT_test  $testname UT_do_test_P $description
+    while {[gets $testfile line] >= 0} {
+        if { [string match "#UT_END_TEST" $line] } {
+            return
+        }
+    }
+}
+
+# Test wrapper, run UT_do_test_P, then read pipe till end of test
+proc UT_test_in_mode_P { mode testname unused {description ""} } {
+    global testfile
+    UT_test_in_mode $mode $testname UT_do_test_P $description
+    while {[gets $testfile line] >= 0} {
+        if { [string match "#UT_END_TEST" $line] } {
+            return
+        }
+    }
+}
+
+# process input
+while {[gets $testfile line] >= 0} {
+    if { [string match "UT_test\[a-z_\]\*" $line] } {
+        eval "$line"
+    }
+    if { [string match "UT_do_command\*" $line] } {
+        eval "$line"
+    }
+}

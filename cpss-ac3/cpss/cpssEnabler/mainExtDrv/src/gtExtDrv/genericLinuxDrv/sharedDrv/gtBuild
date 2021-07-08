@@ -1,0 +1,23 @@
+###
+### doc
+### Generic Linux Driver based on /proc/ and /dev/mem
+### ----------------------------------------------------------
+###
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+        LIB_NAME = mainExtDrvShared.lib
+endif
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

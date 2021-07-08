@@ -1,0 +1,32 @@
+# $(warning "Started") 
+#C_EXCLUDE_FILE_LIST = cmdStreamGeneric.c
+# not used: cmdStreamGeneric.c 
+
+ifeq (yes.yes,$(CMD_FS).$(CMDFS_NIX))
+  luaCLI_standalone_AD_CFLAGS += $(FD)GENFS_NIX
+endif
+
+#List of subfolders to include in build
+MODULES := 
+
+
+#List of files to include in list
+FILES := \
+ appStreamNonInteractive.c \
+ cmdStreamSerial.c \
+ cmdTFTPC.c \
+ linuxSocket.c \
+ main.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+LUACLI_STANDALONE_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+function swap16() {
+	local bit_0_7=`echo $(($1 & 0xff))`
+	local bit_8_15=`echo $((($1 & 0xff00) >> 8))`
+	echo -n $((($bit_0_7 << 8) + $bit_8_15)) | xargs -0 printf '0x%04x'
+}
+
+function swap32() {
+	local bit_0_7=`echo $(($1 & 0xff))`
+	local bit_8_15=`echo $((($1 & 0xff00) >> 8))`
+	local bit_16_23=`echo $((($1 & 0xff0000) >> 16))`
+	local bit_24_31=`echo $((($1 & 0xff000000) >> 24))`
+	echo -n $((($bit_0_7 << 24) + ($bit_8_15 << 16) + ($bit_16_23 << 8) + $bit_24_31)) | xargs -0 printf '0x%08x'
+}

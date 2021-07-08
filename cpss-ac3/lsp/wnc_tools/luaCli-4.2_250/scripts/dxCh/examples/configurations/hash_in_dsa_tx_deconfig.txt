@@ -1,0 +1,11 @@
+// TAG:               DSA; hash; cascade;
+// Short Description: disable "store hash in DSA FORWARD"
+// Description:       disable a hash storing in DSA FORWARD tag of outgoing packets.
+
+end
+config
+no port-channel load-balance
+interface ethernet ${dev}/${port[2]}
+no cascade dsa
+no cascade dsa-format hash tx
+exit

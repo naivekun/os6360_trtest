@@ -1,0 +1,29 @@
+DIAG_DIR=/usr/bin/wnc_diag
+#Remove old diag package
+rm -rf $DIAG_FLODER
+rm -f /usr/local/diagver
+#Extract new diag package
+tar xf $TARBALL -C /
+#Making symbolic link to common functions
+ln -fs $DIAG_DIR/funcs/sh_funcs $DIAG_DIR/cmds/sh_funcs
+ln -fs $DIAG_DIR/funcs/py_funcs $DIAG_DIR/cmds/py_funcs
+ln -fs $DIAG_DIR/funcs/utils $DIAG_DIR/cmds/utils
+if [ -d $DIAG_DIR/cmds/utils/trtest ]; then
+ln -fs $DIAG_DIR/cmds/utils/trtest $DIAG_DIR/cmds/trtest
+ln -fs $DIAG_DIR/cmds/utils/trtest/main $DIAG_DIR/cmds/traffic-test
+#ln -fs $DIAG_DIR/funcs/sh_funcs $DIAG_DIR/cmds/utils/trtest/sh_funcs
+fi
+ln -fs $DIAG_DIR/funcs/sh_funcs $DIAG_DIR/cmdd/sh_funcs
+ln -fs $DIAG_DIR/cmds/funcs/proj_funcs $DIAG_DIR/funcs/sh_funcs
+ln -fs $DIAG_DIR/cmds/* /usr/bin/.
+ln -fs $DIAG_DIR/cmdd/* /usr/bin/.
+#Edit PATH
+#INIT_FILE=/etc/init.sh
+#if [ -z $(grep ^PATH= $INIT_FILE | grep "wnc_diag") ]; then 
+#DIAG_PATH=`grep ^PATH= $INIT_FILE`":/usr/bin/wnc_diag/cmdd:/usr/bin/wnc_diag/cmds:/usr/bin/wnc_diag/cmds/utils"
+#sed -i "s|^PATH=.*|$DIAG_PATH|g" $INIT_FILE
+#sync
+#fi
+#Remove tarball
+rm -rf $TARBALL
+exit

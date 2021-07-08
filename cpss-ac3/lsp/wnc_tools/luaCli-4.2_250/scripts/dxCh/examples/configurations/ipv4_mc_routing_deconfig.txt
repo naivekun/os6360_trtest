@@ -1,0 +1,37 @@
+// TAG:               routing, mc, ipv4;
+// Short Description: set mc routing deconfiguration
+// Description:       de-configure ports 1,2
+
+end
+configure
+
+interface ethernet ${dev}/${port[1]}
+switchport allowed vlan remove 5
+exit
+
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan remove 6
+exit
+
+no interface vlan device ${dev} vid 5
+no interface vlan device ${dev} vid 6
+
+no ip mc-route 224.1.1.1/32 vrf-id 1
+no ip mc-next-hop 101
+
+no ip vrf-id 1
+
+//disable routing
+interface range ethernet ${dev}/${port[1]},${port[2]}
+no ip routing
+no ip mc-routing
+exit
+
+interface range vlan device ${dev} vid 5,6
+no ip routing
+no ip mc-routing
+exit
+
+no mac address
+
+do clear bridge interface ${dev} all

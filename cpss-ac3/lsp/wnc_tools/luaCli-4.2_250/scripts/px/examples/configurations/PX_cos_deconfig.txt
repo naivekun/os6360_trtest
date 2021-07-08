@@ -1,0 +1,20 @@
+// TAG:               PX devices(PIPE); CoS attributes;
+// Short Description: PIPE device: CoS test deconfiguration.
+// Description:       PIPE device: CoS test deconfiguration.
+//
+do configure
+no counters egress-queue device ${dev}
+
+// Restore configuration for CoS Format Entry test
+cos format-entry entry-mode port device ${dev} packet-type ${@@COS_EXAMPLE_FORMAT_ENTRY.txPortNum}
+
+// Restore configuration for CoS Port test
+interface ethernet ${dev}/${@@COS_EXAMPLE_PORT.txPortNum}
+cos port-attributes dp green tc 0
+exit
+
+// Restore configuration for CoS Packet test
+cos format-entry entry-mode port device ${dev} packet-type ${@@COS_EXAMPLE_PACKET.txPortNum}
+cos map type mpls device 0 entry 0 dp green tc 0
+
+end

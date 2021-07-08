@@ -1,0 +1,41 @@
+#!/bin/bash
+
+[ -z "$FUNCS_PATH" ] && FUNCS_PATH=$(dirname $0)
+
+source $FUNCS_PATH/sh_funcs/defines
+source $FUNCS_PATH/sh_funcs/sysutils
+
+#Project Functions
+pfuncs="$FUNCS_PATH/sh_funcs/proj_funcs"
+
+if [ -f "${pfuncs}" ];then
+  source ${pfuncs}
+fi
+
+function quit() {
+	local rc=''
+
+	if [ "$1" = "" ]; then
+		rc=$FAIL
+		echo -e "\nquit(): miss input argument\n" >&2
+	else
+		rc=$1
+	fi
+
+	if [ "$rc" = "$PASS" ]; then
+		echo -e "\nResult: PASS"
+	else
+		echo -e "\nResult: FAIL" >&2
+	fi
+
+        func_exist Diag_Temperature && Diag_Temperature 
+
+	exit $rc
+}
+
+## just quit unconditionally ok, without printing OK/PASS
+## example use case: engineer "list" only command.
+function quit_ok() {
+  func_exist Diag_Temperature && Diag_Temperature  
+  exit 0
+}

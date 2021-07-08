@@ -1,0 +1,9 @@
+// TAG:               policer; port;
+// Short Description: Drop packets because of policer configuration
+// Description:       Sending a burst untagged packet to port 0/18 ;all packets will be dropped
+end
+configure
+interface ethernet ${dev}/${port[2]}
+policy-id police 3 burst 3000 exceed-action drop
+do show policy device ${dev}
+end

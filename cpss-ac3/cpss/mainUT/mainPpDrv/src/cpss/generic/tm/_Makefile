@@ -1,0 +1,41 @@
+# $(warning "Started") 
+INCLUDE_PATH =        $(TM_API_PATH_CORE)    $(TM_API_PATH_PLATFORM)
+LIB_NAME = cpssGenTm.lib
+LIB_NAME = cpssTmSchedUT.lib
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ cpssTmCommonUT.c \
+ cpssTmDropUT.c \
+ cpssTmEligPrioFuncUT.c \
+ cpssTmInternalUT.c \
+ cpssTmLogicalLayerUT.c \
+ cpssTmNodesCreateUT.c \
+ cpssTmNodesCtlUT.c \
+ cpssTmNodesReadUT.c \
+ cpssTmNodesReorderUT.c \
+ cpssTmNodesStatusUT.c \
+ cpssTmNodesTreeUT.c \
+ cpssTmNodesUpdateUT.c \
+ cpssTmSchedUT.c \
+ cpssTmShapingUT.c \
+ tm_internal_drop_ut.c \
+ tm_internal_rm_chunk_ut.c \
+ tm_internal_ut_utils.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

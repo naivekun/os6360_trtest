@@ -1,0 +1,15 @@
+// TAG:               DSA; hash; cascade;
+// Short Description: enable "read hash from DSA FORWARD"
+// Description:       enable a hash reading from DSA FORWARD tag of incoming packets.
+//                    Use simple hash mode (mac_da[5:0] xor mac_sa[5:0])
+
+end
+config
+port-channel load-balance src-dst-mac
+interface ethernet ${dev}/${port[1]}
+cascade dsa 4_words
+cascade dsa-format hash rx
+exit
+interface range ethernet ${dev}/${port[2]},${port[3]},${port[4]}
+channel-group 12
+exit

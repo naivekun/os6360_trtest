@@ -1,0 +1,46 @@
+# $(warning "Started")
+mainTmDrv_CFLAGS_CL += $(FD)NDEBUG
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ rm_alloc.c \
+ rm_chunk.c \
+ rm_ctl.c \
+ rm_free.c \
+ rm_status.c \
+ set_hw_registers.c \
+ tm2tm.c \
+ tm_ctl_internal.c \
+ tm_drop.c \
+ tm_elig_prio_func.c \
+ tm_errors.c \
+ tm_logical_layer.c \
+ tm_nodes_create.c \
+ tm_nodes_ctl.c \
+ tm_nodes_read.c \
+ tm_nodes_reorder.c \
+ tm_nodes_status.c \
+ tm_nodes_tree.c \
+ tm_nodes_update.c \
+ tm_registers_processing.c \
+ tm_sched.c \
+ tm_set_local_db_defaults.c \
+ tm_shaping.c \
+ tm_statistics.c \
+ tm_virtual_layer.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINTMDRV_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

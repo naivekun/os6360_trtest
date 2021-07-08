@@ -1,0 +1,30 @@
+# $(warning "Started") 
+#PROJ_NAME = mainLabServices
+#SW_ROOT_DIR = $(subst \,/,$(SW_ROOT))
+#INCLUDE_PATH += -I$(SW_ROOT_DIR)/mainLabServices/h
+#include $(SW_ROOT_DIR)/mainCommon/make/vxWorks/gtCppMake
+
+#ifneq (np5, $(DEVICE))
+#C_EXCLUDE_FILE_LIST = wrDDRTrainingIP.cpp wrHwsDdr3Bap.cpp
+#else
+#C_EXCLUDE_FILE_LIST = wrHwsMac.cpp wrHwsPcs.cpp wrHwsPort.cpp wrHwsPortAp.cpp wrDDR3.cpp wrHwsDdr3Bap.cpp
+#endif
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+COMMON_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

@@ -1,0 +1,26 @@
+do cpss-api call cpssDxChBrgVlanTableInvalidate devNum 0
+do cpss-api call cpssDxChBrgVlanTableInvalidate devNum 1
+do configure
+interface range ethernet 0/0-2,1/0-9
+loopback mode internal
+force link up
+negotiation 1000f
+end
+do configure
+interface range vlan device 0 vid 100,200
+exit
+interface range vlan device 1 vid 100,200
+end
+do configure
+interface range ethernet 0/0-2,1/0-9
+switchport pvid 100
+switchport allowed vlan add 100 untagged
+exit
+interface range ethernet 1/20,1/21,1/27,0/24,1/25,1/24
+switchport pvid 200
+switchport allowed vlan add 100 untagged
+end
+do clear mac counters all
+do traffic
+send port 0/0,1/0 file 1_packet.txt
+end

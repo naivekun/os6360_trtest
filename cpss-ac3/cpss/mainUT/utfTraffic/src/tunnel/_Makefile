@@ -1,0 +1,98 @@
+# $(warning "Started") 
+
+
+#List of subfolders to include in build
+MODULES := \
+ customer 
+
+#List of files to include in list
+FILES := \
+ prvTgfDetailedMimTunnelStart.c \
+ prvTgfDetailedTtiActionType2Entry.c \
+ prvTgfEtherRedirectToEgress.c \
+ prvTgfEtherRedirectToEgressWithTS.c \
+ prvTgfTunnelDualLookupNestedVLan.c \
+ prvTgfTunnelIpEtherOverIpv4Gre.c \
+ prvTgfTunnelMacInMacKey.c \
+ prvTgfTunnelMimStart.c \
+ prvTgfTunnelPwCwBasedETree.c \
+ prvTgfTunnelPwTtlExpiryVccvException.c \
+ prvTgfTunnelPwTtlExpiryVccvExceptionFlowLabelExistParallelLookup.c \
+ prvTgfTunnelStartEtherOverIpv4GreRedirectToEgress.c \
+ prvTgfTunnelStartEtherOverIpv4GreRedirectToEgressEport.c \
+ prvTgfTunnelStartEtherOverIpv4GreRedirectToEgressOffset.c \
+ prvTgfTunnelStartIpv4overGreIpv4.c \
+ prvTgfTunnelStartIpv6overIpv4.c \
+ prvTgfTunnelStartMpls.c \
+ prvTgfTunnelStartMplsTtlParallelLookup.c \
+ prvTgfTunnelStartTrillKnownUcEcmp.c \
+ prvTgfTunnelStartTrillUnknownUcFlooding.c \
+ prvTgfTunnelStartTrillknownMc.c \
+ prvTgfTunnelStartGeneric.c \
+ prvTgfTunnelTermCncParallelLookup.c \
+ prvTgfTunnelTermEVlanPrecDualLookup.c \
+ prvTgfTunnelTermEtherOverIpv4GreRedirectToEgress.c \
+ prvTgfTunnelTermEtherOverIpv4NoRedirectBridging.c \
+ prvTgfTunnelTermEtherOverIpv4RedirectToEgress.c \
+ prvTgfTunnelTermEtherOverIpv4RedirectToEgressEport.c \
+ prvTgfTunnelTermEtherOverMplsPwLabel.c \
+ prvTgfTunnelTermEtherOverMplsPwLabelParallelLookup.c \
+ prvTgfTunnelTermEtherOverMplsRedirectToEgress.c \
+ prvTgfTunnelTermEtherType.c \
+ prvTgfTunnelTermExceptionCpuCode.c \
+ prvTgfTunnelTermGlobalPort2LocalPort.c \
+ prvTgfTunnelTermIpv4overGreIpv4.c \
+ prvTgfTunnelTermIpv4overIpv4.c \
+ prvTgfTunnelTermIpv4overIpv4RedirectToLTT.c \
+ prvTgfTunnelTermIpv4overIpv4Trap.c \
+ prvTgfTunnelTermIpv6overIpv4.c \
+ prvTgfTunnelTermParallelLookup.c \
+ prvTgfTunnelTermPbrDualLookup.c \
+ prvTgfTunnelTermPortGroupIpv4overIpv4.c \
+ prvTgfTunnelTermSourceEportAssignment.c \
+ prvTgfTunnelTermSourceIdModify.c \
+ prvTgfTunnelTermTSPassengerTypeDualLookup.c \
+ prvTgfTunnelTermTrigReqMpls.c \
+ prvTgfTunnelTermTrillUnknownUcTransitAndTermination.c \
+ prvTgfTunnelTermTtiDsaMetadata.c \
+ prvTgfTunnelTermTtiFullDb.c \
+ prvTgfTunnelTermTtiIpv4ArpUdb.c \
+ prvTgfTunnelTrillTti.c \
+ prvTgfTunnelTrillTtiExceptionsCheck.c \
+ prvTgfTunnelTrillTtiKnownUcTransit.c \
+ prvTgfTunnelTrillTunnelStart.c \
+ prvTgfTunnelMplsControlWord.c \
+ prvTgfTunnelIpv6MplsControlWord.c \
+ tgfCommonTunnelUT.c \
+ tgfIpv6TunnelCapwap.c \
+ tgfTunnelCapWap.c \
+ tgfTunnelStartGenericIpv4UdpTemplate.c \
+ tgfTunnelStartGenericIpv6Template.c \
+ tgfTunnelTcamCheckLookupOrder.c \
+ tgfTunnelTermIpv4LocalDevSourceEportTrunkId.c \
+ tgfTunnelTermIpv6ExtensionHeaderSet.c \
+ tgfTunnelTermIpv6HeaderExceptions.c \
+ tgfTunnelTermIpv6L3DataWord0FirstNibble.c \
+ tgfTunnelTermIpv6LocalDevSourceIsTrunk.c \
+ tgfTunnelTermIpv6PclId.c \
+ tgfTunnelTermMapMplsChannelToOamOpcode.c \
+ tgfTunnelTermMirrorToIngressAnalyzer.c \
+ tgfTunnelTermSetIPclOverrideConfigTableIndex.c \
+ tgfTunnelTermSetIPclUdbConfigTableIndex.c \
+ tgfTunnelTermSetMac2Me.c \
+ prvTgfTunnelIpv4Ecn.c \
+ tgfTunnelTermSip6Metadata.c \
+ prvTgfTunnelTermTunnelHeaderStart.c
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

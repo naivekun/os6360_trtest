@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#
+# [PURPOSE]
+#   Check if input function is existing. If function is existing,
+#   return 1.
+# [PARAMETERS]
+#   Function Name
+# [NOTES]
+#   This function is common.
+#
+function func_exist
+{
+    FUNCTION_NAME=$1
+
+    [ -z "$FUNCTION_NAME" ] && return 1
+
+    declare -F "$FUNCTION_NAME" > /dev/null 2>&1
+
+    return $?
+}
+

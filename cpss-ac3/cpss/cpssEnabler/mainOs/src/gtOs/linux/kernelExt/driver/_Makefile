@@ -1,0 +1,4 @@
+# -*-makefile-*-
+
+DRIVER_LIST += mvKernelExt
+DRIVER_DIR_mvKernelExt := $(dir $(lastword $(MAKEFILE_LIST)))

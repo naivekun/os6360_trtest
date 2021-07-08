@@ -1,0 +1,43 @@
+#!/bin/bash
+
+Usage()
+{
+   echo Usage: fanctl [PWM] : 1-100 %
+}
+
+if [ $# -ne 1 ];
+then
+   Usage
+   exit 1
+fi
+
+PWM=$1
+
+if [ $PWM -lt 1 ] || [ $PWM -gt 100 ];
+then
+   Usage
+   exit 1
+fi
+
+VAL=$(( $PWM*100 ))
+#echo $VAL
+VAL=$(( $VAL/39 ))
+#echo $VAL
+
+if [ $VAL -gt 255 ];
+then
+   VAL=255
+fi
+
+VALHEX=`printf '0x%02x'  $VAL` 
+#echo $VAL
+
+#i2cset -y 0 0x2e 0x40 0x05
+i2cset -y 0 0x2e 0x5c 0xE2
+i2cset -y 0 0x2e 0x5f 0xCC
+
+i2cset -y 0 0x2e 0x30 $VALHEX
+
+echo Set FAN PWM to $PWM '%' = $VALHEX done.
+
+exit 0

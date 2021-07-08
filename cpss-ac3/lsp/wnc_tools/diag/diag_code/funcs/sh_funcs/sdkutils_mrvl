@@ -1,0 +1,1262 @@
+#!/bin/bash
+
+CPSS_PATH=''
+CPSS_TIMEOUT=300
+
+NETSTAT="/bin/netstat"
+LUASH='/usr/bin/mrvl_luash'
+CPU_PORT="0/63"
+LUA_SC_DIR="/cmdFS"
+IPC_TO_CPSS="/usr/bin/ipc_to_cpss"
+IPC_TIMEOUT=5
+LSOCKET_TO_CPSS="/tmp/lsocket_to_cpss"
+
+function send_cmd() {
+    # just send command to CPSS without showing result
+    $LUASH -c "$1" 2>&1 > /dev/null
+}
+
+function cpss_load_config_file() {
+    local config_file=$1
+    local show_result=$2    # "show" or "no_show"
+
+    mv $config_file ${LUA_SC_DIR}/.
+    if [ "$show_result" == "show" ]; then
+        $LUASH -c "do load $(basename $config_file)"
+    else
+        send_cmd "do load $(basename $config_file)"
+    fi
+    rm -f ${LUA_SC_DIR}/$(basename $config_file)
+}
+
+function send_to_cpss() {
+    local cmds="$1"
+
+    cpss_chk_alive
+    $IPC_TO_CPSS -m "$cmds"
+}
+
+function cpss_chk_alive() {
+    # Only called after CPSS init is done. It is assumed CPSS is running and to check CPSS alive or not
+    local param_show="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"0\"}" # not print result
+    local api_cmd="{\"func\":\"wncUtilsTrtestCheckCpssAlive\",\"params\":[$param_show]}"
+
+    $IPC_TO_CPSS -m "$api_cmd"
+    if [ $? -ne 0 ]; then
+        echo "Error: CPSS not alive through IPC!"
+        exit 10   # $ERR_SDK_NOT_RUNNING
+    fi
+}
+
+function cpss_chk_ipc() {
+    local cnt=0
+
+    # Check if IPC to CPSS is ready, need to be called after CPSS is ready!
+    while [ ! -S $LSOCKET_TO_CPSS ]; do
+        cnt=$(($cnt + 1))
+        if [ $cnt -gt $IPC_TIMEOUT ]; then
+            echo "Error: IPC to CPSS init failed!"
+            exit 10   # $ERR_SDK_NOT_RUNNING
+        fi
+        sleep 1
+    done
+}
+
+function is_cpss_running() {
+    local rtn="no"      # default CPSS is not ready
+
+    $NETSTAT -ln | grep -q "0.0.0.0:54321"
+    if [ $? == 0 ]; then
+        # mrvl_luash will use IPC to check CPSS alive or not, it needs to check IPC ready first
+        cpss_chk_ipc
+
+        $LUASH -c "do show version" | grep -q "CPSS version"
+        if [ $? == 0 ]; then
+            rtn="yes"   # CPSS is ready
+        fi
+    fi
+
+    echo $rtn
+}
+
+function stop_cpss() {
+    :
+}
+
+function start_cpss() {
+    :
+}
+
+function wait_cpss() {
+    local cnt=0
+
+    # wait for CPSS init
+    while [ "`is_cpss_running`" == "no" ]; do
+        sleep 1
+        cnt=$(($cnt + 1))
+        if [ $cnt -gt $CPSS_TIMEOUT ]; then
+            echo "Error: CPSS init failed!"
+            exit 10   # $ERR_SDK_NOT_RUNNING
+        fi
+    done
+}
+
+function parse_cpss_port() {
+    :
+}
+
+function parse_cpss_port_list() {
+    :
+}
+
+function cpss_link_scan_on() {
+    local select_unit=$1
+
+}
+
+function cpss_link_scan_off() {
+    local select_unit=$1
+
+}
+
+function cpss_pw_setup() {
+    local select_unit=$1
+
+}
+
+function cpss_pw_start() {
+    local select_unit=$1
+
+}
+
+function cpss_pw_stop() {
+    local select_unit=$1
+
+}
+
+function cpss_pw_dump() {
+    local select_unit=$1
+    local counter="$2"
+}
+
+function clear_cpss_vlan() {
+    local unit_list=$1
+    local api_cmd
+    local param_devNum
+
+    # Clear VLAN table
+    for select_unit in $unit_list; do
+        param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$select_unit\"}"
+        api_cmd="{\"func\":\"cpssDxChBrgVlanTableInvalidate\",\"params\":[$param_devNum]}"
+
+        send_to_cpss "$api_cmd"
+    done
+
+    # Create default VLAN
+    # Bind all units and all ports to vid 1 and set pvid to 1
+    echo "do configure"
+    echo "interface vlan device all vid 1"
+    echo "exit"
+    echo "interface range ethernet all"
+    echo "switchport allowed vlan add 1 untagged"
+    echo "switchport pvid 1"
+    echo "end"
+}
+
+function create_cpss_vlan() {
+    local unit_list="$1"    # like: "0" or "0 1"
+    local vlan="$2"
+
+    # LUA commands:
+    #echo "do configure"
+    #for unit in $unit_list; do
+    #    echo "interface vlan device $unit vid $vlan"
+    #    echo "exit"
+    #done
+    #echo "end"
+
+    local param_devNum=""
+    local param_vlanID="{\"dir\":\"in\",\"type\":\"u16\",\"value\":\"$vlan\"}"
+    local param_portsMembers_STC="{\"count\":1,\"struct\":[{\"type\":\"u32\",\"value\":\"0\",\"count\":32}]}"   # clear all members
+    local param_portsTagging_STC="{\"count\":1,\"struct\":[{\"type\":\"u32\",\"value\":\"0\",\"count\":32}]}"
+    local param_vlanInfo_STC=""
+    local param_portsTaggingCmd_STC="{\"count\":1,\"struct\":[{\"type\":\"u32\",\"value\":\"0\",\"count\":1024}]}"
+    local params_in_order=""
+    local api_cmd=""
+
+    param_vlanInfo_STC="{\"count\":1,\"struct\":"
+    param_vlanInfo_STC="$param_vlanInfo_STC[{\"type\":\"u32\",\"value\":\"0\",\"count\":21}"    # all zero for first 21 members
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"1\",\"count\":2}"     # set autoLearnDisable = GT_TRUE
+                                                                                                # set naMsgToCpuEn = GT_TRUE
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":3}"     # next 3 all zero
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u16\",\"value\":\"4095\",\"count\":1}"  # set floodVidx to 0xFFF
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u16\",\"value\":\"0\",\"count\":1}"     # add padding
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":1}"     # next 1 also zero
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"1\",\"count\":1}"     # set portIsolationMode =
+                                                                                                # CPSS_DXCH_BRG_VLAN_PORT_ISOLATION_L2_CMD_E
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":6}"     # next 6 all zero
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"$vlan\",\"count\":1}" # set fidValue to vlan Id
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":7}"     # next 7 all zero
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"4095\",\"count\":1}"  # set unregIpmEVidx to 0xFFF
+    param_vlanInfo_STC="$param_vlanInfo_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":1}"     # last 1 also zero
+    param_vlanInfo_STC="$param_vlanInfo_STC]}"
+
+    for unit in $unit_list; do
+        param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+        params_in_order="$param_devNum,$param_vlanID,$param_portsMembers_STC,$param_portsTagging_STC"
+        params_in_order="$params_in_order,$param_vlanInfo_STC,$param_portsTaggingCmd_STC"
+        api_cmd="{\"func\":\"cpssDxChBrgVlanEntryWrite\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+    done
+}
+
+function add_cpss_vlan_port() {
+    local unit="$1"
+    local vlan="$2"
+    local port_list="`echo $3 | sed 's/ /,/g'`"
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local param_vlanId="{\"dir\":\"in\",\"type\":\"u16\",\"value\":\"$vlan\"}"
+    local param_portNum=""
+    local param_isTagged="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"
+    local param_portTaggingCmd="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"
+    local param_direction="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"
+    local params_in_order=""
+    local api_cmd=""
+
+    for port in `echo $port_list | sed 's/,/ /g'`; do     # change input "0,1,2,3" to "0 1 2 3"
+        param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$port\"}"
+
+        # Add VLAN member
+        params_in_order="$param_devNum,$param_vlanId,$param_portNum,$param_isTagged,$param_portTaggingCmd"
+        api_cmd="{\"func\":\"cpssDxChBrgVlanMemberAdd\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+
+        # Set PVID
+        params_in_order="$param_devNum,$param_portNum,$param_direction,$param_vlanId"
+        api_cmd="{\"func\":\"cpssDxChBrgVlanPortVidSet\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+    done
+}
+
+function add_cpss_vlan_cpu_port() {
+    local unit="$1"
+    local vlan="$2"
+
+}
+
+function add_cpss_vlan_tag_port() {
+    local unit="$1"
+    local vlan="$2"
+    local port_list="`echo $3 | sed 's/ /,/g'`"
+
+    # LUA commands:
+    #echo "do configure"
+    #echo "interface range ethernet $unit/$ports"
+    #echo "switchport allowed vlan add $vlan untagged"
+    #echo "end"
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local param_vlanId="{\"dir\":\"in\",\"type\":\"u16\",\"value\":\"$vlan\"}"
+    local param_portNum=""
+    local param_isTagged="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"
+    local param_portTaggingCmd="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"
+    local param_direction="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"
+    local params_in_order=""
+    local api_cmd=""
+
+    for port in "`echo $port_list | sed 's/,/ /g'`"; do     # change input "0,1,2,3" to "0 1 2 3"
+        param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$port\"}"
+
+        # Add VLAN member
+        params_in_order="$param_devNum,$param_vlanId,$param_portNum,$param_isTagged,$param_portTaggingCmd"
+        api_cmd="{\"func\":\"cpssDxChBrgVlanMemberAdd\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+    done
+}
+
+function del_cpss_vlan_port() {
+    local unit="$1"
+    local vlan="$2"
+    local ports="`echo $3 | sed 's/ /,/g'`"
+
+    echo "do configure"
+    echo "interface range ethernet $unit/$ports"
+    echo "switchport allowed vlan remove $vlan"
+    echo "end"
+}
+
+function create_cpss_vlan_tag_only() {
+    local unit="$1"
+    local vlan="$2"
+    local ports="`echo $3 | sed 's/ /,/g'`"
+
+}
+
+function add_cpss_vlan_port_tag_only() {
+    local unit="$1"
+    local vlan="$2"
+    local ports="`echo $3 | sed 's/ /,/g'`"
+
+}
+
+function set_cpss_vlan_all_ports() {
+    local unit="$1"                         # may be "0", "1" or "all"
+    local vlan="$2"
+
+    if [ "$unit" != "all" ]; then
+        port_to_set="all $unit"
+    else
+        port_to_set="all"
+    fi
+
+    echo "do configure"
+    echo "interface range ethernet $port_to_set"
+    echo "switchport allowed vlan add $vlan untagged"
+    echo "end"
+}
+
+function set_cpss_pvid_all_ports() {
+#    local unit="$1"                         # may be "0", "1" or "all"
+#    local vlan="$2"
+#    local ports="`echo $3 | sed 's/ /,/g'`" # may be a list of numbers or "all"
+#
+#    if [ "$ports" == "all" ] && [ "$unit" == "all" ]; then
+#        port_to_set="all"
+#    elif [ "$ports" == "all" ]; then
+#        port_to_set="all $unit"
+#    else
+#        port_to_set="$unit/$ports"
+#    fi
+
+    local unit="$1"                         # may be "0", "1" or "all"
+    local vlan="$2"
+
+    if [ "$unit" != "all" ]; then
+        port_to_set="all $unit"
+    else
+        port_to_set="all"
+    fi
+
+    echo "do configure"
+    echo "interface range ethernet $port_to_set"
+    echo "switchport pvid $vlan"
+    echo "end"
+}
+
+function clear_cpss_counter() {
+    local etherports=$1 # could be: "0/0", "0/0,1", "0/0,1,1/0,1" or "all"
+
+    echo "do clear mac counters ethernet $etherports"
+}
+
+function enable_cpss_ports() {
+    local unit="$1"
+    local ports="`echo $2 | sed 's/ /,/g'`"
+
+}
+
+function disable_cpss_ports() {
+    local unit="$1"
+    local ports="`echo $2 | sed 's/ /,/g'`"
+
+}
+
+function disable_cpss_port_all() {
+    local unit="$*"
+
+}
+
+function enable_cpss_port_all() {
+    local unit="$*"
+
+}
+
+function tx_cpss_packet() {
+    local unit="$1"
+    local vlan="$2"
+    local ports="`echo $3 | sed 's/ /,/g'`"
+    local tx_cnt="$4"
+    local files="$5"
+
+    echo "do traffic"
+    for f_name in `echo $files | sed 's/,/ /g'`;do
+        for ((cnt=0; cnt<${tx_cnt}; cnt++)); do
+            echo "send port $unit/$ports file $f_name"
+        done
+    done
+    echo "end"
+}
+
+function tx_cpss_packet_plist() {
+    local port_list="`echo $1 | sed 's/ /,/g'`"
+    local files="$2"
+
+    echo "do traffic"
+    echo "send port $port_list file $files"
+    echo "end"
+}
+
+function cpss_tx_packet() {
+    local unit="$1"
+    local vlan="$2"
+    local ports="$3"    # sdk ports list with unit like: 0/0,0/1,1/0,1/1
+    local tx_cnt="$4"
+    local file="$5"
+    local port_list CLI_CMD
+
+    if [ -n "`echo $ports | grep '/'`" ]; then
+        # ports is like: 0/0,0/1,1/0,1/1, sdk ports list w/ unit
+        port_list="$ports"
+    else
+        # ports is like: 0,1,2,3, port index list w/o unit
+        port_list="$unit/$ports"
+    fi
+
+    CLI_CMD="do traffic\nsend port $port_list file $file pktnum $tx_cnt\nend"
+    send_cmd "`echo -e $CLI_CMD`"
+}
+
+function cpss_cmdio_get_ready() {
+    local cnt=0
+    local cpss_done="yes"
+
+}
+
+function cpss_port_up_get_ready() {
+    local cnt=0
+    local unit="$1"
+    local ports="`echo $2 | sed 's/ /,/g'`"
+    local stat=1
+
+}
+
+function cpss_get_unit_count() {
+    local allDevNum="`$LUASH -c \"do show capabilities device all\" | sed 's/\r//g' | grep -c \"Device .:\"`"
+
+    echo "$allDevNum"
+}
+
+function cpss_get_trunk_id() {
+    local unit=$1
+    local port=$2
+    local trunkId
+
+    API_CMD="do cpss-api call cpssDxChTrunkPortTrunkIdGet"
+    trunkId="`$LUASH -c \"$API_CMD devNum $unit portNum $port\" | sed 's/\r//g' | grep trunkId | cut -d '=' -f 2 | sed 's/,//g'`"
+
+    echo "$trunkId"
+}
+
+function cpss_clear_cscdtrunk() {
+    local devNum=$1
+    local trunkId=$2
+
+    send_cmd "do shell-execute wncUtilsTrtestClearCscdTrunkBmp $devNum $trunkId"
+
+    return 0
+}
+
+function cpss_restore_cscdtrunk() {
+    local devNum=$1
+    local trunkId=$2
+
+    send_cmd "do shell-execute wncUtilsTrtestRestoreCscdTrunkBmp $devNum $trunkId"
+
+    return 0
+}
+
+function cpss_read_portmapping() {
+
+    send_cmd "do shell-execute wncUtilsTrtestInit"
+
+    return 0
+}
+
+function cpss_cscd_dsa_tag() {
+    local devNum=$1
+    #local port_list="`echo $2 | sed 's/ /,/g'`"
+    local port_list="`echo $2 | sed 's/,/ /g'`"
+    local tag_type=$3   # network or extended
+
+    # LUA commands:
+    #echo "do configure"
+    #echo "interface range ethernet $devNum/$port_list"
+    #echo "cascade dsa $tag_type"
+    #echo "end"
+
+    if [ "$tag_type" == "network" ]; then
+        tag_type=2      # CPSS_CSCD_PORT_NETWORK_E
+    else
+        # Default Extended DSA tag: "extended"
+        tag_type=1      # CPSS_CSCD_PORT_DSA_MODE_2_WORDS_E
+    fi
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local param_portNum=""
+    local param_portDirection="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"2\"}"    # CPSS_PORT_DIRECTION_BOTH_E
+    local param_portType="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$tag_type\"}"
+    local params_in_order=""
+    local api_cmd=""
+
+    for port in $port_list; do
+        param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$port\"}"
+        params_in_order="$param_devNum,$param_portNum,$param_portDirection,$param_portType"
+        api_cmd="{\"func\":\"cpssDxChCscdPortTypeSet\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+    done
+}
+
+function cpss_set_force_speed() {
+    local pport_list=$1
+
+    if [ -n "`echo $pport_list | grep ","`" ]; then
+        # Port list, using CLI commands
+        echo "do configure"
+        echo "interface range ethernet $port_list"
+        echo "negotiation 1000f"
+        echo "end"
+    else
+        # Single port
+        local param_devNum
+        local param_portNum
+        local param_status="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"  # GT_BOOL: false
+        local param_speed="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"2\"}"   # CPSS_PORT_SPEED_ENT: CPSS_PORT_SPEED_1000_E
+        local param_dMode="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"   # CPSS_PORT_DUPLEX_ENT: CPSS_PORT_FULL_DUPLEX_E
+
+        pport_unit=`echo ${pport_list%/*}`
+        pport_port=`echo ${pport_list#*/}`
+
+        param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$pport_unit\"}"
+        param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$pport_port\"}"
+
+        # Speed AN disable
+        params_in_order="$param_devNum,$param_portNum,$param_status"
+        api_cmd="{\"func\":\"cpssDxChPortSpeedAutoNegEnableSet\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+
+        # Speed 1G    
+        params_in_order="$param_devNum,$param_portNum,$param_speed"
+        api_cmd="{\"func\":\"cpssDxChPortSpeedSet\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+
+        # Duplex AN disable
+        params_in_order="$param_devNum,$param_portNum,$param_status"
+        api_cmd="{\"func\":\"cpssDxChPortDuplexAutoNegEnableSet\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+
+        # Full duplex
+        params_in_order="$param_devNum,$param_portNum,$param_dMode"
+        api_cmd="{\"func\":\"cpssDxChPortDuplexModeSet\",\"params\":[$params_in_order]}"
+        send_to_cpss "$api_cmd"
+    fi
+}
+
+function cpss_set_no_force_speed_and_down() {
+    local port_list=$1
+
+    echo "do configure"
+    echo "interface range ethernet $port_list"
+#    echo "no force link up"
+#    echo "speed 1000 mode QSGMII"
+    echo "end"
+}
+
+function cpss_1g_phy_register_write() {
+    local devNum=$1
+    local portNum=$2
+    local phyReg=$3
+#    local value=$4  # input is string in hex format, like 0x1140
+    local value=`printf %d $4`  # input is string in hex format, like 0x1140
+
+#    send_cmd "do cpss-api call cpssDxChPhyPortSmiRegisterWrite devNum $devNum portNum $portNum phyReg $phyReg data $value"
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$devNum\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$portNum\"}"
+    local param_phyReg="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$phyReg\"}"
+    local param_value="{\"dir\":\"in\",\"type\":\"u16\",\"value\":\"$value\"}"
+
+    local api_cmd="{\"func\":\"cpssDxChPhyPortSmiRegisterWrite\",\"params\":[$param_devNum,$param_portNum,$param_phyReg,$param_value]}"
+
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_1g_phy_register_read() {
+    local devNum=$1
+    local portNum=$2
+    local phyReg=$3
+
+    CMD="do cpss-api call cpssDxChPhyPortSmiRegisterRead devNum $devNum portNum $portNum phyReg $phyReg"
+    value=`$LUASH -c "$CMD" | sed 's/\r//g' | grep data | cut -d '=' -f 2`
+
+    echo "0x`printf %4x $value`"    # string in hex format
+}
+
+function cpss_get_1g_phy_register() {
+    local devNum=$1
+    local portNum=$2
+    local page=$3   # in dec
+    local reg=$4    # in dec
+
+#    echo "do debug-mode"
+#    echo "phy register write device $devNum port $portNum register 22 data $page"
+#    echo "phy register read device $devNum port $portNum register $reg"
+#    echo "phy register write device $devNum port $portNum register 22 data 0"
+#    echo "end"
+
+    cpss_1g_phy_register_write $devNum $portNum 22 $page
+    cpss_1g_phy_register_read $devNum $portNum $reg
+    cpss_1g_phy_register_write $devNum $portNum 22 0
+}
+
+function cpss_10g_phy_register_write() {
+    # Format:  cpss_10g_phy_register_write "dev_num" "port_num" "phy_reg" "phy_dev" "phy_id" "value"
+    # Example: cpss_10g_phy_register_write "0"       "24"       "0x0000"  "1"       "0xc"    "0xa840"
+
+    local devNum=$1
+    local portNum=$2
+    local phyReg=`printf %d $3` # hex format, change to decimal
+    local phyDev=$4
+    local phyID=`printf %d $5`  # hex format, change to decimal
+    local value=`printf %d $6`  # hex format, change to decimal
+    local params_in_order=""
+
+    # send_cmd "do debug-mode"
+    # send_cmd "phy 10G register write device $devNum port $portNum register $phyReg phyDev $phyDev phyID $phyID data $value"
+    # send_cmd "end"
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$devNum\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$portNum\"}"
+    local param_phyID="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$phyID\"}"
+    local param_useExternalPhy="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"1\"}"
+    local param_phyReg="{\"dir\":\"in\",\"type\":\"u16\",\"value\":\"$phyReg\"}"
+    local param_phyDev="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$phyDev\"}"
+    local param_value="{\"dir\":\"in\",\"type\":\"u16\",\"value\":\"$value\"}"
+    params_in_order="$param_devNum,$param_portNum,$param_phyID,$param_useExternalPhy,$param_phyReg,$param_phyDev,$param_value"
+
+    local api_cmd="{\"func\":\"cpssDxChPhyPort10GSmiRegisterWrite\",\"params\":[$params_in_order]}"
+
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_10g_phy_register_read() {
+    local devNum=$1
+    local portNum=$2
+    local phyReg=$3 # in hex
+    local phyDev=$4
+    local phyID=$5  # in hex
+
+    API_CMD="do cpss-api call cpssDxChPhyPort10GSmiRegisterRead"
+    API_CMD_W_PARMS="$API_CMD devNum $devNum portNum $portNum phyId $phyID useExternalPhy true phyReg $phyReg phyDev $phyDev"
+
+    value=`$LUASH -c "$API_CMD_W_PARMS" | sed 's/\r//g' | grep data | cut -d '=' -f 2`
+
+    echo "0x`printf %4x $value`"    # string in hex format
+}
+
+function cpss_mac_lb_setup() {
+    local action=$1     # enable or disable
+    local etherports="`echo $2 | sed 's/i//g'`"
+    local port_list=""
+
+    for port in $etherports; do
+        # To form port_list like: 0/0,0/1,1/0,1/1 ...
+        if [ -n $port_list ]; then
+            port_list="$port"
+        else
+            port_list="$port_list,$port"
+        fi
+    done
+
+    if [ "$action" == "enable" ]; then
+        echo "do configure"
+        echo "interface range ethernet $port_list"
+        echo "loopback mode internal"
+    else
+        echo "do configure"
+        echo "interface range ethernet $port_list"
+        echo "no loopback"
+    fi
+}
+
+function cpss_phy_lb_setup() {
+    local action=$1     # enable or disable
+    local etherports="`echo $2 | sed 's/i//g'`"
+    local port_list=""
+}
+
+function cpss_set_auto_neg() {
+    local devNum=$1
+    local portNum=$2
+    local action=$3     # true or false
+
+    # LUA commands:
+    #echo "do cpss-api call cpssDxChPortSpeedAutoNegEnableSet devNum $devNum portNum $portNum state $action"
+    #echo "do cpss-api call cpssDxChPortDuplexAutoNegEnableSet devNum $devNum portNum $portNum state $action"
+
+    if [ "$action" == "true" ]; then
+        action=1
+    else
+        action=0
+    fi
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$devNum\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$portNum\"}"
+    local param_state="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$action\"}"
+    local params_in_order=""
+    local api_cmd=""
+
+    params_in_order="$param_devNum,$param_portNum,$param_state"
+    api_cmd="{\"func\":\"cpssDxChPortSpeedAutoNegEnableSet\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+    api_cmd="{\"func\":\"cpssDxChPortDuplexAutoNegEnableSet\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_set_stub_test() {
+    local devNum=$1
+    local portNum=$2
+    local action=$3
+
+    cpss_1g_phy_register_write $devNum $portNum "22" "0x6"
+    if [ "$action" == "enable" ]; then
+        cpss_1g_phy_register_write $devNum $portNum "18" "0x8"
+    else
+        cpss_1g_phy_register_write $devNum $portNum "18" "0x0"
+
+#        # Copper reset
+#        cpss_1g_phy_register_write $devNum $portNum "22" "0x0"
+#        cpss_1g_phy_register_write $devNum $portNum "0" "0x9140"
+    fi
+    cpss_1g_phy_register_write $devNum $portNum "22" "0x0"
+}
+
+function cpss_ge_phy_lb_setup() {
+    local action=$1     # enable or disable
+    local etherports="`echo $2 | sed 's/i//g'`"
+    local port_list=""
+
+    for port in $etherports; do
+        port_unit=`echo ${port%/*}`
+        port_index=`echo ${port#*/}`
+
+        cpss_set_stub_test "$port_unit" "$port_index" "$action"
+
+        if [ "$action" == "disable" ]; then
+            # To enable auto-negotiation
+            cpss_set_auto_neg "$port_unit" "$port_index" "true"
+        fi
+
+        # To form port_list like: 0/0,0/1,1/0,1/1 ...
+        if [ -z $port_list ]; then
+            port_list="$port"
+        else
+            port_list="$port_list,$port"
+        fi
+    done
+
+    if [ "$action" == "enable" ]; then
+        cpss_set_force_speed "$port_list"
+    fi
+}
+
+function cpss_set_port_bridge_local_switching() {
+    local devNum=$1
+    local vlan=$2
+    local portNum=$3
+    local enableValue=$4    # "true" or "false"
+
+    if [ "$enableValue" == "true" ]; then
+        enableValue=1
+    else
+        enableValue=0
+    fi
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$devNum\"}"
+    local param_vlanId="{\"dir\":\"in\",\"type\":\"u16\",\"value\":\"$vlan\"}"
+    local param_trafficType=""
+    local param_enable="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$enableValue\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$portNum\"}"
+    local params_in_order=""
+    local api_cmd=""
+
+    # Set VLAN entries
+    #param_trafficType="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"   # CPSS_DXCH_BRG_VLAN_LOCAL_SWITCHING_TRAFFIC_TYPE_KNOWN_UC_E
+    #params_in_order="$param_devNum,$param_vlanId,$param_trafficType,$param_enable"
+    #api_cmd="{\"func\":\"cpssDxChBrgVlanLocalSwitchingEnableSet\",\"params\":[$params_in_order]}"
+    #send_to_cpss "$api_cmd"
+
+    param_trafficType="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"1\"}"   # CPSS_DXCH_BRG_VLAN_LOCAL_SWITCHING_TRAFFIC_TYPE_FLOODED_E
+    params_in_order="$param_devNum,$param_vlanId,$param_trafficType,$param_enable"
+    api_cmd="{\"func\":\"cpssDxChBrgVlanLocalSwitchingEnableSet\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+
+    # Enable local bridging
+    params_in_order="$param_devNum,$param_portNum,$param_enable"
+    api_cmd="{\"func\":\"cpssDxChBrgGenUcLocalSwitchingEnable\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+    api_cmd="{\"func\":\"cpssDxChBrgPortEgressMcastLocalEnable\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_set_mac_table() {
+    local vlanNum=$1
+    local devNum=$2
+    local etherport=$3
+    local macAddr=$4
+    local action=$5     #"add" or "del"
+
+    echo "do configure"
+    for s_mac in $macAddr; do
+        if [ "$action" == "add" ]; then
+            echo "mac address-table dynamic $s_mac device $devNum vlan $vlanNum ethernet $etherport"
+        else
+            # default delete
+            echo "no mac address-table dynamic $s_mac device $devNum vlan $vlanNum ethernet $etherport"
+        fi
+    done
+    echo "end"
+}
+
+function cpss_get_mac_table() {
+    local devNum=$1     #"0", "1" or "all"
+
+    echo "do show mac address-table dynamic device $devNum"
+}
+
+function cpss_clear_all_dynamic_mac_table() {
+    local devNum=$1
+
+    echo "do clear bridge type $devNum dynamic"
+}
+
+function cpss_limit_rx_to_cpu_rate() {
+    local unit=$1    #0, 1, or all
+    local rate=$2
+
+    echo "do traffic"
+    echo "cpu rx rate-limit $rate device $unit cpu-code all"
+    echo "end"
+}
+
+function cpss_pcl_port_ingress_policy_enable() {
+    local unit=$1
+    local port=$2
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$port\"}"
+    local param_enable="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"1\"}"
+
+    local params_in_order="$param_devNum,$param_portNum,$param_enable"
+    local api_cmd="{\"func\":\"cpssDxChPclPortIngressPolicyEnable\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_trap_to_cpu_by_port() {
+    local unit=$1
+    local port=$2
+    local hwDevNum
+
+    if [ $unit -eq 1 ]; then
+        hwDevNum=17
+    else
+        hwDevNum=16
+    fi
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local param_interfaceInfo_STC=""
+    local param_direction="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"       # CPSS_PCL_DIRECTION_INGRESS_E
+    local param_lookupNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"0\"}"       # CPSS_PCL_LOOKUP_0_E
+    local param_lookupCfg_STC=""
+
+    param_interfaceInfo_STC="{\"count\":1,\"struct\":"
+    param_interfaceInfo_STC="$param_interfaceInfo_STC[{\"type\":\"u32\",\"value\":\"0\",\"count\":1}"           # CPSS_PCL_LOOKUP_0_E
+    param_interfaceInfo_STC="$param_interfaceInfo_STC,{\"count\":1, \"struct\":"
+    param_interfaceInfo_STC="$param_interfaceInfo_STC[{\"type\":\"u32\",\"value\":\"$hwDevNum\",\"count\":1}"   # devPort.hwDevNum
+    param_interfaceInfo_STC="$param_interfaceInfo_STC,{\"type\":\"u32\",\"value\":\"$port\",\"count\":1}]}"     # devPort.portNum
+    param_interfaceInfo_STC="$param_interfaceInfo_STC,{\"type\":\"u16\",\"value\":\"0\",\"count\":4}"            # u16 *3 + one padding
+    param_interfaceInfo_STC="$param_interfaceInfo_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":1}"
+    param_interfaceInfo_STC="$param_interfaceInfo_STC,{\"type\":\"u16\",\"value\":\"0\",\"count\":2}"            # u16 *1 + one padding
+    param_interfaceInfo_STC="$param_interfaceInfo_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":1}"
+    param_interfaceInfo_STC="$param_interfaceInfo_STC]}"
+
+    param_lookupCfg_STC="{\"count\":1,\"struct\":"
+    param_lookupCfg_STC="$param_lookupCfg_STC[{\"type\":\"u32\",\"value\":\"1\",\"count\":1}"       # enableLookup = true
+    param_lookupCfg_STC="$param_lookupCfg_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":3}"
+    param_lookupCfg_STC="$param_lookupCfg_STC,{\"count\":1, \"struct\":"
+    param_lookupCfg_STC="$param_lookupCfg_STC[{\"type\":\"u32\",\"value\":\"14\",\"count\":3}]}"    # all INGRESS_EXT_UDB_E (0xE)
+    param_lookupCfg_STC="$param_lookupCfg_STC,{\"type\":\"u32\",\"value\":\"0\",\"count\":3}"
+    param_lookupCfg_STC="$param_lookupCfg_STC]}"
+
+    local params_in_order="$param_devNum,$param_interfaceInfo_STC,$param_direction,$param_lookupNum,$param_lookupCfg_STC"
+    local api_cmd="{\"func\":\"cpssDxChPclCfgTblSet\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_start_capture_to_cpu() {
+    local qlength=$1
+
+    # Need to set capture from CPU port before trapping traffic
+    CLI_CMD="do traffic\ncapture from port $CPU_PORT queue $qlength\nend"
+    send_cmd "`echo -e $CLI_CMD`"
+}
+
+function cpss_stop_capture_to_cpu() {
+    # Stop capture
+    CLI_CMD="do traffic\ncapture stop\nend"
+    send_cmd "`echo -e $CLI_CMD`"
+}
+
+function cpss_capture_show_packets() {
+    local qlength=$1
+
+    # Dump packets
+    CLI_CMD="do traffic\ncapture show queue $qlength\nend"
+    $LUASH -c "`echo -e $CLI_CMD`"
+}
+
+function cpss_trap_packets_to_cpu() {
+    local unit=$1
+    local port=$2
+
+    # trap to CPU
+    #echo "do configure"
+    #echo "interface range ethernet all"
+    #echo "service-acl pcl-ID 0 lookup 0"       # need to match the pcl-ID created in config.txt of appDemo, default "0" is uesd
+
+    cpss_pcl_port_ingress_policy_enable "$unit" "$port"
+    cpss_trap_to_cpu_by_port "$unit" "$port"
+}
+
+function cpss_trap_packets_to_cpu_at_a_time() {
+    local CLI_CMD="do configure\ninterface range ethernet all\nservice-acl pcl-ID 0 lookup 0\nend"
+
+    send_cmd "`echo -e $CLI_CMD`"
+}
+
+function cpss_show_cpu_rx_counter {
+    local unit="$1"
+    local port="$2"
+
+    rx_cnt=`$LUASH -c "do show traffic cpu rx statistic device $unit" | grep "$unit/0" | awk '{print $2}'`   # get queue 0 packets
+    echo $rx_cnt
+}
+
+function cpss_clear_port_acl_rule() {
+    local port_list=$1      # In the format of "0/0,0/1-3,1/0,1,4-6"
+    local pcl_id=$2     # NOTE: need to match the pcl-ID created in config.txt of appDemo, default "0" is uesd
+
+    #CLI_CMD="do configure\ninterface range ethernet $port_list\nno service-acl pcl-ID $pcl_id\nend"
+    #send_cmd "`echo -e $CLI_CMD`"
+
+    echo "do configure"
+    echo "interface range ethernet $port_list"
+    echo "no service-acl pcl-ID $pcl_id"
+    echo "end"
+}
+
+function cpss_set_print_pasue() {
+    local config=$1     # enable or disable
+
+    if [ "$config" == "disable" ]; then
+        echo "do set output nopause"
+    else
+        # default enabled
+        echo "do set output paused"
+    fi
+}
+
+function cpss_clear_limit_rx_to_cpu_rate() {
+    local unit=$1    #0, 1, or all
+
+    echo "do traffic"
+    echo "no cpu rx rate-limit device $unit cpu-code all"
+    echo "end"
+}
+
+function cpss_ports_down_up() {
+    local unit=$1
+    local ports=$2    # all need to belong to the same unit
+
+    echo "do configure"
+    echo "interface range ethernet $unit/$ports"
+    echo "shutdown"
+    echo "no shutdown"
+    echo "end"
+}
+
+function cpss_set_jumbo_frame() {
+    local etherPorts=$1 # could be: "0/0", "0/0,1", "0/0,1,1/0,1" or "all"
+    local frameSize=$2
+
+    echo "do configure"
+    echo "interface range ethernet $etherPorts"
+    echo "jumbo-frame $frameSize"
+    echo "end"
+}
+
+function cpss_flow_ctrl_on_off() {
+    local etherports=$1 # could be: "0/0", "0/0,1", "0/0,1,1/0,1" or "all"
+    local action=$2     # "on" or "off"
+
+    echo "do configure"
+    echo "interface range ethernet $etherports"
+    echo "flow-control $action"
+    echo "end"
+}
+
+function cpss_flow_ctrl_auto_neg_on_off() {
+    local unit="$1"
+    local ports="`echo $2`" # should be a list of number like: "0 1 2 3 4", delimited by space
+    local state=$3          # "true" to enable auto-neg for flow control, "false" to disable
+    local pause_adver=$4    # "true" to advertise pause frame, "false" to disable
+
+    API_CMD="do cpss-api call cpssDxChPortFlowCntrlAutoNegEnableSet"
+    for port_idx in $ports; do
+        echo "$API_CMD devNum $unit portNum $port_idx state $state pauseAdvertise $pause_adver"
+    done
+}
+
+function cpss_cw_start() {
+    local unit=$1
+    local port=$2
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local api_cmd="{\"func\":\"wncUtilsTrtestCounterWatcherStart\",\"params\":[$param_devNum]}"
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_cw_stop() {
+    local unit="$1"
+    local ports="$2"
+
+    # Remove last time output
+    rm -f "/tmp/cw_result_$unit"
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local api_cmd="{\"func\":\"wncUtilsTrtestCounterWatcherStop\",\"params\":[$param_devNum]}"
+    send_to_cpss "$api_cmd"
+
+    # Check return value, only cat file when return ok
+    if [ $? -eq 0 ]; then
+        cat "/tmp/cw_result_$unit"
+    fi
+}
+
+function cpss_cw_hr_start() {
+    local unit=$1
+    local port=$2
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local api_cmd="{\"func\":\"wncUtilsTrtestCounterWatcherHighResStart\",\"params\":[$param_devNum]}"
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_cw_hr_stop() {
+    local unit=$1
+    local port=$2
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$unit\"}"
+    local api_cmd="{\"func\":\"wncUtilsTrtestCounterWatcherHighResStop\",\"params\":[$param_devNum]}"
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_cw_hr_get_all() {
+    local pid="$1"
+
+    local param_pid="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$pid\"}"
+    local api_cmd="{\"func\":\"wncUtilsTrtestCounterWatcherHighResShowAll\",\"params\":[$param_pid]}"
+    send_to_cpss "$api_cmd"
+
+    # Check return value, only cat file when return ok
+    if [ $? -eq 0 ]; then
+        cat "/tmp/hr_counters_$pid"
+        rm -f "/tmp/hr_counters_$pid"
+    fi
+}
+
+function cpss_cw_stop_and_get_rate() {
+    local output_file=$1
+
+    pre_startLine=`sed -n -e '/WNCGetRateStart/=' /tmp/appDemo_stdout | sed -n '$p'`
+
+    # send signal to counter watcher thead to get counters
+    send_cmd "do shell-execute wncUtilsTrtestCounterWatcherStop"
+
+    # wait every 1 sec to insure /tmp/appDemo is updated
+    sleep 1
+    startLine=`sed -n -e '/WNCGetRateStart/=' /tmp/appDemo_stdout | sed -n '$p'`
+    try_cnt=0
+    while [ "$startLine" == "$pre_startLine" ]; do
+        sleep 1
+        startLine=`sed -n -e '/WNCGetRateStart/=' /tmp/appDemo_stdout | sed -n '$p'`
+        try_cnt=$((try_cnt+1))
+        if [ "$try_cnt" == "5" ]; then
+            echo " fail to get traffic rate!" >&2
+            return 1
+        fi
+    done
+
+    # parsing result from /tmp/appDemo_stdout
+    endLine=`sed -n -e '/WNCGetRateEnd/=' /tmp/appDemo_stdout | sed -n '$p'`
+    startLine=`expr $startLine + 1`
+    endLine=`expr $endLine - 1`
+    sed -n "${startLine},${endLine}p" /tmp/appDemo_stdout > $output_file
+
+    # remove unnecessary log
+    sed -i '/return code is 0/d' $output_file
+
+    return 0
+}
+
+function cpss_get_mac_counter_per_cntr_name() {
+    local devNum=$1
+    local port="`echo $2 | sed 's/ /,/g'`"
+    local cntr_name=$3
+
+    API_CMD="do cpss-api call cpssDxChMacCounterGet"
+    counter="`$LUASH -c \"$API_CMD devNum $devNum portNum $port cntrName $cntr_name\" | sed 's/\r//g' | grep cntrValue | cut -d '=' -f 2`"
+
+    echo "$counter"     # string in hex format
+}
+
+function cpss_set_mac_counter_clear_on_read_all() {
+    local unit=$1
+    local action=$2     # in string: "enable" or "disable"
+    local enable
+
+    if [ "$action" == "disable" ]; then
+        enable=0
+    else
+        # Default read and clear
+        enable=1
+    fi
+    send_cmd "do shell-execute wncUtilsTrtestMacCounterClearOnRead $unit \"all\" $enable"
+}
+
+function cpss_set_mac_counter_clear_on_read() {
+    local devNum=$1
+    local portNum="`echo $2 | sed 's/ /,/g'`"
+    local action=$3     # "true" or "false"
+
+    # LUA commands:
+    #API_CMD="do cpss-api call cpssDxChPortMacCountersClearOnReadSet"
+    #send_cmd "$API_CMD devNum $devNum portNum $portNum enable $action"
+
+    if [ "$action" == "false" ]; then
+        action=0
+    else
+        action=1
+    fi
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$devNum\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$portNum\"}"
+    local param_enable="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$action\"}"
+    local params_in_order=""
+    local api_cmd=""
+
+    params_in_order="$param_devNum,$param_portNum,$param_enable"
+    api_cmd="{\"func\":\"cpssDxChPortMacCountersClearOnReadSet\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+}
+
+function restore_cpss_inband_settings() {
+    local unit="$1"
+    local port="$2"
+    local vlan="$3"
+
+    echo "do configure"
+    # Create VLAN
+    echo "interface vlan device $unit vid $vlan"
+    echo "exit"
+    # Set VLAN for ethernet port
+    echo "interface ethernet $unit/$port"
+    echo "switchport allowed vlan add $vlan untagged"
+    echo "switchport allowed vlan remove 1"
+    # Set PVID
+    echo "switchport pvid $vlan"
+    echo "end"
+}
+
+function cpss_serdes_auto_tune() {
+    local devNum=$1
+    local portNum=$2
+    local autoTuneMode=$3
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$devNum\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$portNum\"}"
+    local param_tuningMode=""
+    local params_in_order=""
+    local api_cmd=""
+
+    if [ "$autoTuneMode" == "RX_TRAINING" ]; then
+        # CPSS_DXCH_PORT_SERDES_AUTO_TUNE_MODE_RX_TRAINING_E
+        param_tuningMode="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"3\"}"
+    elif [ "$autoTuneMode" == "ADAPTIVE_RX_TRAINING_START" ]; then
+        # CPSS_DXCH_PORT_SERDES_AUTO_TUNE_MODE_ADAPTIVE_RX_TRAINING_START_E
+        param_tuningMode="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"5\"}"
+    elif [ "$autoTuneMode" == "ADAPTIVE_RX_TRAINING_STOP" ]; then
+        # CPSS_DXCH_PORT_SERDES_AUTO_TUNE_MODE_ADAPTIVE_RX_TRAINING_STOP_E
+        param_tuningMode="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"6\"}"
+    fi
+
+    params_in_order="$param_devNum,$param_portNum,$param_tuningMode"
+    api_cmd="{\"func\":\"cpssDxChPortSerdesAutoTune\",\"params\":[$params_in_order]}"
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_serdes_enhance_auto_tune() {
+    local devNum=$1
+    local portNum=$2
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$devNum\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$portNum\"}"
+    local param_minLF="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"0\"}"
+    local param_maxLF="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"15\"}"
+    local params_in_order="$param_devNum,$param_portNum,$param_minLF,$param_maxLF"
+    local api_cmd="{\"func\":\"cpssDxChPortSerdesEnhancedAutoTune\",\"params\":[$params_in_order]}"
+
+    send_to_cpss "$api_cmd"
+}
+
+function cpss_port_mac_learning() {
+    local etherports=$1 # could be: "0/0", "0/0,1", "0/0,1,1/0,1" or "all"
+    local action=$2     # "disable" or "controlled"
+
+    echo "do configure"
+    echo "interface range ethernet $etherports"
+    if [ "$action" == "disable" ]; then
+        echo "no port-mac learning"
+    elif [ "$action" == "controlled" ]; then
+        # Set same as the default setting (Control)
+        echo "port-mac learning controlled"
+    fi
+    echo "end"
+}
+
+function cpss_get_port_status() {
+    local unit="$1"
+    local pport_list="$2"   # without unit info
+
+    $LUASH -c "do show interfaces status ethernet $unit/$pport_list" | sed 's/\r//g' | sed -e '1,5d' | sed -e '$d'
+}
+
+function cpss_set_phy_autoneg() {
+    local devNum=$1
+    local portNum=$2
+    local action=$3     # "true" or "false"
+
+    # LUA commands:
+    #API_CMD="do cpss-api call cpssDxChPhyAutonegSmiSet"
+    #send_cmd "$API_CMD devNum $devNum portNum $portNum enable $action"
+
+    [ "$action" == "false" ] && action=0 || action=1
+
+    local param_devNum="{\"dir\":\"in\",\"type\":\"u8\",\"value\":\"$devNum\"}"
+    local param_portNum="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$portNum\"}"
+    local param_enable="{\"dir\":\"in\",\"type\":\"u32\",\"value\":\"$action\"}"
+    local params_in_order="$param_devNum,$param_portNum,$param_enable"
+    local api_cmd="{\"func\":\"cpssDxChPhyAutonegSmiSet\",\"params\":[$params_in_order]}"
+
+    send_to_cpss "$api_cmd"
+}

@@ -1,0 +1,277 @@
+#! /bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=$(basename $0)
+
+usage () {
+echo "Usage:
+NAME
+       019_combo_low_speed - Verify low-speed contacts with SFP module
+
+SYNOPSIS
+       019_combo_low_speed [-t low/high]
+                           [-h]
+
+DESCRIPTION
+       This command is used to verify functionality of low-speed contacts
+       for control and status of combo SFP port with CPLD. The contacts
+       include Tx_Disable, Tx_Fault and Rx_Los. Using option t to alter
+       Tx_Disable pin by CPLD, and verify it with SFP module, alter Tx_Fault
+       and Rx_Los pin by SFP module, and verify result with CPLD.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -t    test slow speed pin with input
+             input:
+                 0: low
+                 1: high
+
+       -g    get slow-speed pin value
+
+       -h    Help message
+
+PASS CRITERIA
+       - Control low-speed pin(-t) :
+           SUCCESS: low-speed pin could be controlled
+             Display: PASS
+             Return code : 0
+
+           ERROR: low-speed pin couldn't be controlled
+             Display: FAIL
+             Return code : 2
+           ERROR: invalid argument
+             Display: FAIL
+             Return code : 3
+
+       - No SFP module insert
+           ERROR: all present pin value is 0
+             Display: FAIL
+             Return code : 4
+
+       - Sku didn't match
+           ERROR: only P48X/P24X/PH24 sku could use this cmd
+             Display: FAIL
+             Return code : 5
+
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS
+             Display: FAIL
+             Return code : 1
+EXAMPLE
+       019_combo_low_speed -t 0
+       019_combo_low_speed -g
+       019_combo_low_speed -h
+" >&2
+}
+
+get_sfp_txdisable () {
+    local check=`i2cget -f -y $1 0x51 0x6e | sed s/0x//g`
+    check=`hex2bin ${check}`
+    check=`echo ${check::1}`
+    echo ${check}
+}
+
+hex2bin() {
+    local hex=$1
+    local num=$((16#$hex))
+
+    echo ${D2B[${num}]}
+}
+
+check_sku () {
+    # check sku
+    if [ ${sku} = "OS6360-P48X" ] || [ ${sku} = "OS6360-P24X" ] \
+    || [ ${sku} = "OS6360-PH24" ]; then
+        combo_portnum=2
+
+    elif [ ${sku} = "OS6360-10" ] || [ ${sku} = "OS6360-P10" ]; then
+        echo
+        echo "======================================"
+        print_fail "OS6360 P10/10 sku have no combo port"
+        echo "======================================"
+        quit 5
+    else
+        echo
+        echo "======================================"
+        print_fail "sku not exist"
+        echo "======================================"
+        quit 5
+    fi
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result=${PASS}
+
+# present south interface.
+sysfs_present="/sys/bus/i2c/devices/0-007f/sfp_plus_present_"
+
+# tx-disable south interface.
+sysfs_txdisable="/sys/bus/i2c/devices/0-007f/tx_disable_"
+
+# tx-fault south interface.
+sysfs_txfault="/sys/bus/i2c/devices/0-007f/sfp_plus_tx_fault_"
+
+# rx-los south interface.
+sysfs_rxlos="/sys/bus/i2c/devices/0-007f/sfp_plus_rx_loss_"
+
+# combo portnumber.
+combo_portnum=2
+
+# SFP module insert count.
+insert_count=0
+
+# sku.
+sku=`cat /usr/local/sku`
+
+# Dec to Binary.
+D2B=({0..1}{0..1}{0..1}{0..1}{0..1}{0..1}{0..1}{0..1})
+
+# test_mode status.
+test_mode=false
+read_mode=false
+
+#====================================================================
+
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":t:gh" arg
+do
+    case ${arg} in
+        t)
+            test_mode=true
+            input_value=${OPTARG}
+            ;;
+        g)
+            read_mode=true
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    quit 1
+fi
+
+check_sku
+
+if [ ${test_mode} = true ]; then
+    insert_count=0
+
+    # check if arg is an integer between 0-1.
+    check_arg=`echo ${input_value} | grep '^[0-1]\{1\}$'`
+    if [ -z ${check_arg} ]; then
+        echo
+        echo "======================================"
+        print_fail "Invalid argument"
+        echo "======================================"
+        quit 3
+    fi
+
+    for (( i=0; i<${combo_portnum}; i++ ))
+    do
+        echo
+        echo "======================================"
+
+        value_present=`cat ${sysfs_present}${i}`
+        if [ ${value_present} = "0x1" ]; then
+
+            # set tx-disable value.
+            echo ${input_value} > ${sysfs_txdisable}${i}
+
+            check_txdisable_cpld=`cat ${sysfs_txdisable}${i}`
+            check_txdisable_sfp=`get_sfp_txdisable $((${i}+1))`
+
+            if [ ${check_txdisable_cpld} != "0x${input_value}" ] || \
+            [ "0x${check_txdisable_sfp}" != "0x${input_value}" ]; then
+                print_fail "sfp port ${i}:set tx-disable to ${input_value} fail"
+                result=2
+            else
+                print_pass "sfp port ${i}:set tx-disable to ${input_value} success"
+            fi
+
+            # set tx-fault and rx-los value.
+            if [ ${input_value} -eq 0 ]; then
+                i2cset -f -y $((${i}+1)) 0x51 0x6f 0x10
+            else
+                i2cset -f -y $((${i}+1)) 0x51 0x6f 0x96
+            fi
+
+            check_txfault_cpld=`cat ${sysfs_txfault}${i}`
+            check_rxlos_cpld=`cat ${sysfs_rxlos}${i}`
+
+            if [ ${check_txfault_cpld} != "0x${input_value}" ]; then
+                print_fail "sfp port ${i}:set tx-fault to ${input_value} fail"
+                result=2
+            else
+                print_pass "sfp port ${i}:set tx-fault to ${input_value} success"
+            fi
+
+            if [ ${check_rxlos_cpld} != "0x${input_value}" ]; then
+                print_fail "sfp port ${i}:set rx-los to ${input_value} fail"
+                result=2
+            else
+                print_pass "sfp port ${i}:set rx-los to ${input_value} success"
+            fi
+
+            insert_count=$((${insert_count}+1))
+        else
+            echo "sfp port ${i}: No transceiver insert"
+        fi
+
+        echo "======================================"
+    done
+
+    if [ ${insert_count} -ne 2 ]; then
+        result=4
+    fi
+fi
+
+if [ ${read_mode} = true ]; then
+    insert_count=0
+
+    for (( i=0; i<${combo_portnum}; i++ ))
+    do
+        echo
+        echo "======================================"
+
+        value_present=`cat ${sysfs_present}${i}`
+        if [ ${value_present} = "0x1" ]; then
+
+            check_txdisable_cpld=`cat ${sysfs_txdisable}${i}`
+            check_txfault_cpld=`cat ${sysfs_txfault}${i}`
+            check_rxlos_cpld=`cat ${sysfs_rxlos}${i}`
+
+            echo "sfp port ${i}: tx-disable pin value is ${check_txdisable_cpld}"
+            echo "sfp port ${i}: tx-fault pin value is ${check_txfault_cpld}"
+            echo "sfp port ${i}: rx-los pin value is ${check_rxlos_cpld}"
+
+            insert_count=$((${insert_count}+1))
+        else
+            echo "sfp port ${i}: No transceiver insert"
+        fi
+
+        echo "======================================"
+    done
+
+    if [ ${insert_count} -ne 2 ]; then
+        result=4
+    fi
+fi
+
+quit ${result}

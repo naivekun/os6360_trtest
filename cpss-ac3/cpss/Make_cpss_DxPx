@@ -1,0 +1,149 @@
+# Makefile to build CPSS DXPX
+#-------------------------------------------------------
+# make -f Make_cpss_DxPx link  -s -j 24
+# make -f Make_cpss_DxPx clean
+
+include $(USER_BASE)/tools/build/flag/Make_cpss_def
+
+GT_PEX=EXISTS
+GT_PCI=EXISTS
+GT_SMI=EXISTS
+
+DXPX_FAMILY_MODE=ENABLED
+
+MORE_FLAGS += \
+ GT_PEX\
+ GT_PCI\
+ GT_SMI
+
+ifeq (L_ON,$(LOG_ENABLE))
+    PATH_COMMON += mainPxDrv/h
+    PATH_COMMON += mainPpDrv/h
+endif
+
+
+
+###############################################################################
+# Modules
+###############################################################################
+
+PROJ_NAME := common
+include $(ADD_MODULE_MK)
+PROJ_NAME := mainPpDrv
+include $(ADD_MODULE_MK)
+ifeq (YES, $(INCLUDE_TM))
+    PROJ_NAME := mainTmDrv
+    include $(ADD_MODULE_MK)
+endif
+
+
+DEL_FLAGS := \
+CH3_FAMILY\
+CONFIG_DDR3\
+IMPL_BRIDGE\
+IMPL_I2C\
+IMPL_IP   \
+IMPL_MIRROR\
+IMPL_NETIF\
+IMPL_PCL\
+IMPL_PHY\
+IMPL_POLICER\
+IMPL_PORT\
+IMPL_TCAM\
+IMPL_TRUNK\
+IMPL_TUNNEL\
+IMPL_TM
+
+PROJ_NAME := mainPxDrv
+include $(ADD_MODULE_MK)
+
+DEL_FLAGS :=
+
+
+PROJ_NAME := cpssEnabler
+include $(ADD_MODULE_MK)
+PROJ_NAME := mainExtUtils
+include $(ADD_MODULE_MK)
+ifeq (EXISTS, $(ASIC_SIMULATION))
+    PROJ_NAME := simulation
+    include $(ADD_MODULE_MK)
+endif
+ifeq (YES, $(INCLUDE_UTF))
+    PROJ_NAME := mainUT
+    include $(ADD_MODULE_MK)
+endif
+ifeq (yes,$(CMD_LUA_CLI))
+    PROJ_NAME := mainLuaWrapper
+    include $(ADD_MODULE_MK)
+endif
+ifneq (EXCLUDE_LIB,$(EXCLUDE_GALTIS))
+    PROJ_NAME := mainGaltisWrapper
+    include $(ADD_MODULE_MK)
+endif
+
+#TODO: Add option for referenceHal
+    ifneq (, $(wildcard $(USER_BASE)/referenceHal/_Makefile))
+        PROJ_NAME := referenceHal
+        include $(ADD_MODULE_MK)
+    endif
+ifneq (, $(wildcard $(USER_BASE)/embeddedCommands/_Makefile))
+    PROJ_NAME := embeddedCommands
+    include $(ADD_MODULE_MK)
+endif
+
+
+ifeq (1,$(SHARED_MEMORY))
+    ifneq (, $(wildcard $(USER_BASE)/shlibTestClients/_Makefile))
+        PROJ_NAME := shlibTestClients
+        include $(ADD_MODULE_MK)
+    endif
+endif
+
+
+#-----------------------------------------------------------------
+DEP :=
+OBJ := $(patsubst %.c,$(OUT_DIR)/%.$(_OBJ),$(SRC))
+ifneq (DEP_NO, $(DEPENDENCY))
+	DEP += $(patsubst %.$(_OBJ),%.$(_DEP),$(OBJ))
+	-include $(DEP)
+endif
+
+###############################################################################
+
+ifeq (1,$(SHARED_MEMORY))
+include $(USER_BASE)/tools/build/flag/Make_cpss_shared_libs
+endif
+
+
+pre_build: pre_build_objdir
+ifeq (linux,$(OS_RUN))
+ifeq (1,$(SHARED_MEMORY))
+	@ test -d $(dir $(CPSSENABLER_LIB_A)) || mkdir -p $(dir $(CPSSENABLER_LIB_A))
+endif
+	@ $(foreach drv,$(sort $(DRIVER_LIST)), \
+		$(shell \
+			test -d $(OUT_DIR)/_drivers/$(drv) || mkdir -p $(OUT_DIR)/_drivers/$(drv); \
+			cp -rp $(DRIVER_DIR_$(drv))/. $(OUT_DIR)/_drivers/$(drv) ) )
+endif
+ifeq (win32,$(OS_RUN))
+	@ $(shell [ -d $(APP_WORK_VC) ] || $(MKDIR_P) $(APP_WORK_VC))
+#	@ echo pre_build Done
+endif
+
+MODULES_MAKE_LIB = COMMON MAINPPDRV MAINPXDRV CPSSENABLER MAINEXTUTILS \
+                     MAINGALTISWRAPPER MAINLUAWRAPPER MAINTMDRV REFERENCEHAL \
+					 EMBEDDEDCOMMANDS MAINUT SIMULATION
+ifeq (1,$(SHARED_MEMORY))
+MODULES_MAKE_LIB += MAINLUAWRAPPER
+endif
+
+_ALL_LIBS += $(foreach dir, $(filter $(MODULES_MAKE_LIB),$(CPSS_SUBDIRS_LIST_CAP)), $($(dir)_LIB))
+ifeq (1,$(SHARED_MEMORY))
+_ALL_LIBS += $(SHLIBTESTCLIENTS_OBJ)
+endif
+
+link: pre_build $(_ALL_LIBS) $(LIBS_SHARED)
+#----------------------------------------------------------------------------
+
+cmpl: pre_build $(OBJ)
+#	@ echo compile Done

@@ -1,0 +1,29 @@
+// TAG: FDB; fid; vid1; vlan; lookup key mode; learning;
+// Short Description: cleanup a device configuration used for checking
+//                    an auto-/control learning  when a double tag FDB
+//                    lookup key mode is enabled
+// Description: Disable auto-learning mode for all used ports.
+//              Delete port 0,18,36,48 from vlan 5
+//              Disable auto-learning (set to control learing) in vlan 5
+//              Set lookup key mode in vlan 5 to FID (not FID-VID!) only.
+//              Delete vlan 5
+//              Disable vid1 assignment mode.
+//              Set FDB hash mode to xor.
+//              Clear FDB's dynamic entries (learned by test's traffic)
+end
+configure
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan remove 5
+port-mac learning controlled
+exit
+interface vlan device ${dev} vid 5
+no vlan-mac learning
+fdb-key-lookup-mode fid
+exit
+no interface vlan device ${dev} vid 5
+bridge fdb-vid1-assignmemt-mode false
+bridge fdb-hash-mode ${@@getDefaultFdbHashMode()}  device ${dev}
+do clear bridge interface ${dev} dynamic
+
+
+

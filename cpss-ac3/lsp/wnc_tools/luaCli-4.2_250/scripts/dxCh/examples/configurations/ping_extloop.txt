@@ -1,0 +1,16 @@
+// TAG:               ping; cable; loop;
+// Short Description: Ping test through external cable loop
+// Description:       Ping test through external cable loop
+end
+
+configure
+    interface ethernet ${dev}/${port[1]}
+        no loopback
+    exi
+    interface ethernet ${dev}/${port[2]}
+        loopback mode internal
+    exi
+    interface range ethernet ${dev}/${port[1]},${port[2]}
+        switchport allowed vlan remove 1
+    exi
+end

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+
+LOG_FILE=$1
+
+# include files
+source ${DIR}/const
+source ${DIR}/conf
+source ${DIR}/app_funcs
+
+# describe how to handle pass and fail cases
+#if [ -z "`grep 'FAIL' $LOG_FILE`" ]; then
+	# handle pass case
+	# echo PASS
+#else
+	# handle fail case
+	# echo FAIL
+#fi
+
+exit 0

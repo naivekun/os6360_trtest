@@ -1,0 +1,297 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+source $(dirname $0)/prod_info
+
+prog="`echo $0 | awk -F/ '{print $NF}'`"
+
+PROD_LB_MODES=$(get_prod_lb_modes)
+PROD_LB_MODES="none $PROD_LB_MODES"
+
+function usage() {
+echo "Usage:
+NAME
+       $prog - edit a traffic loop
+
+SYNOPSIS
+       $prog -i lid -r p1[,p2] ... -p pid-list -n num [-l loopback] [-c conf-file]
+       $prog -i lid -D
+       $prog -h
+
+DESCRIPTION
+       Create/modify/delete a traffic loop. One traffic loop is unique
+       identified by -i option. With -D option specified, the loop will be
+       deleted. If -D option is not specified, this command will create a new
+       traffic loop or overwrite the existed one.
+       Depend on test plan, one traffic loop may include more than one route
+       segments.
+
+OPTIONS
+       -i lid   Specific traffic loop's ID to operate with, start from 1.
+
+       -r p1[,p2] ...
+                p1,p2 denote a pair of switch port.
+                p1 or p1,p2 forms one route segment of the traffic loop. If p2
+                is not specified, it means single port loop: all p1's ingress
+                packets will be sent back to p1.
+                \"...\" means more route segments is acceptable, each starts
+                from -r option.
+
+       -p pid-list
+                Determine test packet(s) will be applied to the traffic loop.
+                A test packet is identified by a unique ID. The convention is:
+                '-' for a continuous ID list, ',' to cascade an in-continuous
+                ID list, and \"all\" to denote all test packets.
+
+       -n num
+                For each test packet, this is number of packet to be applied
+                to the traffic loop.
+
+       -l       Loopback mode as below, limit to single port loop situation.
+                $PROD_LB_MODES
+
+       -c       Additional configurations.
+
+       -D       Delete the traffic loop.
+
+       -h       Show this help message.
+
+EXAMPLE
+       create a traffic loop for port 1-2, apply test packet #1,3, 10 per each:
+           $prog -i 3 -r 1,2 -p 1,3 -n 10
+
+       create a traffic loop for port 1-8 (snake), apply all test packets, 10
+       per each:
+           $prog -i 4 -r 2,3 -r 4,5 -r 6,7 -r 1,8 -p all -n 10
+
+       create a traffic loop for port 1-40,16-41, apply all test packets, 10
+       per each:
+           $prog -i 5 -r 1,40 -r 16,41 -p all -n 10
+
+       delete a traffic loop:
+           $prog -i 5 -D
+" >&2
+}
+
+function configure_traffic_loop() {
+	echo "SEG_LIST=$SEG_LIST" > data/${LID}_loop
+	echo "PID_LIST=$PID_LIST" >> data/${LID}_loop
+	echo "PKT_NUM=$PKT_NUM" >> data/${LID}_loop
+	echo "LOOPBACK=$LB_MODE" >> data/${LID}_loop
+    if [ ! -z "$CFG_FILE" ]; then
+   	    echo "CFG_FILE=$CFG_FILE" >> data/${LID}_loop
+    fi
+}
+
+function delete_traffic_loop() {
+	rm -f data/${LID}_loop
+}
+
+function check_arg_lid() {
+	local lid=$1
+
+	if [ $(is_digit $lid) == true ] && \
+	   [ $lid -ge 1 ]; then
+		echo $lid
+	else
+		echo ""
+	fi
+}
+
+function check_arg_seg() {
+	local seg=$1
+	local start=''
+	local end=''
+	local segs=''
+
+    # a valid segment is XX (single port loop) or XX,YY
+    # 1. At most one ',' character is allowed
+    # 2. Absence of ',' character means this is a single port loop
+    # if ',' character presents:
+    # 3. XX and YY cannot be empty nor identical to each other
+    # 4. XX and YY cannot overlap with other loops
+
+    # exam 1: none or one ',' character
+    if [ `echo $seg | grep -o ',' | wc -l` -gt 1 ]; then
+        echo ""; return        
+    fi
+
+    # exam 2: absence of ',' character (single port loop)
+    if [ `echo $seg | grep -o ',' | wc -l` -eq 0 ]; then
+        echo $seg; return        
+    fi
+
+    # exam 3: XX & YY != empty and XX != YY
+	start=`echo $seg | cut -d ',' -f1`
+	end=`echo $seg | cut -d ',' -f2`
+    if [ -z "$start" ] || [ -z "$end" ] || \
+       [ "$start" == "$end" ]; then
+		echo ""; return
+	fi
+
+    # exam 4: XX & YY cannot overlap with other loops
+	for loop in `ls data/*_loop 2>/dev/null`; do
+		[ -z "$loop" ] && continue
+		[ "$loop" == "${LID}_loop" ] & continue
+		segs=`grep "SEG_LIST=" $loop | cut -d '=' -f2`
+		if [ -n "`echo $segs | grep -e "^$start,"`" ] || \
+		   [ -n "`echo $segs | grep -e " $start,"`" ] || \
+		   [ -n "`echo $segs | grep -e ",$start "`" ] || \
+		   [ -n "`echo $segs | grep -e ",$start$"`" ] || \
+		   [ -n "`echo $segs | grep -e "^$end,"`" ] || \
+		   [ -n "`echo $segs | grep -e " $end,"`" ] || \
+		   [ -n "`echo $segs | grep -e ",$end "`" ] || \
+		   [ -n "`echo $segs | grep -e ",$end$"`" ]; then
+			echo ""; return
+		fi
+	done
+	echo $seg
+}
+
+function check_arg_pid_list() {
+	local pid_list=$1
+
+	# 'all' is a keyword stands for all test packets
+	# otherwise, we need to check input list's grammar
+	if [ "$pid_list" != "all" ]; then
+		pid_list=`echo $(parse_list $pid_list)`
+	fi
+
+	echo $pid_list
+}
+
+function check_arg_pkt_num() {
+	local pkt_num=$1
+
+	if [ $(is_digit $pkt_num) == true ] && \
+	   [ $pkt_num -ge 1 ]; then
+		echo $pkt_num
+	else
+		echo ""
+	fi
+}
+
+function check_arg_lb_mode() {
+	local lb_mode=$1
+	valid_lb_mode=`echo $PROD_LB_MODES | sed 's/\ /|/g'`
+
+	if [ -z "`echo $lb_mode | grep -E "$valid_lb_mode"`" ]; then
+		echo ""
+	else
+		echo $lb_mode
+	fi
+}
+
+function parse_args() {
+	if [ $# -lt 1 ]; then
+		usage
+		res=$FAIL
+		quit $res
+	fi
+
+	while getopts "P:i:l:d:r:e:p:n:l:c:Dh" arg; do
+		case $arg in
+			P) # program prefix (hidden)
+				prog="$OPTARG "$prog
+				;;
+			i) # traffic loop's unique ID
+				LID=$(check_arg_lid $OPTARG)
+				if [ -z "$LID" ]; then
+					echo "\"lid\" must be a digit and greater than 0" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			r) # route segment of a traffic loop
+				SEG=$(check_arg_seg $OPTARG)
+				if [ -z "$SEG" ]; then
+					echo "\"p1[,p2]\" must be valid port and cannot overlap with other loops" >&2
+					res=$FAIL; quit $res
+				fi
+				[ -n "$SEG_LIST" ] && SEG_LIST="$SEG_LIST "
+				SEG_LIST=$SEG_LIST$SEG
+				;;
+			p) # test packet list
+				PID_LIST=$(check_arg_pid_list $OPTARG)
+				if [ -z "$PID_LIST" ]; then
+					echo "\"pid-list\" must be \"all\", a number, or a group of numbers linked by '-' or ','" >&2
+					res=$FAIL; quit $res
+				fi
+				PID_LIST=$PID_LIST
+				;;
+			n) # packet number 
+				PKT_NUM=$(check_arg_pkt_num $OPTARG)
+				if [ -z "$PKT_NUM" ]; then
+					echo "\"num\" must be a digit and greater than 0" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			l) # loopback mode 
+				LB_MODE=$(check_arg_lb_mode $OPTARG)
+				if [ -z "$LB_MODE" ]; then
+					echo "\"loopback\" must be one of $PROD_LB_MODES" >&2
+					res=$FAIL; quit $res
+				fi
+				;;
+			c) # special configuratoin file 
+				CFG_FILE=$OPTARG
+				;;
+			D) # delete a traffic loop
+				DEL=true
+				;;
+			h | *)
+				usage
+				quit_ok
+				;;
+		esac
+	done
+
+	# check mandatory options
+	if [ -z "$LID" ]; then
+		echo "\"lid\" is a mandatory option" >&2
+		res=$FAIL; quit $res
+	fi
+
+	# to create/modify a traffic loop, more options are mandatory
+	if [ $DEL == false ]; then
+		if [ -z "$SEG_LIST" ]; then
+			echo "\"p1[,p2]\" is mandatory to create/modify a traffic loop" >&2
+			res=$FAIL; quit $res
+		fi
+		if [ -z "$PID_LIST" ]; then
+			echo "\"pid-list\" is mandatory to create/modify a traffic loop" >&2
+			res=$FAIL; quit $res
+		fi
+		if [ -z "$PKT_NUM" ]; then
+			echo "\"num\" is mandatory to create/modify a traffic loop" >&2
+			res=$FAIL; quit $res
+		fi
+		if [ "$LB_MODE" != "none" ]; then
+			if [ `echo $SEG_LIST | grep -o ',' | wc -l` -ne 0 ]; then
+				echo "\"loopback\" only applies for single port loop" >&2
+				res=$FAIL; quit $res
+			fi
+		fi
+	fi
+}
+
+# init variables
+LID=
+SEG_LIST=
+PID_LIST=
+PKT_NUM=
+LB_MODE="none"
+DEL=false
+res=$PASS
+
+# parse incoming arguments
+parse_args $*
+
+mkdir -p data
+
+if [ $DEL == false ]; then
+	# configure traffic loop
+	configure_traffic_loop
+else
+	# delete traffic loop
+	delete_traffic_loop
+fi

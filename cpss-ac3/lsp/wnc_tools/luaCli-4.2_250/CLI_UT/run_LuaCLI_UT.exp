@@ -1,0 +1,86 @@
+#!/usr/bin/env expect
+
+######################################################################
+# run_LuaCLI_UT.exp
+#
+# DESCRIPTION:
+#       Expect script that run Lua CLI UT
+#       - initiate cpssInitSystem 
+#       - execute luaCLI scenario
+#
+# INPUTS:
+#      none
+#
+# OUTPUTS:
+#       none
+#
+# RETURNS:
+#       none
+#
+# COMMENTS:
+#
+# FILE REVISION NUMBER:
+#       $Revision: 5 $
+#####################################################################
+
+if { $argc < 2 } {
+    send_user "Usage $argv0 lua_cli_path board_type\n"
+    exit
+}
+
+############################
+# set parameters
+############################
+set lua_cli_dir [lindex $argv 0]
+if [ file exists [ file join $lua_cli_dir UT all.exp ] ] {
+    set UT_root_dir [ file join $lua_cli_dir UT ]
+} else {
+    send_user "Wrong lua_cli_path: $lua_cli_dir:\n"
+    send_user "File not found: [ file join $lua_cli_dir UT all.exp ]\n"
+    exit
+}
+
+
+set board_type [lindex $argv 1]
+send_user "source [ file join [ file dirname $argv0 ] libBoardTypes.exp ]\n"
+source [ file join [ file dirname $argv0 ] libBoardTypes.exp ]
+set board_logfile "logfile_LuaCLI_${board_name}.txt"
+
+############################
+# run tests
+############################
+send_user "Board type: $board_name\n"
+set report_file [ open "logfile_LuaCLI_${board_name}_report.txt" w ]
+fconfigure $report_file -buffering none
+set report_errors_file [ open "logfile_LuaCLI_${board_name}_errors.txt" w ]
+fconfigure $report_errors_file -buffering none
+#enable logging
+
+system rm "-f" $board_logfile
+log_user 0
+log_file -a $board_logfile
+
+source [ file join [ file dirname $argv0 ] libRunUt.exp ]
+
+# run cpss
+spawn ./appDemoSim "-e" $board_inifile "-tty" "-stdout" "comport"
+
+# wait till cmd shell ready
+cpss_wait_cmd_ready
+if [ info exists board_preinitsystem ] {
+    cpss_cmd $board_preinitsystem
+}
+cpss_cmd "cpssInitSystem $board_initparams"
+
+
+# Prepare to test luaCLI
+send "luaCLI\n"
+#spawn -open [socket 127.0.0.1 12345]
+expect "Console>"
+send "CLI_enable_test_mode\n"
+expect "###EXECOK#0#"
+expect "CLI_PROMPT#"
+
+source [ file join $UT_root_dir all.exp ]
+
+UT_print_result

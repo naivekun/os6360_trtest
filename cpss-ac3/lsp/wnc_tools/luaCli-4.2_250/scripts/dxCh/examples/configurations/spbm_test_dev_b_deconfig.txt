@@ -1,0 +1,161 @@
+// TAG:               SPBM; IEEE802.1ad; IEEE802.1ah;
+// Short Description: reset configuration PE-device-B in Backbone System
+// Description:       PE-device-B configuration.
+// PE-device contains both Provider Edge ports and Customer Edge
+// Configuration separated to two parts:
+// - P-device configuration (basic)
+// - PE-device configuration (additional)
+//
+// =========================================================================================
+//          00:00:00:00:0D:EA          00:00:00:00:0D:EB         00:00:00:00:0D:EC
+//          |---------------|          |---------------|         |---------------|
+//          |               |          |               |         |               |
+//          |               |4 ------ 4|               |5 ----- 4|               |
+//          |     DEV-A     |          |     DEV-B     |         |     DEV-C     |
+//          |               |          |               |         |               |
+//          |               |          |               |         |               |
+//          |               |          |               |         |               |
+//          |---------------|          |---------------|         |---------------|
+//             1    2    3                1    2    3               1    2    3
+//             |    |    |                |    |    |               |    |    |
+//
+//          B-VID = 511
+//          MC-GROUPS (local FDB only)
+//          A1:00:0A:01:00:00  ports A/4 B/5
+//          A1:00:0A:02:00:00  ports A/4 B/5
+//          A1:00:0B:01:00:00  ports B/4,5
+//          A1:00:0B:02:00:00  ports B/4,5
+//          A1:00:0C:01:00:00  ports C/4 B/4
+//          A1:00:0C:02:00:00  ports C/4 B/4
+//          C-VIDs, I-SIDs and ports
+//          VID 1111 (0x457) SID 0x10000 ports A/1 (untagged), A/3 (tagged)
+//          VID 1112 (0x458) SID 0x20000 ports A/2 (untagged), A/3 (tagged)
+//          VID 2221 (0x8AD) SID 0x10000 ports B/1 (untagged), B/3 (tagged)
+//          VID 2222 (0x8AE) SID 0x20000 ports B/2 (untagged), B/3 (tagged)
+//          VID 3331 (0xD03) SID 0x10000 ports C/1 (untagged), C/3 (tagged)
+//          VID 3332 (0xD04) SID 0x20000 ports C/2 (untagged), C/3 (tagged)
+//          PVIDs
+//          ports A/1 PVID 1111 (0x457)
+//          ports A/2 PVID 1112 (0x458)
+//          ports B/1 PVID 2221 (0x8AD)
+//          ports B/2 PVID 2222 (0x8AE)
+//          ports C/1 PVID 3331 (0xD03)
+//          ports C/2 PVID 3332 (0xD04)
+//          ePorts (egress + tunneling):
+//          ePort A/0x302 port A/4 mac-uc 00:00:00:00:0D:EB
+//          ePort A/0x303 port A/4 mac-uc 00:00:00:00:0D:EC
+//          ePort A/0x311 port A/4 mac-mc A1:00:0A:XX:XX:XX
+//          ePort B/0x301 port B/4 mac-uc 00:00:00:00:0D:EA
+//          ePort B/0x303 port B/5 mac-uc 00:00:00:00:0D:EC
+//          ePort B/0x311 port B/4 mac-mc A1:00:0B:XX:XX:XX
+//          ePort B/0x222 port B/5 mac-mc A1:00:0B:XX:XX:XX
+//          ePort C/0x301 port C/4 mac-uc 00:00:00:00:0D:EA
+//          ePort C/0x302 port C/4 mac-uc 00:00:00:00:0D:EB
+//          ePort C/0x311 port C/4 mac-mc A1:00:0C:XX:XX:XX
+//          Registered Mac MC
+//          Mac 91:01:00:11:22:33 sid 0x10000 ports A/1, B/3, C/3
+//          on A: Mac 91:01:00:11:22:33 vid 1111 ports A/1,1111
+//          on B: Mac 91:01:00:11:22:33 vid 2221 ports B/3,1111,2222
+//          on C: Mac 91:01:00:11:22:33 vid 3331 ports C/3,1111
+//
+//
+// =========================================================================================
+//
+//
+//Additional configuration of PE-device
+//
+//SIDs and flooding
+interface vlan device ${dev} vid 2221
+no bridge multicast mac address group 91:01:00:11:22:33
+exit
+interface eport ${dev}/0x311
+no spbm provider-flood-eport i-sid 0x10000
+no spbm provider-flood-eport i-sid 0x20000
+exit
+interface eport ${dev}/0x222
+no spbm provider-flood-eport i-sid 0x10000
+no spbm provider-flood-eport i-sid 0x20000
+exit
+no spbm service-vlan i-sid 0x10000
+no spbm service-vlan i-sid 0x20000
+
+//ePorts for device connection
+interface ethernet ${dev}/${port[5]}
+no spbm pe-node uc-eport 0x302
+exit
+interface ethernet ${dev}/${port[6]}
+no spbm pe-node uc-eport 0x303
+exit
+//ePorts for fooding
+interface ethernet ${dev}/${port[5]}
+no spbm provider-flood-port flood-eport 0x311
+exit
+interface ethernet ${dev}/${port[6]}
+no spbm provider-flood-port flood-eport 0x222
+exit
+//ePorts TPID
+interface eport ${dev}/0x302
+tpid tunnel-start bind 0
+exit
+interface eport ${dev}/0x303
+tpid tunnel-start bind 0
+exit
+interface eport ${dev}/0x311
+tpid tunnel-start bind 0
+exit
+interface eport ${dev}/0x222
+tpid tunnel-start bind 0
+exit
+//Physical ports, VID, PVID
+interface range ethernet ${dev}/${port[2]}
+no switchport pvid
+exit
+interface range ethernet ${dev}/${port[3]}
+no switchport pvid
+exit
+interface range ethernet ${dev}/${port[2]}
+switchport allowed vlan remove 2221
+exit
+interface range ethernet ${dev}/${port[4]}
+switchport allowed vlan remove 2221
+exit
+interface range ethernet ${dev}/${port[3]}
+switchport allowed vlan remove 2222
+exit
+interface range ethernet ${dev}/${port[4]}
+switchport allowed vlan remove 2222
+exit
+no interface vlan device ${dev} vid 2221
+no interface vlan device ${dev} vid 2222
+//interface range ethernet ${dev}/${port[2]},${port[3]},${port[4]}
+//no force link up
+//exit
+//Basic configuration of P-device
+end
+configure
+//
+//TPID, ports, B_VID
+//
+tpid device ${dev} direction ingress index 7 etherType 0x88A8
+tpid device ${dev} direction egress  index 7 etherType 0x88A8
+interface vlan device ${dev} vid 511
+exit
+interface range ethernet ${dev}/${port[5]},${port[6]}
+//force link up
+switchport allowed vlan add 511 tagged
+bridge multicast unregistered drop
+tpid egress bind 7 ether_type_index 0
+exit
+//
+//Mac Address Table and Own Mac Address
+//
+no mac address
+no mac address-table static 00:00:00:00:0D:EA device ${dev} vlan 511
+no mac address-table static 00:00:00:00:0D:EC device ${dev} vlan 511
+interface vlan device ${dev} vid 511
+no bridge multicast mac address group A1:00:0A:01:00:00
+no bridge multicast mac address group A1:00:0A:02:00:00
+no bridge multicast mac address group A1:00:0C:01:00:00
+no bridge multicast mac address group A1:00:0C:02:00:00
+exit
+

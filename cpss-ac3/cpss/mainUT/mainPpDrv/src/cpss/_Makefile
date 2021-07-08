@@ -1,0 +1,98 @@
+# $(warning "Started") 
+addExMx =
+addCh =
+addSal =
+addDriver =
+#SUBDIRS = NONE
+#SUBDIRS += generic
+
+addGeneric = TRUE
+
+#List of subfolders to include in build
+
+ifeq (EXISTS, $(PX_FAMILY))
+        addDriver = YES
+        addGeneric = FALSE
+        #SUBDIRS =
+        MODULES :=
+endif
+ifeq (EXISTS, $(EX_FAMILY))
+        addExMx = YES
+        #SUBDIRS =
+        MODULES :=
+endif
+ifeq (EXISTS, $(MX_FAMILY))
+        addExMx = YES
+        #SUBDIRS =
+        MODULES :=
+endif
+ifeq (EXISTS, $(CHX_FAMILY))
+        addCh = YES
+        addDriver = YES
+        addGeneric = TRUE
+        #SUBDIRS =
+        MODULES :=
+endif
+ifeq (EXISTS, $(SAL_FAMILY))
+        addSal = YES
+        #SUBDIRS =
+        MODULES :=
+endif
+ifeq (EXISTS, $(TG_FAMILY))
+        addExMx = YES
+        #SUBDIRS =
+        MODULES :=
+endif
+ifeq (EXISTS, $(TD_FAMILY))
+        addExMx = YES
+        #SUBDIRS =
+        MODULES :=
+endif
+ifeq (EXISTS, $(PM_FAMILY))
+        addPm = YES
+        addDriver = YES
+        #SUBDIRS =
+        MODULES :=
+endif
+ifeq (YES, $(addExMx))
+        #SUBDIRS += exMx
+        MODULES += exMx
+endif
+ifeq (YES, $(addCh))
+        #SUBDIRS += dxCh
+        MODULES += dxCh
+endif
+ifeq (YES, $(addSal))
+        #SUBDIRS += dxSal
+        MODULES += dxSal
+endif
+ifeq (YES, $(addPm))
+        #SUBDIRS += exMxPm
+        MODULES += exMxPm
+endif
+ifeq (YES, $(addDriver))
+        #SUBDIRS += cpssDriver
+        MODULES += cpssDriver
+endif
+
+ifeq (TRUE,$(addGeneric))
+  MODULES += generic
+endif
+
+# $(warning "MODULES=$(MODULES)")
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

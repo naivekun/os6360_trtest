@@ -1,0 +1,170 @@
+#!/bin/bash                     
+
+#set -x
+
+PING_DATA_FOLDER=/usr/data/pingtest
+PING_CNT_FILE=$PING_DATA_FOLDER/ping_cnt
+PING_DATA_PREFIX=$PING_DATA_FOLDER/pingdata_
+
+FIXED_IP_FILE=/usr/data/wnc_fixed_ip
+PING_IP_FILE=/usr/data/wnc_ping_ip
+
+PING_IP=192.168.8.8
+
+if [ -f $PING_IP_FILE ];
+then
+   PING_IP=`cat $PING_IP_FILE` 
+fi
+
+if [ ! -f $FIXED_IP_FILE ] && [ ! -f $PING_IP_FILE ]
+then
+echo NOT Start Ping Test !!
+exit 0
+fi
+
+mkdir -p $PING_DATA_FOLDER
+
+if [ -f $PING_CNT_FILE ];
+then
+  PING_CNT=`cat $PING_CNT_FILE`
+  PING_CNT=$(( $PING_CNT + 1 ))
+else
+  PING_CNT=1
+fi
+
+echo Ping Test Count $PING_CNT
+echo $PING_CNT > $PING_CNT_FILE
+
+sleep 5
+
+#Check eth0 interface
+GET_IFACE_CMD=/usr/data/sbin/get_net_iface
+if [ -f $GET_IFACE_CMD ];
+then
+RST=`$GET_IFACE_CMD eth0`
+else
+RST=`get_net_iface eth0`
+fi
+
+if [ "$RST" == "no" ];
+then
+ echo "ERROR: eth0 device not found." > $PING_DATA_PREFIX"notfound_"$PING_CNT
+ sync
+ echo Exit Pingtest Daemon. Device not found!
+ exit 1
+fi
+
+#Check link status 
+x=1                
+while [ 1 ]       
+do                            
+  #echo $x                     
+  GET_LINK_CMD=/usr/data/sbin/get_link_status
+  if [ -f $GET_LINK_CMD ];
+  then
+    LINK_RST=`$GET_LINK_CMD`
+  else
+  LINK_RST=`get_link_status`
+  fi
+ 
+  if [ "$LINK_RST" == "no" ];
+  then
+    x=$(( $x + 1 ))
+  else
+    #echo $x > /tmp/ping_daemon.tmp
+    break
+  fi     
+
+  if [ $x -gt 5 ];
+  then
+    asix-ioctl rreg
+    cp /proc/ax88178a_dump $PING_DATA_PREFIX"nolink_"$PING_CNT 
+    sync
+    echo Exit Pingtest Daemon. No link!
+    exit 1
+  fi
+  
+  #echo $x
+  sleep 1
+done
+
+sleep 5
+
+#Check ping result
+ 
+#Ping 1st time
+GET_PING_CMD=/usr/data/sbin/get_ping_result
+if [ -f $GET_PING_CMD ];
+then
+  PING_RST1=`$GET_PING_CMD`
+else
+PING_RST1=`get_ping_result`
+fi
+asix-ioctl rreg
+
+if [ "$PING_RST1" == "no" ];
+then
+    echo 1st ping $PING_IP fail > $PING_DATA_PREFIX"pingfail_"$PING_CNT
+    cat /proc/ax88178a_dump >> $PING_DATA_PREFIX"pingfail_"$PING_CNT
+    
+    sleep 15
+    
+    GET_PING_CMD=/usr/data/sbin/get_ping_result
+    if [ -f $GET_PING_CMD ];
+    then
+        PING_RST2=`$GET_PING_CMD`
+    else
+    PING_RST2=`get_ping_result`
+    fi
+    
+    if [ "$PING_RST2" == "no" ];
+    then
+      asix-ioctl rreg
+      echo 2nd ping fail >> $PING_DATA_PREFIX"pingfail_"$PING_CNT
+    else
+      asix-ioctl rreg
+      echo 2nd ping pass >> $PING_DATA_PREFIX"pingfail_"$PING_CNT
+    fi       
+   
+    cat /proc/ax88178a_dump >> $PING_DATA_PREFIX"pingfail_"$PING_CNT
+    sync
+    echo Exit Pingtest Daemon. Ping fail!
+else
+    sleep 15
+
+    GET_PING_CMD=/usr/data/sbin/get_ping_result
+    if [ -f $GET_PING_CMD ];
+    then
+        PING_RST2=`$GET_PING_CMD`
+    else
+    PING_RST2=`get_ping_result`
+    fi
+    
+    if [ "$PING_RST2" == "no" ];
+    then
+      echo 1st ping $PING_IP pass > $PING_DATA_PREFIX"pingfail_"$PING_CNT
+      cat /proc/ax88178a_dump >> $PING_DATA_PREFIX"pingfail_"$PING_CNT
+      asix-ioctl rreg
+      echo 2nd ping fail >> $PING_DATA_PREFIX"pingfail_"$PING_CNT
+      cat /proc/ax88178a_dump >> $PING_DATA_PREFIX"pingfail_"$PING_CNT
+      sync
+      echo Exit Pingtest Daemon. Ping fail!
+    else
+      SELFTEST=`cat /proc/ax88178a_dump | grep "self test count:" | awk '{print $4}'`
+      #echo ST: $SELFTEST
+      
+      if [ $SELFTEST -eq 1 ];
+      then	
+         echo Ping Test OK.
+      else
+         cat /proc/ax88178a_dump >> $PING_DATA_PREFIX"selftest_fail_"$PING_CNT
+         sync
+         echo Exit Pingtest Daemon. Selftest error!
+      fi
+    fi       
+fi
+
+sync
+
+exit 0
+

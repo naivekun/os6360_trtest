@@ -1,0 +1,919 @@
+Enter: cpssDrvPpHwRegisterRead
+devNum = 0
+portGroupId = 1
+regAddr = 0x00000050
+Exit: cpssDrvPpHwRegisterRead
+data = 0x000011ab
+rc = GT_OK
+Enter: cpssDxChBrgFdbMacEntrySet
+devNum = 0
+macEntryPtr {
+	key {
+		entryType = CPSS_MAC_ENTRY_EXT_TYPE_MAC_ADDR_E
+		vid1 = 1
+		key.macVlan.macAddr = 00:00:00:00:00:00
+		key.macVlan.vlanId = 0
+	}
+	dstInterface {
+		type = CPSS_INTERFACE_PORT_E
+		devPort.hwDevNum = 0
+		devPort.portNum = 0
+	}
+	age = GT_TRUE
+	isStatic = GT_TRUE
+	daCommand = CPSS_MAC_TABLE_FRWRD_E
+	saCommand = CPSS_MAC_TABLE_FRWRD_E
+	daRoute = GT_FALSE
+	mirrorToRxAnalyzerPortEn = GT_FALSE
+	sourceID = 3
+	userDefined = 1
+	daQosIndex = 4
+	saQosIndex = 3
+	daSecurityLevel = 6
+	saSecurityLevel = 7
+	appSpecificCpuCode = GT_TRUE
+	spUnknown = GT_FALSE
+	saMirrorToRxAnalyzerPortEn = GT_TRUE
+	daMirrorToRxAnalyzerPortEn = GT_FALSE
+	fdbRoutingInfo {
+		ttlHopLimitDecEnable = GT_FALSE
+		ttlHopLimDecOptionsExtChkByPass = GT_FALSE
+		ingressMirror = GT_FALSE
+		ingressMirrorToAnalyzerIndex = 0
+		qosProfileMarkingEnable = GT_FALSE
+		qosProfileIndex = 0
+		qosPrecedence = CPSS_PACKET_ATTRIBUTE_ASSIGN_PRECEDENCE_SOFT_E
+		modifyUp = CPSS_PACKET_ATTRIBUTE_MODIFY_KEEP_PREVIOUS_E
+		modifyDscp = CPSS_PACKET_ATTRIBUTE_MODIFY_KEEP_PREVIOUS_E
+		countSet = CPSS_IP_CNT_SET0_E
+		trapMirrorArpBcEnable = GT_FALSE
+		dipAccessLevel = 0
+		ICMPRedirectEnable = GT_FALSE
+		mtuProfileIndex = 0
+		isTunnelStart = GT_FALSE
+		nextHopVlanId = 0
+		nextHopARPPointer = 0
+		nextHopTunnelPointer = 0
+		nextHopDataBankNumber = 0
+		scopeCheckingEnable = GT_FALSE
+		siteId = CPSS_IP_SITE_ID_INTERNAL_E
+	}
+}
+Exit: cpssDxChBrgFdbMacEntrySet
+rc = GT_OK
+Enter: cpssDxChCncClientByteCountModeGet
+devNum = 0
+client = CPSS_DXCH_CNC_CLIENT_INGRESS_VLAN_PASS_DROP_E
+Exit: cpssDxChCncClientByteCountModeGet
+countModePtr = CPSS_DXCH_CNC_BYTE_COUNT_MODE_L2_E
+rc = GT_OK
+Enter: cpssDxChCfgIngressDropCntrModeGet
+devNum = 0
+Exit: cpssDxChCfgIngressDropCntrModeGet
+modePtr = CPSS_DXCH_CFG_INGRESS_DROP_COUNTER_MODE_ALL_E
+portNumPtr = 0
+vlanPtr = 0
+rc = GT_OK
+Enter: cpssDxChCosProfileEntryGet
+devNum = 0
+profileIndex = 5
+Exit: cpssDxChCosProfileEntryGet
+cosPtr {
+	dropPrecedence = CPSS_DP_GREEN_E
+	userPriority = 0
+	trafficClass = 0
+	dscp = 0
+	exp = 0
+}
+rc = GT_OK
+Enter: cpssDxChHwInterruptCoalescingGet
+devNum = 0
+Exit: cpssDxChHwInterruptCoalescingGet
+enablePtr = GT_FALSE
+periodPtr = 0
+linkChangeOverridePtr = GT_TRUE
+rc = GT_OK
+Enter: cpssDxChCscdPortTypeGet
+devNum = 0
+@s_s1@portNum = %d
+portDirection = CPSS_PORT_DIRECTION_RX_E
+Exit: cpssDxChCscdPortTypeGet
+@s_s2@portTypePtr = %s
+rc = GT_OK
+Enter: cpssDxChCutThroughMemoryRateLimitGet
+devNum = 0
+portNum = 0
+Exit: cpssDxChCutThroughMemoryRateLimitGet
+enablePtr = GT_FALSE
+portSpeedPtr = CPSS_PORT_SPEED_10_E
+@s_rc3@rc = %s
+Enter: cpssDxChDiagDataIntegrityEventsGet
+devNum = 0
+evExtData = 0x00000003
+eventsNumPtr = 1
+Exit: cpssDxChDiagDataIntegrityEventsGet
+eventsNumPtr = 1
+eventsArr {
+	eventsArr[0] {
+		eventsType = CPSS_DIAG_DATA_INTEGRITY_ERROR_CAUSE_TYPE_PARITY_E
+		location {
+			portGroupsBmp = 0
+			hwEntryInfo {
+				hwTableType = CPSS_DXCH_TABLE_VLAN_PORT_PROTOCOL_E
+				hwTableEntryIndex = 0
+			}
+			logicalEntryInfo {
+				numOfLogicalTables = 0
+				logicaTableInfo[0] {
+					logicalTableType = CPSS_DXCH_LOGICAL_TABLE_VLAN_E
+					logicalTableEntryIndex = 0
+					numEntries = 0
+				}
+				logicaTableInfo[1] {
+					logicalTableType = CPSS_DXCH_LOGICAL_TABLE_VLAN_E
+					logicalTableEntryIndex = 0
+					numEntries = 0
+				}
+				logicaTableInfo[2] {
+					logicalTableType = CPSS_DXCH_LOGICAL_TABLE_VLAN_E
+					logicalTableEntryIndex = 0
+					numEntries = 0
+				}
+				logicaTableInfo[3] {
+					logicalTableType = CPSS_DXCH_LOGICAL_TABLE_VLAN_E
+					logicalTableEntryIndex = 0
+					numEntries = 0
+				}
+				logicaTableInfo[4] {
+					logicalTableType = CPSS_DXCH_LOGICAL_TABLE_VLAN_E
+					logicalTableEntryIndex = 0
+					numEntries = 0
+				}
+			}
+			ramEntryInfo {
+				memType = CPSS_DXCH_DIAG_DATA_INTEGRITY_MEM_TYPE_BM_CONTROL_ACCESS_TABLE_E
+				ramRow = 0
+				memLocation {
+					dfxPipeId = 0
+					dfxClientId = 0
+					dfxMemoryId = 0
+				}
+			}
+			isMppmInfoValid = GT_FALSE
+			isTcamInfoValid = GT_FALSE
+			mppmMemLocation {
+				portGroupId = 0
+				mppmId = 0
+				bankId = 0
+			}
+			tcamMemLocation {
+				arrayType = CPSS_DIAG_DATA_INTEGRITY_TCAM_ARRAY_TYPE_X_E
+				ruleIndex = 0
+			}
+		}
+		memoryUseType = CPSS_DIAG_DATA_INTEGRITY_MEMORY_USAGE_TYPE_UNKNOWN_E
+		correctionMethod = CPSS_DIAG_DATA_INTEGRITY_CORRECTION_METHOD_UNKNOWN_E
+	}
+}
+@s_rc23@isNoMoreEventsPtr = %s
+@s_rc24@rc = %s
+Enter: cpssDxChFabricHGLinkRxLinkLayerFcParamsGet
+devNum = 0
+portNum = 2
+Exit: cpssDxChFabricHGLinkRxLinkLayerFcParamsGet
+llParamsPtr {
+	etherType = 0x00000000
+	pfcOpcode = 0
+	up = 0
+	qosProfile = 0
+	trgDev = 0
+	trgPort = 0
+}
+rc = GT_NOT_APPLICABLE_DEVICE
+Enter: cpssDxChIpv4PrefixGet
+devNum = 0
+routerTtiTcamRow = 5
+routerTtiTcamColumn = 5
+Exit: cpssDxChIpv4PrefixGet
+validPtr = GT_FALSE
+prefixPtr {
+	vrId = 0
+	ipAddr = 0.0.0.0
+	isMcSource = GT_FALSE
+	mcGroupIndexRow = 0
+	mcGroupIndexColumn = 0
+}
+maskPtr {
+	vrId = 0
+	ipAddr = 0.0.0.0
+	isMcSource = GT_FALSE
+	mcGroupIndexRow = 0
+	mcGroupIndexColumn = 0
+}
+@s_rc4@rc = %s
+Enter: cpssDxChIpfixEntryGet
+devNum = 0
+stage = CPSS_DXCH_POLICER_STAGE_INGRESS_0_E
+entryIndex = 3
+reset = GT_TRUE
+Exit: cpssDxChIpfixEntryGet
+ipfixEntryPtr {
+	timeStamp = 0
+	packetCount = 0
+	byteCount = 0
+	dropCounter = 0
+	randomOffset = 0
+	lastSampledValue = 0
+	samplingWindow = 0
+	samplingAction = CPSS_DXCH_IPFIX_SAMPLING_ACTION_ALARM_E
+	logSamplingRange = 0
+	randomFlag = CPSS_DXCH_IPFIX_SAMPLING_DIST_DETERMINISTIC_E
+	samplingMode = CPSS_DXCH_IPFIX_SAMPLING_MODE_DISABLE_E
+	cpuSubCode = 0
+}
+@s_rc5@rc = %s
+Enter: cpssDxChIpLpmDBCapacityGet
+lpmDBId = 5
+Exit: cpssDxChIpLpmDBCapacityGet
+partitionEnablePtr = GT_FALSE
+indexesRangePtr {
+	firstIndex = 0
+	lastIndex = 0
+}
+tcamLpmManagerCapcityCfgPtr {
+	numOfIpv4Prefixes = 0
+	numOfIpv4McSourcePrefixes = 0
+	numOfIpv6Prefixes = 0
+}
+rc = GT_NOT_FOUND
+Enter: cpssDxChL2MllLttEntryGet
+devNum = 0
+index = 1
+Exit: cpssDxChL2MllLttEntryGet
+lttEntryPtr {
+	mllPointer = 0
+	entrySelector = CPSS_DXCH_L2_MLL_PAIR_ENTRY_SELECTOR_FIRST_MLL_E
+	mllMaskProfileEnable = GT_FALSE
+	mllMaskProfile = 0x00000000
+}
+@s_rc6@rc = %s
+Enter: cpssDxChLogicalTargetMappingTableEntrySet
+devNum = 0
+logicalDevNum = 24
+logicalPortNum = 0
+logicalPortMappingTablePtr {
+	outputInterface {
+		isTunnelStart = GT_FALSE
+		tunnelStartInfo {
+			passengerPacketType = 0x5aaaaaa5
+			ptr = 1
+		}
+		physicalInterface {
+			type = CPSS_INTERFACE_PORT_E
+			devPort.hwDevNum = 0
+			devPort.portNum = 0
+		}
+	}
+	egressVlanFilteringEnable = GT_FALSE
+	egressVlanTagStateEnable = GT_FALSE
+	egressVlanTagState = CPSS_DXCH_BRG_VLAN_PORT_UNTAGGED_CMD_E
+	egressTagTpidIndex = 0
+	assignVid0Enable = GT_FALSE
+	vid0 = 0
+}
+Exit: cpssDxChLogicalTargetMappingTableEntrySet
+@s_rc7@rc = %s
+Enter: cpssDxChLpmExceptionStatusGet
+devNum = 0
+lpmEngine = 0
+Exit: cpssDxChLpmExceptionStatusGet
+hitExceptionPtr = CPSS_DXCH_LPM_EXCEPTION_HIT_E
+@s_rc8@rc = %s
+Enter: cpssDxChMirrorAnalyzerInterfaceGet
+devNum = 0
+index = 3
+Exit: cpssDxChMirrorAnalyzerInterfaceGet
+interfacePtr {
+	interface {
+		type = CPSS_INTERFACE_PORT_E
+		devPort.hwDevNum = 0
+		devPort.portNum = 0
+	}
+}
+rc = GT_OK
+Enter: cpssDxChMultiPortGroupLookupNotFoundTableGet
+devNum = 0
+portGroupsBmp = 0x0005
+sourcePortGroupId = 1
+Exit: cpssDxChMultiPortGroupLookupNotFoundTableGet
+infoPtr {
+	unknownDaCommand = CPSS_DXCH_MULTI_PORT_GROUP_LOOKUP_NOT_FOUND_NO_REDIRECT_E
+	nextRingInterface {
+		type = CPSS_INTERFACE_PORT_E
+		devPort.hwDevNum = 0
+		devPort.portNum = 0
+	}
+}
+@s_rc9@rc = %s
+Enter: cpssDxChNetIfCpuCodeTableGet
+devNum = 0
+cpuCode = CPSS_NET_IPV4_IPV6_LINK_LOCAL_MC_DIP_TRP_MRR_E
+Exit: cpssDxChNetIfCpuCodeTableGet
+entryInfoPtr {
+	tc = 0
+	dp = CPSS_DP_GREEN_E
+	truncate = GT_FALSE
+	cpuRateLimitMode = CPSS_NET_CPU_CODE_RATE_LIMIT_LOCAL_E
+	cpuCodeRateLimiterIndex = 0
+	cpuCodeStatRateLimitIndex = 0
+	designatedDevNumIndex = 0
+}
+rc = GT_OK
+Enter: cpssDxChNstPortIngressFrwFilterGet
+devNum = 0
+portNum = 5
+filterType = CPSS_NST_INGRESS_FRW_FILTER_TO_NETWORK_E
+Exit: cpssDxChNstPortIngressFrwFilterGet
+enablePtr = GT_FALSE
+rc = GT_OK
+Enter: cpssDxChOamSrvLoopbackStatisticalCountersGet
+devNum = 0
+flowId = 4
+clearOnRead = GT_TRUE
+timeout = 2
+Exit: cpssDxChOamSrvLoopbackStatisticalCountersGet
+lbCountersPtr {
+	outOfSequenceCount = 0
+	totalCheckedDataTlv = 0
+	totalInvalidDataTlv = 0
+}
+@s_rc10@rc = %s
+Enter: cpssDxChPclRuleSet
+devNum = 0
+ruleFormat = CPSS_DXCH_PCL_RULE_FORMAT_INGRESS_EXT_NOT_IPV6_E
+ruleIndex = 5
+ruleOptionsBmp = 0x00000000
+maskPtr {
+	ruleExtNotIpv6 {
+		common {
+			pclId = 1023
+			macToMe = 0
+			sourcePort = 2
+			sourceDevice = 0
+			portListBmp {
+				ports {
+					ports[0] = 0x00000000
+					ports[1] = 0x00000000
+					ports[2] = 0x00000000
+					ports[3] = 0x00000000
+					ports[4] = 0x00000000
+					ports[5] = 0x00000000
+					ports[6] = 0x00000000
+					ports[7] = 0x00000000
+					ports[8] = 0x00000000
+					ports[9] = 0x00000000
+					ports[10] = 0x00000000
+					ports[11] = 0x00000000
+					ports[12] = 0x00000000
+					ports[13] = 0x00000000
+					ports[14] = 0x00000000
+					ports[15] = 0x00000000
+				}
+			}
+			isTagged = 0
+			vid = 8
+			up = 0
+			qosProfile = 3
+			isIp = 0
+			isL2Valid = 1
+			isUdbValid = 0
+		}
+		commonExt {
+			isIpv6 = 0
+			ipProtocol = 1
+			dscp = 0
+			isL4Valid = 0
+			l4Byte0 = 0
+			l4Byte1 = 1
+			l4Byte2 = 0
+			l4Byte3 = 0
+			l4Byte13 = 0
+			ipHeaderOk = 1
+		}
+		sip = 0.0.0.0
+		dip = 0.0.0.0
+		etherType = 0x0000
+		l2Encap = 0
+		macDa = 66:55:44:44:55:66
+		macSa = 11:22:33:33:22:11
+		ipv4Fragmented = 0
+		udb0_5[0] = 0x0
+		udb0_5[1] = 0x0
+		udb0_5[2] = 0x0
+		udb0_5[3] = 0x0
+		udb0_5[4] = 0x0
+		udb0_5[5] = 0x0
+		tag1Exist = 0
+		vid1 = 21
+		up1 = 11
+		cfi1 = 43
+		vrfId = 9
+		trunkHash = 0
+		udb39_46[0] = 0x0
+		udb39_46[1] = 0x0
+		udb39_46[2] = 0x0
+		udb39_46[3] = 0x0
+		udb39_46[4] = 0x0
+		udb39_46[5] = 0x0
+		udb39_46[6] = 0x0
+		udb39_46[7] = 0x0
+	}
+}
+patternPtr {
+	ruleExtNotIpv6 {
+		common {
+			pclId = 973
+			macToMe = 0
+			sourcePort = 2
+			sourceDevice = 0
+			portListBmp {
+				ports {
+					ports[0] = 0x00000000
+					ports[1] = 0x00000000
+					ports[2] = 0x00000000
+					ports[3] = 0x00000000
+					ports[4] = 0x00000000
+					ports[5] = 0x00000000
+					ports[6] = 0x00000000
+					ports[7] = 0x00000000
+					ports[8] = 0x00000000
+					ports[9] = 0x00000000
+					ports[10] = 0x00000000
+					ports[11] = 0x00000000
+					ports[12] = 0x00000000
+					ports[13] = 0x00000000
+					ports[14] = 0x00000000
+					ports[15] = 0x00000000
+				}
+			}
+			isTagged = 0
+			vid = 4
+			up = 0
+			qosProfile = 5
+			isIp = 0
+			isL2Valid = 1
+			isUdbValid = 0
+		}
+		commonExt {
+			isIpv6 = 0
+			ipProtocol = 0
+			dscp = 0
+			isL4Valid = 1
+			l4Byte0 = 0
+			l4Byte1 = 1
+			l4Byte2 = 0
+			l4Byte3 = 0
+			l4Byte13 = 1
+			ipHeaderOk = 0
+		}
+		sip = 0.0.0.0
+		dip = 0.0.0.0
+		etherType = 0x0000
+		l2Encap = 0
+		macDa = 11:22:33:44:55:66
+		macSa = 66:55:44:33:22:11
+		ipv4Fragmented = 0
+		udb0_5[0] = 0x0
+		udb0_5[1] = 0x0
+		udb0_5[2] = 0x0
+		udb0_5[3] = 0x0
+		udb0_5[4] = 0x0
+		udb0_5[5] = 0x0
+		tag1Exist = 0
+		vid1 = 12
+		up1 = 77
+		cfi1 = 99
+		vrfId = 45
+		trunkHash = 0
+		udb39_46[0] = 0x0
+		udb39_46[1] = 0x0
+		udb39_46[2] = 0x0
+		udb39_46[3] = 0x0
+		udb39_46[4] = 0x0
+		udb39_46[5] = 0x0
+		udb39_46[6] = 0x0
+		udb39_46[7] = 0x0
+	}
+}
+actionPtr {
+	pktCmd = CPSS_PACKET_CMD_DROP_HARD_E
+	actionStop = GT_FALSE
+	bypassBridge = GT_FALSE
+	bypassIngressPipe = GT_FALSE
+	egressPolicy = GT_FALSE
+	lookupConfig {
+		ipclConfigIndex = 0
+		pcl0_1OverrideConfigIndex = CPSS_DXCH_PCL_LOOKUP_CONFIG_INDEX_RETAIN_E
+		pcl1OverrideConfigIndex = CPSS_DXCH_PCL_LOOKUP_CONFIG_INDEX_RETAIN_E
+	}
+	mirror {
+		cpuCode = CPSS_NET_FIRST_USER_DEFINED_E
+		mirrorToRxAnalyzerPort = GT_FALSE
+		ingressMirrorToAnalyzerIndex = 0
+		mirrorTcpRstAndFinPacketsToCpu = GT_FALSE
+	}
+	matchCounter {
+		enableMatchCount = GT_FALSE
+		matchCounterIndex = 0
+	}
+	qos {
+		ingress {
+			modifyDscp = CPSS_PACKET_ATTRIBUTE_MODIFY_KEEP_PREVIOUS_E
+			modifyUp = CPSS_PACKET_ATTRIBUTE_MODIFY_KEEP_PREVIOUS_E
+			profileIndex = 0
+			profileAssignIndex = GT_FALSE
+			profilePrecedence = CPSS_PACKET_ATTRIBUTE_ASSIGN_PRECEDENCE_SOFT_E
+			up1Cmd = CPSS_DXCH_PCL_ACTION_INGRESS_UP1_CMD_DO_NOT_MODIFY_E
+			up1 = 0
+		}
+	}
+	redirect {
+		redirectCmd = CPSS_DXCH_PCL_ACTION_REDIRECT_CMD_NONE_E
+		data {
+			noRedirect {
+				arpPtr = 0
+				modifyMacDa = GT_FALSE
+			}
+		}
+	}
+	policer {
+		policerEnable = CPSS_DXCH_PCL_POLICER_DISABLE_ALL_E
+		policerId = 0
+	}
+	vlan {
+		ingress {
+			modifyVlan = CPSS_PACKET_ATTRIBUTE_ASSIGN_DISABLED_E
+			nestedVlan = GT_FALSE
+			vlanId = 0
+			precedence = CPSS_PACKET_ATTRIBUTE_ASSIGN_PRECEDENCE_SOFT_E
+			vlanId1Cmd = CPSS_DXCH_PCL_ACTION_INGRESS_VLAN_ID1_CMD_DO_NOT_MODIFY_E
+			vlanId1 = 0
+		}
+	}
+	ipUcRoute {
+		doIpUcRoute = GT_FALSE
+		arpDaIndex = 0
+		decrementTTL = GT_FALSE
+		bypassTTLCheck = GT_FALSE
+		icmpRedirectCheck = GT_FALSE
+	}
+	sourceId {
+		assignSourceId = GT_FALSE
+		sourceIdValue = 0
+	}
+	oam {
+		timeStampEnable = GT_FALSE
+		offsetIndex = 0
+		oamProcessEnable = GT_FALSE
+		oamProfile = 0
+	}
+	flowId = 0
+	sourcePort {
+		assignSourcePortEnable = GT_FALSE
+		sourcePortValue = 0
+	}
+	setMacToMe = GT_FALSE
+	channelTypeToOpcodeMapEnable = GT_FALSE
+	tmQueueId = 0
+	unknownSaCommandEnable = GT_FALSE
+	unknownSaCommand = CPSS_PACKET_CMD_FORWARD_E
+}
+Exit: cpssDxChPclRuleSet
+@s_rc11@rc = %s
+Enter: cpssDxChPhyPortSmiInterfaceSet
+devNum = 0
+portNum = 0
+smiInterface = 0x00000006
+Exit: cpssDxChPhyPortSmiInterfaceSet
+rc = GT_BAD_PARAM
+Enter: cpssDxChPolicerPortGroupMeteringEntryGet
+devNum = 0
+portGroupsBmp = 0x0001
+stage = CPSS_DXCH_POLICER_STAGE_INGRESS_0_E
+entryIndex = 5
+Exit: cpssDxChPolicerPortGroupMeteringEntryGet
+entryPtr {
+	countingEntryIndex = 0
+	mngCounterSet = CPSS_DXCH3_POLICER_MNG_CNTR_SET0_E
+	meterColorMode = CPSS_POLICER_COLOR_BLIND_E
+	meterMode = CPSS_DXCH3_POLICER_METER_MODE_SR_TCM_E
+	tokenBucketParams {
+		srTcmParams {
+			cir = 0
+			cbs = 0
+			ebs = 0
+		}
+	}
+	modifyUp = CPSS_DXCH_POLICER_MODIFY_UP_KEEP_PREVIOUS_E
+	modifyDscp = CPSS_DXCH_POLICER_MODIFY_DSCP_KEEP_PREVIOUS_E
+	modifyDp = CPSS_PACKET_ATTRIBUTE_MODIFY_KEEP_PREVIOUS_E
+	modifyExp = CPSS_PACKET_ATTRIBUTE_MODIFY_KEEP_PREVIOUS_E
+	modifyTc = CPSS_PACKET_ATTRIBUTE_MODIFY_KEEP_PREVIOUS_E
+	greenPcktCmd = CPSS_DXCH3_POLICER_NON_CONFORM_CMD_NO_CHANGE_E
+	yellowPcktCmd = CPSS_DXCH3_POLICER_NON_CONFORM_CMD_NO_CHANGE_E
+	redPcktCmd = CPSS_DXCH3_POLICER_NON_CONFORM_CMD_NO_CHANGE_E
+	qosProfile = 0
+	remarkMode = CPSS_DXCH_POLICER_REMARK_MODE_L2_E
+	byteOrPacketCountingMode = CPSS_DXCH3_POLICER_METER_RESOLUTION_BYTES_E
+@s_s12@	packetSizeMode = %s
+	tunnelTerminationPacketSizeMode = CPSS_DXCH3_POLICER_TT_PACKET_SIZE_REGULAR_E
+	dsaTagCountingMode = CPSS_DXCH3_POLICER_DSA_TAG_COUNTING_MODE_INCLUDED_E
+	timeStampCountingMode = CPSS_DXCH3_POLICER_TS_TAG_COUNTING_MODE_INCLUDE_E
+	yellowEcnMarkingEnable = GT_FALSE
+	couplingFlag = GT_FALSE
+	maxRateIndex = 0
+}
+rc = GT_OK
+Enter: cpssDxChPortPfcProfileQueueConfigGet
+devNum = 0
+profileIndex = 2
+tcQueue = 6
+Exit: cpssDxChPortPfcProfileQueueConfigGet
+pfcProfileCfgPtr {
+	xonThreshold = 0
+@s_s13@	xoffThreshold = %s
+}
+@s_rc14@rc = %s
+Enter: cpssDxChProtectionLocStatusGet
+devNum = 0
+index = 13
+Exit: cpssDxChProtectionLocStatusGet
+statusPtr = CPSS_DXCH_PROTECTION_LOC_NOT_DETECTED_E
+@s_rc15@rc = %s
+Enter: cpssDxChPtpTsLocalActionTableGet
+devNum = 0
+portNum = 2
+domainProfile = 2
+messageType = 7
+Exit: cpssDxChPtpTsLocalActionTableGet
+entryPtr {
+	tsAction = CPSS_DXCH_PTP_TS_ACTION_NONE_E
+	ingrLinkDelayEnable = GT_FALSE
+	packetDispatchingEnable = GT_FALSE
+}
+@s_rc16@rc = %s
+Enter: cpssSystemRecoveryStateSet
+systemRecoveryInfoPtr {
+	systemRecoveryState = 0x00000004
+	systemRecoveryMode {
+		continuousRx = GT_FALSE
+		continuousTx = GT_FALSE
+		continuousAuMessages = GT_FALSE
+		continuousFuMessages = GT_FALSE
+		haCpuMemoryAccessBlocked = GT_FALSE
+	}
+	systemRecoveryProcess = 0x00000004
+}
+Exit: cpssSystemRecoveryStateSet
+rc = GT_BAD_PARAM
+Enter: cpssDxChTcamPortGroupClientGroupSet
+devNum = 0
+portGroupsBmp = 0x0001
+tcamClient = CPSS_DXCH_TCAM_IPCL_2_E
+tcamGroup = 20
+enable = GT_TRUE
+Exit: cpssDxChTcamPortGroupClientGroupSet
+@s_rc17@rc = %s
+Enter: cpssDxChTmGlueQueueMapL1PacketLengthOffsetGet
+devNum = 0
+physicalPort = 2
+Exit: cpssDxChTmGlueQueueMapL1PacketLengthOffsetGet
+lengthOffsetPtr {
+	offsetCmd = CPSS_DXCH_TM_GLUE_QUEUE_MAP_L1_PACKET_LENGTH_OFFSET_CMD_ADD_E
+	offsetValue = 0
+}
+@s_rc18@rc = %s
+Enter: cpssDxChTrunkPortTrunkIdGet
+devNum = 0
+portNum = 2
+Exit: cpssDxChTrunkPortTrunkIdGet
+memberOfTrunkPtr = GT_FALSE
+trunkIdPtr = 0
+rc = GT_OK
+Enter: cpssDxChTunnelStartPortGroupGenProfileTableEntryGet
+devNum = 0
+portGroupsBmp = 0x0006
+profileIndex = 3
+Exit: cpssDxChTunnelStartPortGroupGenProfileTableEntryGet
+profileDataPtr {
+	templateDataSize = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_SIZE_NONE_E
+	templateDataBitsCfg[0] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[1] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[2] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[3] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[4] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[5] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[6] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[7] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[8] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[9] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[10] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[11] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[12] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[13] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[14] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[15] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[16] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[17] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[18] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[19] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[20] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[21] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[22] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[23] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[24] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[25] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[26] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[27] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[28] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[29] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[30] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[31] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[32] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[33] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[34] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[35] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[36] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[37] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[38] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[39] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[40] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[41] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[42] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[43] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[44] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[45] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[46] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[47] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[48] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[49] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[50] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[51] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[52] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[53] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[54] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[55] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[56] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[57] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[58] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[59] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[60] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[61] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[62] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[63] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[64] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[65] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[66] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[67] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[68] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[69] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[70] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[71] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[72] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[73] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[74] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[75] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[76] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[77] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[78] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[79] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[80] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[81] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[82] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[83] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[84] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[85] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[86] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[87] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[88] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[89] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[90] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[91] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[92] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[93] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[94] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[95] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[96] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[97] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[98] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[99] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[100] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[101] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[102] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[103] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[104] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[105] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[106] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[107] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[108] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[109] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[110] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[111] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[112] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[113] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[114] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[115] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[116] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[117] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[118] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[119] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[120] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[121] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[122] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[123] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[124] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[125] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[126] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	templateDataBitsCfg[127] = CPSS_DXCH_TUNNEL_START_TEMPLATE_DATA_CFG_CONST_0_E
+	hashShiftLeftBitsNumber = 0
+	udpSrcPortMode = CPSS_DXCH_TUNNEL_START_UDP_SRC_PORT_ASSIGN_FROM_IP_GEN_TS_ENTRY_E
+	serviceIdCircularShiftSize = 0
+	macDaMode = 0
+	dipMode = 0
+	controlWordIndex = 0
+}
+@s_rc20@rc = %s
+Enter: cpssDxChVntCfmReplyModeGet
+devNum = 0
+Exit: cpssDxChVntCfmReplyModeGet
+modePtr = CPSS_DXCH_VNT_CFM_REPLY_MODE_CHANGE_OPCODE_E
+@s_rc21@rc = %s
+Enter: cpssDxChVersionGet
+Exit: cpssDxChVersionGet
+versionPtr {
+	version[0] = 0x43
+	version[1] = 0x50
+	version[2] = 0x53
+	version[3] = 0x53
+	version[4] = 0x20
+	version[5] = 0x34
+	version[6] = 0x2e
+	version[7] = 0x31
+	version[8] = 0x2e
+	version[9] = 0x32
+	version[10] = 0x30
+	version[11] = 0x31
+	version[12] = 0x36
+	version[13] = 0x2e
+	version[14] = 0x33
+	version[15] = 0x0
+	version[16] = 0x0
+	version[17] = 0x0
+	version[18] = 0x0
+	version[19] = 0x0
+	version[20] = 0x0
+	version[21] = 0x0
+	version[22] = 0x0
+	version[23] = 0x0
+	version[24] = 0x0
+	version[25] = 0x0
+	version[26] = 0x0
+	version[27] = 0x0
+	version[28] = 0x0
+	version[29] = 0x0
+}
+rc = GT_OK
+Enter: cpssTmAnodeConfigurationRead
+devNum = 0
+index = 8
+Exit: cpssTmAnodeConfigurationRead
+paramsPtr {
+	shapingProfilePtr = 0
+@s_s22@	quantum = %s
+	dropProfileInd = 0
+@s_s23@	eligiblePrioFuncId = %s
+	schdModeArr[0] = CPSS_TM_SCHD_MODE_RR_E
+	schdModeArr[1] = CPSS_TM_SCHD_MODE_RR_E
+	schdModeArr[2] = CPSS_TM_SCHD_MODE_RR_E
+	schdModeArr[3] = CPSS_TM_SCHD_MODE_RR_E
+	schdModeArr[4] = CPSS_TM_SCHD_MODE_RR_E
+	schdModeArr[5] = CPSS_TM_SCHD_MODE_RR_E
+	schdModeArr[6] = CPSS_TM_SCHD_MODE_RR_E
+	schdModeArr[7] = CPSS_TM_SCHD_MODE_RR_E
+@s_s24@	numOfChildren = %s
+}
+@s_rc22@rc = %s
+Enter: cpssXsmiPortGroupRegisterWrite
+devNum = 0
+portGroupsBmp = 0x0000
+xsmiInterface = 0x00000006
+xsmiAddr = 37
+regAddr = 44
+phyDev = 37
+data = 0x0003
+Exit: cpssXsmiPortGroupRegisterWrite
+rc = GT_BAD_PARAM
+Enter: cpssSystemDualDeviceIdModeEnableGet
+Exit: cpssSystemDualDeviceIdModeEnableGet
+enablePtr = GT_FALSE
+rc = GT_OK

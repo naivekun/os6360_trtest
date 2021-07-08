@@ -1,0 +1,9 @@
+// TAG:               vlan, clear
+// Short Description: Invalidates VLAN's
+// Description:       Invalidates 2-nd and 3-rd VLAN's and clears FDB table
+end
+configure
+no interface vlan device ${dev} vid 2
+no interface vlan device ${dev} vid 3
+do clear bridge type ${dev} all
+end

@@ -1,0 +1,62 @@
+// TAG:               micro-init
+// Short Description: Create configuration file by using the micro-init tool
+// Description:       Use the micro-init tool commands to create configuration files:
+//                    device-config command creates config-device.txt
+//                    port-map command creates config-map.txt
+//                    port-pizza-resources command creates config-pizza.txt
+//                    port-smi command creates config-smi.txt
+//                    other user defined configurations saved to config-other.txt
+
+end
+micro-init file config-bobk-${@@tid}
+device-config deviceId CPSS_98DX4235_CNS mngInterfaceType CPSS_CHANNEL_PEX_MBUS_E coreClock 365Mhz features-list EPLR_RM EXTENDED_DSA_BYPASS_BRIDGE_RM LED_INIT
+port-map
+ethernet 0/56 type ethernet_mac txq-port 56 interface-number 56
+ethernet 0/57 type ethernet_mac txq-port 57 interface-number 57
+ethernet 0/58 type ethernet_mac txq-port 58 interface-number 58
+ethernet 0/59 type ethernet_mac txq-port 59 interface-number 59
+ethernet 0/64 type ethernet_mac txq-port 64 interface-number 64
+ethernet 0/65 type ethernet_mac txq-port 65 interface-number 65
+ethernet 0/66 type ethernet_mac txq-port 66 interface-number 66
+ethernet 0/67 type ethernet_mac txq-port 67 interface-number 67
+ethernet 0/68 type ethernet_mac txq-port 68 interface-number 68
+ethernet 0/69 type ethernet_mac txq-port 69 interface-number 69
+ethernet 0/70 type ethernet_mac txq-port 70 interface-number 70
+ethernet 0/71 type ethernet_mac txq-port 71 interface-number 71
+exit
+port-pizza-resources
+range 0/56-59 ifMode KR speed 10000
+range 0/64-71 ifMode KR speed 10000
+exit
+port-smi
+auto-poll-cfg 0/56 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/57 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/58 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/59 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/64 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/65 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/66 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/67 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/68 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/69 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/70 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+auto-poll-cfg 0/71 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+phy-port-smi-init
+exit
+end
+debug-mode
+trace hw-access
+end
+// user configurations
+configure
+interface vlan device 0 vid 2
+exit
+interface range ethernet 0/56-59
+switchport pvid 2
+switchport allowed vlan add 2 tagged
+exit
+end
+debug-mode
+trace save file config-other-bobk-${@@tid}.txt as micro-init saveToHd
+no trace hw-access mode write
+end

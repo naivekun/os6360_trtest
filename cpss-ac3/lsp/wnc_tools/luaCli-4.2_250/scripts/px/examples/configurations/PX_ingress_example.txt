@@ -1,0 +1,114 @@
+// TAG:               PX devices(PIPE); ingress-processing;
+// Short Description: PIPE device : ingress-processing configuration.
+// Description:       PIPE device : ingress-processing configuration.
+//                    done in 'DX system' but only as sanity since actual commands 
+//                    currently only manipulate 'DB' (in the LUA)
+//
+end
+//
+
+// TPID table
+configure
+ingress tpid device ${dev} index 0 ethertype 0x8100 tag-size 4
+ingress tpid device ${dev} index 1 ethertype 0x893F tag-size 8
+ingress tpid device ${dev} index 2 ethertype 0x9100 tag-size 8
+end
+
+// Port Packet Type Key Table
+configure
+interface ethernet ${dev}/${port[4]}
+ingress port-packet-type-key profile 0 udbp 0 anchor L2 byte-offset 16
+exit
+
+interface ethernet ${dev}/${port[1]}
+ingress port-packet-type-key profile 1
+exit
+
+interface ethernet ${dev}/${port[2]}
+ingress port-packet-type-key profile 2
+exit
+
+interface ethernet ${dev}/${port[3]}
+ingress port-packet-type-key profile 3
+end
+
+// Packet Type Key Table
+configure
+packet-type-key device ${dev} ingress packet-type 10
+key-entry data ethertype 0x893f source-port-profile 0x0 udbp-0 0x0000
+key-entry mask ethertype 0xffff source-port-profile 0x1 udbp-0 0x007f
+exit
+packet-type-key device ${dev} ingress packet-type 11
+key-entry data ethertype 0x893f source-port-profile 0x00
+key-entry mask ethertype 0xffff source-port-profile 0x01
+exit
+packet-type-key device ${dev} ingress packet-type 12
+key-entry data source-port-profile 0x00
+key-entry mask source-port-profile 0x01
+exit
+packet-type-key device ${dev} ingress packet-type 13
+key-entry data source-port-profile 0x03
+key-entry mask source-port-profile 0x03
+exit
+packet-type-key device ${dev} ingress packet-type 14
+key-entry data source-port-profile 0x01
+key-entry mask source-port-profile 0x01
+exit
+end
+
+// Packet Type Destination Format
+configure
+packet-type-key device ${dev} ingress packet-type 10
+format-entry destination constant-index 0 max-index 4095 bit-field 1 byte-offset 16 start-bit 0 num-bits 3
+format-entry destination constant-index 0 max-index 4095 bit-field 0 byte-offset 17 start-bit 0 num-bits 7
+exit
+packet-type-key device ${dev} ingress packet-type 11
+format-entry destination constant-index 0 max-index 8191 bit-field 1 byte-offset 16 start-bit 0 num-bits 5
+format-entry destination constant-index 0 max-index 8191 bit-field 0 byte-offset 17 start-bit 0 num-bits 7
+exit
+packet-type-key device ${dev} ingress packet-type 12
+format-entry destination constant-index 4094 max-index 4094
+exit
+packet-type-key device ${dev} ingress packet-type 13
+format-entry destination constant-index 4094 max-index 4094
+exit
+packet-type-key device ${dev} ingress packet-type 14
+format-entry destination constant-index 4094 max-index 4094
+exit
+packet-type-key device ${dev} ingress packet-type 15
+format-entry destination constant-index 4092 max-index 4092
+exit
+packet-type-key device ${dev} ingress packet-type 16
+format-entry destination constant-index 4093 max-index 4093
+exit
+packet-type-key device ${dev} ingress packet-type 17
+format-entry destination constant-index 4093 max-index 4093
+exit
+
+// Packet Type Destination Format
+packet-type-key device ${dev} ingress packet-type 11
+format-entry source constant-index 0 max-index 4095 bit-field 1 byte-offset 14 start-bit 0 num-bits 3
+format-entry source constant-index 0 max-index 4095 bit-field 0 byte-offset 15 start-bit 0 num-bits 7
+
+// Show commands
+do show ingress tpid device ${dev}
+do show ingress port-packet-type-key device all
+do show ingress packet-type-key device all packet-type all
+do show ingress packet-type-format destination device all packet-type all
+do show ingress packet-type-format source device all packet-type all
+do show ingress packet-type-error device all
+
+
+//Port map entry
+exit
+ingress port-map-entry source device ${dev} indexes 0,3,5-10 entry 0x1FFEE
+ingress port-map-entry destination device ${dev} indexes 1,4,11-20 entry 0x10000
+exit
+do show ingress port-map-entry source device all from 0 to 20
+do show ingress port-map-entry destination device all from 0 to 20
+configure
+no ingress port-map-entry source device ${dev} indexes 0-20
+no ingress port-map-entry destination device ${dev} indexes 0-20
+exit
+do show ingress port-map-entry source device all from 0 to 20
+do show ingress port-map-entry destination device all from 0 to 20

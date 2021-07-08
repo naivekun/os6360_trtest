@@ -1,0 +1,15 @@
+# !!! NOTE: New info please add above "Port info table", due to port parsing done in file-portmap !!!
+
+# Total MAC units
+UNIT_CNT=1
+
+# Inter-port combination for segment
+IPORTLINK_SET=
+
+# Total front port number
+LPORT_NUM=0
+
+# Port info table
+LPort Dev/PPort PhyType     PortType    MaxSpeed    SupportedSpeed  PhyAddr MasterAddr  PLPName
+----- --------- ----------  --------    --------    --------------  ------- ----------	---------
+

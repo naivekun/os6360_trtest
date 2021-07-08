@@ -1,0 +1,17 @@
+// TAG:               traffic_generator_emulated
+// Short Description: generate FDB upload messages under traffic
+// Description:       generate FDB upload messages and generate traffic on port1 by command of 'traffic-generator emulation'
+//                    
+end
+//
+traffic
+//
+// run FDB upload stress test in separate task
+//
+do shell-execute-in-parallel mainUtFdbUploadStress 2
+//
+// generate traffic on port
+//
+traffic-generator emulate port ${dev}/${port[2]} data 001122334455005544332211 count 10000
+//
+end

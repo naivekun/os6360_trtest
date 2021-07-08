@@ -1,0 +1,34 @@
+# $(warning "Started") 
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ adler32.c \
+ crc32.c \
+ deflate.c \
+ inffast.c \
+ inflate.c \
+ inftrees.c \
+ trees.c \
+ zutil.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainCmd.lib
+    cpssEnabler_mainCmd_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

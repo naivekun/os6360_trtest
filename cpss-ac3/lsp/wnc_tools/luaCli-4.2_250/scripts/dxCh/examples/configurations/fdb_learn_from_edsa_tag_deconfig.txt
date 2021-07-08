@@ -1,0 +1,27 @@
+// TAG:               FDB_learning;eDSA;4_words_DSA;Vlan_classification;cascade;
+// Short Description: UnSet cascade port for multi-device system , remove vlan 10 , remove FDB learned entry.
+// Description:       De-configuration for test FDB learning for eDSA tag packet come 
+//                    from cascade port with vid = 10 (cascade pvid is 1 (default))
+//
+end
+//
+// show that we learned the FDB entry with the 
+// SRC mac address 000000000003 on proper vlan 10
+//
+show mac address-table dynamic device ${dev} address 000000000003
+//
+//
+// enter the config context
+config
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// unset cascade port as 4_words (eDSA)
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+interface range ethernet ${dev}/${port[2]}
+no cascade dsa
+exit
+//remove the FDB entry (need to remove before we destroy the vlan)
+no mac address-table dynamic 000000000003 device ${dev} vlan 10
+// destroy vlan 10
+//no interface vlan device ${dev} vid 10
+//
+end

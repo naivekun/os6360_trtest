@@ -1,0 +1,17 @@
+// TAG:               DSA; hash; cascade; Device Map Table
+// Short Description: disable "read hash from DSA FORWARD" 
+// Description:       disable a hash reading from DSA FORWARD tag of incoming packets.
+//                    Delete entry from Device Map Table
+
+end
+config
+no port-channel load-balance
+interface ethernet ${dev}/${port[1]}
+no cascade dsa
+no cascade dsa-format hash rx
+exit
+
+interface ethernet ${dev}/${port[2]}
+no cascade dsa
+no cascade dsa-format hash tx
+exit

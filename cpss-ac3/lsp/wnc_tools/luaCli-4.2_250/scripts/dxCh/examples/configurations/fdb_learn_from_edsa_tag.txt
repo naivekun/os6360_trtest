@@ -1,0 +1,22 @@
+// TAG:               FDB_learning;eDSA;4_words_DSA;Vlan_classification;cascade;
+// Short Description: Set cascade port for multi-device system , define vlan 10
+// Description:       configuration for test FDB learning for eDSA tag packet come 
+//                    from cascade port with vid = 10 (cascade pvid is 1 (default))
+//
+end
+//
+// enter the config context
+config
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// set cascade port as 4_words (eDSA)
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+interface range ethernet ${dev}/${port[2]}
+cascade dsa 4_words
+exit
+//
+// define vlan 10 (only for FDB actions)
+//
+interface vlan device ${dev} vid 10
+exit
+//
+end

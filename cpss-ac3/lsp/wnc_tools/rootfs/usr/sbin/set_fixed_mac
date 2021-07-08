@@ -1,0 +1,44 @@
+#!/bin/bash
+
+#Set fixed mac
+
+Usage()
+{
+   echo Usage: set_fixed_mac [mac] : set fixed IPv4 MAC addresses 
+}
+
+Check_ubi0_4()
+{
+  #This file is generated in init_ubidata
+  CHK_FILE=/tmp/no_ubi0_4
+
+  if [ -f $CHK_FILE ];
+  then
+     echo Error: There is no data section.
+     exit 1
+  fi
+}
+
+
+if [ $# -ne 1 ];
+then
+   Usage
+   exit 1
+fi
+
+
+Check_ubi0_4
+
+MAC_FOLDER=/usr/data
+
+if [ ! -d $MAC_FOLDER ]; 
+then
+    mkdir -p $MAC_FOLDER
+fi
+ 
+echo $1 > $MAC_FOLDER/wnc_fixed_mac
+sync
+sleep 1
+echo Set fixed mac as $1
+exit 0
+

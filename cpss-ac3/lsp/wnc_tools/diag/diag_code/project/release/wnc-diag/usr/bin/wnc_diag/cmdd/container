@@ -1,0 +1,89 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+
+# include files
+source ${DIR}/const
+source ${DIR}/conf
+source ${DIR}/funcs
+
+CMD_SCRIPT=$1
+CMD=$(basename $CMD_SCRIPT)
+LOG_FILE=$2
+RET_FILE=$3
+MSG_TMP_FILE=${CFG_LOG_TMPFS_MNT}${CFG_LOG_PREFIX}_flow_`echo $CMD | cut -d '.' -f 1`.tmp
+RET_TMP_FILE=${CFG_LOG_TMPFS_MNT}${CFG_LOG_PREFIX}_flow_`echo $CMD | cut -d '.' -f 1`.ret
+
+#create tmp directory
+TMPMSG_DIR=$(dirname $MSG_TMP_FILE)
+mkdir -p $TMPMSG_DIR
+
+CPU_AFFINITY=$CFG_PAR_CMDSET_CPU_AFFINITY
+
+# process force termination
+burn_in_status=$RUNNING
+
+start_time=`date +%s`
+if [ $CFG_RUN_MODE -eq $RUN_UNTIL_TIMEOUT ]; then
+	expire_time=$(($start_time+$CFG_RUN_TIMEOUT_SEC))
+fi
+
+round=0
+while [ -n "`ls ${CFG_PARCMD_TMPFS_MNT}/$RUN_STAMP_FILE 2>/dev/null`" ]; do
+	round=$(($round+1))
+	echo "run group command set $CMD [round $round]" >$MSG_TMP_FILE
+	if [ "${DUMP_LOG_NOW}" == "true" ]; then
+		taskset $CPU_AFFINITY $CMD_SCRIPT $CFG_STOP_MODE $RET_TMP_FILE $STOP_FLAG_FILE $LOG_FILE $LOG_LITE
+	else
+		taskset $CPU_AFFINITY $CMD_SCRIPT $CFG_STOP_MODE $RET_TMP_FILE $STOP_FLAG_FILE &>>$MSG_TMP_FILE
+	fi
+	errno=$?
+	[ $errno -eq 130 ] && errno=0 # ignore interrupt
+	if [ "${DUMP_LOG_NOW}" == "false" ]; then
+		Output_message $MSG_TMP_FILE $LOG_FILE
+	fi
+	Output_result $RET_TMP_FILE $RET_FILE
+	Handle_error $errno $MSG_TMP_FILE $LOG_FILE
+
+	# check error condition
+	if [ $errno -ne 0 ]; then
+		if [ $CFG_STOP_MODE -eq $STOP_ON_ERROR ]; then
+			burn_in_status=$ERROR
+			# force all parallel srcipts termination when error occurred
+			rm -f ${CFG_PARCMD_TMPFS_MNT}/$RUN_STAMP_FILE
+			break
+		fi
+		if [ $CFG_RUN_MODE -ne $RUN_BY_ROUND ] || \
+		   [ $round -lt $CFG_RUN_MAX_ROUND ]; then
+			sleep 4 # suspend for a short time on error
+		fi
+	fi
+
+	# check whether we shall continue run the flow
+	case $CFG_RUN_MODE in
+	$RUN_PERMANENT) # continue unconditionally
+		;;
+	$RUN_UNTIL_TIMEOUT) # continue if timer does not expire
+		cur_time=`date +%s`
+		if [ $cur_time -ge $expire_time ]; then
+			burn_in_status=$STOPPING
+			break
+		fi
+		;;
+	$RUN_BY_ROUND) # cointinue if round does not exceed its maximum number
+		if [ $round -ge $CFG_RUN_MAX_ROUND ]; then
+			burn_in_status=$STOPPING
+			break
+		fi
+		;;
+	*) # never continue
+		burn_in_status=$ERROR
+		break
+		;;
+	esac
+
+	sleep 1
+done
+
+# exit with proper error code
+[ $burn_in_status -eq $ERROR ] && exit 1 || exit 0

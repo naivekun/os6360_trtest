@@ -1,0 +1,12 @@
+// TAG:               cpss-log-error
+// Short Description: configure cpss-log-error
+// Description:       - enable cpss log for specific lib bridge for error type of log
+//					  - enable cpss log for specific lib bridge for info type of log
+//					  - set stack size to be one
+end
+debug-mode
+trace cpss-log lib bridge log-type error
+trace cpss-log lib bridge log-type info
+trace cpss-log stack size 3
+exit
+end

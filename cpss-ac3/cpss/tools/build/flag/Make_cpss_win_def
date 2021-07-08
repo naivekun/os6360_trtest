@@ -1,0 +1,81 @@
+# Common definitions for all Win32 builds
+# included from Make_cpss_def
+
+##### Tools ####
+
+MKDIR_P = $(MKDIR) -p
+
+ADD_MODULE_MK=$(USER_BASE)/tools/build/flag/Add_module_win.mk
+
+_DEP = dep
+_OBJ = obj
+
+#----------------------------------------------------------------------------
+
+APP_WORK_VC=$(COMPILATION_ROOT)/application/work/$(CPU_DIR)
+
+LINK_FLAGS := /opt:noref /debug /nologo /incremental:no /SUBSYSTEM:CONSOLE /entry:mainCRTStartup /pdbtype:sept /machine:I386
+LINK_LIBS := kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib Ws2_32.lib winmm.lib imagehlp.lib /NODEFAULTLIB:LIBC.lib /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcd.lib  /LARGEADDRESSAWARE
+
+ifndef ROL_WINE_ENV 
+INCLUDE_VC10_MD:= \
+        -I"c:/Program Files (x86)/Microsoft Visual Studio 10.0/VC//Include"     \
+        -I"c:/Program Files (x86)/Microsoft SDKs/Windows/v7.0A//Include"
+
+INCLUDE_VC10_CL:= \
+        /I "c:/Program Files (x86)/Microsoft Visual Studio 10.0/VC//Include"     \
+        /I "c:/Program Files (x86)/Microsoft SDKs/Windows/v7.0A//Include"
+endif
+
+
+ifeq (Y, $(MK_DBG))
+        FOREACH_TEST := $(foreach CUR_FILE,$(CDEBUG)    ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),CDEBUG,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(AD_CFLAGS) ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),AD_CFLAGS,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(CFLAGS)    ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),CDEBUG,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(CFLAGS1)   ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),CFLAGS1,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(CFLAGS2)   ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),CFLAGS2,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(CFLAGS_OPT),$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),CFLAGS_OPT,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(CMD_CFLAGS),$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),CMD_CFLAGS,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(CPU_FLAGS) ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),CPU_FLAGS,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(LFLAGS)    ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),LFLAGS,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(OS_DEFINE) ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),OS_DEFINE,$(CUR_FILE),"))
+        FOREACH_TEST := $(foreach CUR_FILE,$(LDFLAGS)   ,$(info "::,$(CPU_BOARD),$(CPU_PRODUCT),LDFLAGS,$(CUR_FILE),"))
+endif
+
+
+ifndef ROL_WINE_ENV
+define make_depend
+	$(if $(filter-out $(DEPENDENCY),DEP_NO),$(MD) -f-  $1 -DMIDL_PASS $(INCLUDE_VC10_MD) $2 -p $(OUT_DIR)/ $< > $(patsubst %.obj,%.dep,$@),)
+endef
+define make_lib
+	@ $(shell [ -d $(dir $@) ] || $(MKDIR_P) $(dir $@))
+	@ $(file >$(basename $@)_commandfile,/nologo /out:$@ $^ /IGNORE:4006)
+	$(if $(COMPILATION_TYPE),,@ $(info AR $(subst $(OUT_DIR)/,,$@)))
+	$(AR) @$(basename $@)_commandfile
+endef
+else
+define make_depend
+	$(if $(filter-out $(DEPENDENCY),DEP_NO),$(MD) $1 -DMIDL_PASS $(INCLUDE_VC10_MD) $2 -MM -o $(patsubst %.obj,%.dep,$@) $<,)
+endef
+define make_lib
+	@ $(shell [ -d $(dir $@) ] || $(MKDIR_P) $(dir $@))
+	$(if $(COMPILATION_TYPE),,@ $(info AR $(subst $(OUT_DIR)/,,$@)))
+	$(AR) /nologo /out:$@ $(patsubst /%.obj, Z:/%.obj, $^) /IGNORE:4006
+endef
+endif
+
+after_clean: pre_build
+#	@ echo after_clean Done
+
+clean_all:
+	@ rm -rf $(OUT_DIR)
+	@ $(shell [ -d $(OUT_DIR) ] || mkdir -p $(OUT_DIR))
+#	@ echo clean_all Done
+
+clean:   after_clean
+#	@ echo clean Done
+
+pre_build_objdir:
+	@ $(foreach dir,$(CPSS_SUBDIRS_LIST_CAP), \
+		$(if $($(dir)_DIRS), \
+			$(shell $(MKDIR_P) $($(dir)_DIRS)) ) )

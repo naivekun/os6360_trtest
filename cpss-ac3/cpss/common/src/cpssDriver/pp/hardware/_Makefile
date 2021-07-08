@@ -1,0 +1,49 @@
+# $(warning "Started") 
+
+LIB_NAME = cpssDrvPpHw.lib
+#List of subfolders to include in build
+MODULES := 
+
+PCI_DIR_EXISTS = NOT_EXISTS
+
+ifeq (EXISTS, $(GT_PCI))
+        PCI_DIR_EXISTS = EXISTS
+endif
+
+ifeq (EXISTS, $(GT_PEX))
+        PCI_DIR_EXISTS = EXISTS
+endif
+
+ifeq (EXISTS, $(PCI_DIR_EXISTS))
+        #SUBDIRS += pci
+        MODULES += pci
+endif
+
+ifeq (EXISTS, $(GT_SMI))
+        #SUBDIRS += smi
+        MODULES += smi
+endif
+
+ifeq (EXISTS, $(GT_I2C))
+        #SUBDIRS += twsi
+        MODULES += twsi
+endif
+
+
+#List of files to include in list
+FILES := \
+ cpssDriverPpHw.c \
+ prvCpssDrvPpHwApi.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+COMMON_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

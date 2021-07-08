@@ -1,0 +1,16 @@
+// TAG:               DSA; hash; cascade;trunk
+// Short Description: disable "read hash from DSA FORWARD"
+// Description:       disable a hash reading from DSA FORWARD tag of incoming packets.
+//                    Reset load-balancing.
+//                    create trunk with 3 tx ports.
+
+end
+config
+no port-channel load-balance
+interface ethernet ${dev}/${port[1]}
+no cascade dsa
+no cascade dsa-format hash
+exit
+interface range ethernet ${dev}/${port[2]},${port[3]},${port[4]}
+no channel-group 12
+exit

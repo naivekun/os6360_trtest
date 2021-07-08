@@ -1,0 +1,98 @@
+# Makefile to build CPSS DX
+#-------------------------------------------------------
+# make -f Make_cpss_Dx link  -s -j 24
+# make -f Make_cpss_Dx clean
+
+include $(USER_BASE)/tools/build/flag/Make_cpss_def
+
+###############################################################################
+# Modules
+###############################################################################
+
+PROJ_NAME := common
+include $(ADD_MODULE_MK)
+PROJ_NAME := mainPpDrv
+include $(ADD_MODULE_MK)
+PROJ_NAME := mainExtUtils
+include $(ADD_MODULE_MK)
+ifeq (YES, $(INCLUDE_TM))
+    PROJ_NAME := mainTmDrv
+    include $(ADD_MODULE_MK)
+endif
+ifeq (EXISTS, $(ASIC_SIMULATION))
+    PROJ_NAME := simulation
+    include $(ADD_MODULE_MK)
+endif
+
+ifneq (YES,$(CPSS_BLOB))
+    PROJ_NAME := cpssEnabler
+    include $(ADD_MODULE_MK)
+endif
+ifeq (YES, $(INCLUDE_UTF))
+    PROJ_NAME := mainUT
+    include $(ADD_MODULE_MK)
+endif
+ifeq (yes,$(CMD_LUA_CLI))
+    PROJ_NAME := mainLuaWrapper
+    include $(ADD_MODULE_MK)
+endif
+ifneq (EXCLUDE_LIB,$(EXCLUDE_GALTIS))
+    PROJ_NAME := mainGaltisWrapper
+    include $(ADD_MODULE_MK)
+endif
+ifeq (1,$(SHARED_MEMORY))
+    ifneq (, $(wildcard $(USER_BASE)/shlibTestClients/_Makefile))
+        PROJ_NAME := shlibTestClients
+        include $(ADD_MODULE_MK)
+    endif
+endif
+ifneq (, $(wildcard $(USER_BASE)/embeddedCommands/_Makefile))
+    PROJ_NAME := embeddedCommands
+    include $(ADD_MODULE_MK)
+endif
+
+
+#-----------------------------------------------------------------
+DEP :=
+OBJ := $(patsubst %.c,$(OUT_DIR)/%.$(_OBJ),$(SRC))
+ifneq (DEP_NO, $(DEPENDENCY))
+	DEP += $(patsubst %.$(_OBJ),%.$(_DEP),$(OBJ))
+	-include $(DEP)
+endif
+
+###############################################################################
+
+ifeq (1,$(SHARED_MEMORY))
+    include $(USER_BASE)/tools/build/flag/Make_cpss_shared_libs
+endif
+
+
+pre_build: pre_build_objdir
+ifeq (linux,$(OS_RUN))
+ifeq (1,$(SHARED_MEMORY))
+	@ test -d $(dir $(CPSSENABLER_LIB)) || mkdir -p $(dir $(CPSSENABLER_LIB))
+endif
+	@ $(foreach drv,$(sort $(DRIVER_LIST)), \
+		$(shell \
+			test -d $(OUT_DIR)/_drivers/$(drv) || mkdir -p $(OUT_DIR)/_drivers/$(drv); \
+			cp -rp $(DRIVER_DIR_$(drv))/. $(OUT_DIR)/_drivers/$(drv) ) )
+endif
+ifeq (win32,$(OS_RUN))
+	@ $(shell [ -d $(APP_WORK_VC) ] || $(MKDIR_P) $(APP_WORK_VC))
+#	@ echo pre_build Done
+endif
+
+MODULES_MAKE_LIB = COMMON CPSSENABLER MAINEXTUTILS MAINGALTISWRAPPER \
+                   EMBEDDEDCOMMANDS MAINLUAWRAPPER MAINTMDRV MAINPPDRV MAINUT SIMULATION
+ifeq (1,$(SHARED_MEMORY))
+    MODULES_MAKE_LIB += MAINLUAWRAPPER
+endif
+_ALL_LIBS += $(foreach dir, $(filter $(MODULES_MAKE_LIB),$(CPSS_SUBDIRS_LIST_CAP)), $($(dir)_LIB))
+ifeq (1,$(SHARED_MEMORY))
+_ALL_LIBS += $(SHLIBTESTCLIENTS_OBJ)
+endif
+
+link: pre_build $(_ALL_LIBS) $(LIBS_SHARED)
+
+cmpl: pre_build $(OBJ)
+#	@ echo compile Done

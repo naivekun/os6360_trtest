@@ -1,0 +1,7 @@
+if { [ UT_suite_enabled suite_2 ] } {
+    UT_suite_start suite_2
+
+    source [ file join $UT_root_dir suite_2 a.exp ]
+
+    UT_suite_end
+}

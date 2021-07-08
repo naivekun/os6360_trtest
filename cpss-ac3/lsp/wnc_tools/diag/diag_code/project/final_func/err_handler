@@ -1,0 +1,11 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+
+# include files
+source ${DIR}/const
+source ${DIR}/conf
+
+# TODO: handle final functional test error
+
+exit 0

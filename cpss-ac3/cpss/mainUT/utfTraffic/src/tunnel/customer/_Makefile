@@ -1,0 +1,26 @@
+# $(warning "Started") 
+#LIB_NAME = tgfTunnelEnhancedUT.lib
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ cstTunnelMplsTests.c \
+ cstTunnelStartIpv4overGreIpv4.c \
+ cstTunnelStartMplsVpws.c \
+ cstTunnelTermVrfId.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

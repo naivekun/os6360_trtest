@@ -1,0 +1,78 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog="`echo $0 | awk -F/ '{print $NF}'`"
+
+function usage() {
+echo "Usage:
+NAME
+       $prog - line rate traffic test suite
+
+SYNOPSIS
+       $prog [-h] COMMAND [COMMAND OPTIONS]
+
+DESCRIPTION
+       $prog is a test suite that expects a COMMAND and COMMAND OPTIONS.
+       \"$prog COMMAND -h\" displays COMMAND OPTIONS of specifc COMMAND.
+       the operation sequence is: create test packets, create traffic loops
+       and determine packets to apply to which loop, run the test for a while,
+       then exam the result.
+
+OPTIONAL OPTIONS
+       -h               Show this help message.
+
+COMMAND
+       edit-pkt         Create/modify/delete a test packet.
+       edit-loop	Create/modify/delete a traffic loop.
+       run              Run the test.
+" >&2
+}
+
+res=$PASS
+
+if [ $# -lt 1 ]; then
+	usage
+	res=$FAIL
+	quit $res
+fi
+
+if [ "$1" == "-h" ]; then
+	usage
+	quit_ok
+fi
+
+# link files under ./prod
+pushd utils/trtest >/dev/null
+./prod_init
+popd >/dev/null
+
+case $1 in
+	"edit-pkt")
+		shift
+		pushd utils/trtest >/dev/null
+		./edit-pkt -P $prog $*
+		popd >/dev/null
+		;;
+	"edit-loop")
+		shift
+		pushd utils/trtest >/dev/null
+		./edit-loop -P $prog $*
+		popd >/dev/null
+		;;
+	"run")
+		shift
+		pushd utils/trtest >/dev/null
+		./run -P $prog $*
+		if [ $? != 0 ]; then
+			res=$FAIL
+		fi
+		popd >/dev/null
+		;;
+	*)
+		usage
+		quit_ok
+		;;
+esac
+
+exit $res

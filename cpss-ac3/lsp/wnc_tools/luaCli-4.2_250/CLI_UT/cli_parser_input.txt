@@ -1,0 +1,1777 @@
+# 2.1 configure
+*help=Entering of Global Configuration mode
+*mode=exec
+configure
+
+# 2.2 exit
+*help=Exiting of global Configuration mode to the next highest mode in the CLI hierarchy
+*mode=config
+exit
+
+# 2.2 exit
+*help=Exiting of interface Configuration mode to the next highest mode in the CLI hierarchy
+*mode=interface
+exit
+
+# 2.3 end
+*help=Finishing of the global Configuration session and return to USER mode
+*mode=config
+end
+
+# 2.3 end
+*help=Finishing of the interface Configuration session and return to USER mode
+*mode=interface
+end
+
+# 2.4 hotkey – ctrl+z
+
+# 2.5 debug-mode
+*help=Switching to debug mode
+*mode=exec
+debug-mode
+
+# 2.6 do
+
+
+# 3.1 reload
+*help=Reloading of the device
+*mode=exec
+reload
+
+# 3.2 hostname
+*help=The host name definition
+*mode=config
++ hostname valid list host1 ddd _a
++ hostname invalid list -1 1host 33333
+hostname %hostname
+
+# 3.2 no hostname
+*help=Clear host name definition
+*mode=config
+no hostname
+
+# 3.3 ip address
+*help=Defining of an IP address for the system
+*mode=interface
++ address_ipv4 valid list 1.1.1.1 224.224.224.224 0.0.0.0
++ address_ipv4 invalid list 257.227.1.0 1.1.1 dda
++ address_ipv4_mask valid list 255.255.255.255 255.128.0.0 255.0.0.0
++ address_ipv4_mask invalid list 255.0.0.1 0192.255.225.225 100
++ default-gateway valid list 1.1.1.2 96.224.224.224 0.0.0.0
++ default-gateway invalid list 257.227.1.0 1.1.1 dda
+ip (address %ipv4 %ipv4_mask) [default-gateway %ipv4_gw]
+
+# 3.3 ip address
+*help=Defining of an IP address for the system
+*mode=vlan_configuration
++ address_ipv4 valid list 1.1.1.1 224.224.224.224 0.0.0.0
++ address_ipv4 invalid list 257.227.1.0 1.1.1 dda
++ address_ipv4_mask valid list 255.255.255.255 255.128.0.0 255.0.0.0
++ address_ipv4_mask invalid list 255.0.0.1 0192.255.225.225 100
++ default-gateway valid list 1.1.1.2 96.224.224.224 0.0.0.0
++ default-gateway invalid list 257.227.1.0 1.1.1 dda
+ip (address %ipv4 %ipv4_mask) [default-gateway %ipv4_gw]
+
+# 3.3 no ip address
+*help=Removing of an IP address definition
+*mode=interface
+no ip address
+
+# 3.3 no ip address
+*help=Removing of an IP address definition
+*mode=vlan_configuration
+no ip address
+
+# 3.4 mac address
+*help=Definition of a MAC address for the system
+*mode=config
++ mac-address valid list 01:00:00:11:22:33 01:00:00:00:00:00 FF:FF:FF:FF:FF:FF
++ mac-address invalid list 001:00:00:11:22:33 00:00:G0:11:22 dddd
+mac address %mac-address
+
+# 3.4 no mac address
+*help=Removing of a MAC address definition
+*mode=config
+no mac address
+
+# 3.5 ping
+*help=Sending of ICMP echo request packets to another node on the network
+*mode=exec
++ ipv4 valid list 1.1.1.1 224.224.224.224 0.0.0.0
++ ipv4 invalid list 257.227.1.0 1.1.1 dda
++ size valid list 68 1000 1518
++ size invalid list -1 0 dd
++ count valid list 0 1 65535
++ count invalid list -1 100000 ff
++ timeout valid list 50 2000 65535
++ timeout invalid list -1 1 100000
+ping %ipv4 [size %packet_size] [count %packet_count] [timeout %time_out]
+
+# 3.5 ping ip
+*help=Sending of ICMP echo request packets to another node on the network
+*mode=exec
++ ipv4 valid list 1.1.1.1 224.224.224.224 0.0.0.0
++ ipv4 invalid list 257.227.1.0 1.1.1 dda
++ size valid list 68 1000 1518
++ size invalid list -1 0 dd
++ count valid list 0 1 65535
++ count invalid list -1 100000 ff
++ timeout valid list 50 2000 65535
++ timeout invalid list -1 1 100000
+ping ip %ipv4 [size %packet_size] [count %packet_count] [timeout %time_out]
+
+# 3.5 ping ipv6
+*help=Sending of ICMP echo request packets to another node on the network
+*mode=exec
++ ipv6 valid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 ::0
++ ipv6 invalid list 1.1.1.1 1F10:AA0A:2:3:4:5:6 ::0::
++ size valid list 68 1000 1518
++ size invalid list -1 0 dd
++ count valid list 0 1 65535
++ count invalid list -1 100000 ff
++ timeout valid list 50 2000 65535
++ timeout invalid list -1 1 100000
+ping ipv6 %ipv6 [size %packet_size] [count %packet_count] [timeout %time_out]
+
+# 3.6 show version
+*help=Displaying of version information for the system
+*mode=exec
+show version
+
+# 3.7 show capabilities
+*help=Displaing of system capabilities
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+show capabilities (device %devID_all)
+
+# 3.8 show system policy-tcam utilization
+*help=Displaying of the policy (PCL) Ternary Content Addressable Memory (TCAM) utilization
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+show system policy-tcam utilization (device %devID_all)
+
+# 3.9 show system router-TTI-tcam utilization
+*help=Displaing ofthe router Ternary Content Addressable Memory (TCAM) utilization
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+show system router-TTI-tcam utilization (device %devID_all)
+
+
+# 4.1 copy
+*help=Copying of files from a source to a destination
+*mode=exec
++ url valid list 192.168.2.1:12347/config.txt http://ru.wikipedia.org/wiki/URL file://vms.myhost.edu/disk/my/notes/note123.txt
++ url invalid list fff -1 http1://ru.wikipedia.org/wiki/URL
+copy File-transfer %url %url
+
+# 4.1 copy
+*help=Copying of files from a source to a destination
+*mode=exec
++ url valid list 192.168.2.1:12347/config.txt http://ru.wikipedia.org/wiki/URL file://vms.myhost.edu/disk/my/notes/note123.txt
++ url invalid list fff -1 http1://ru.wikipedia.org/wiki/URL
+copy Running-config File-transfer %url %url
+
+# 4.1 copy
+*help=Copying of files from a source to a destination
+*mode=exec
++ url valid list 192.168.2.1:12347/config.txt http://ru.wikipedia.org/wiki/URL file://vms.myhost.edu/disk/my/notes/note123.txt
++ url invalid list fff -1 http1://ru.wikipedia.org/wiki/URL
+copy File-transfer %url %url
+
+# 4.1 copy
+*help=Copying of files from a source to a destination
+*mode=exec
++ url valid list 192.168.2.1:12347/config.txt http://ru.wikipedia.org/wiki/URL file://vms.myhost.edu/disk/my/notes/note123.txt
++ url invalid list fff -1 http1://ru.wikipedia.org/wiki/URL
+copy Running-config File-transfer %url %url
+
+# 4.2 show history
+*help=Displaing of the commands that were entered during the current session
+*mode=exec
+show history
+
+# 4.3 show startup-config
+*help=Displaing the contents of the startup configuration file
+*mode=exec
+show startup-config
+
+
+# 5.1 interface
+*help=Entering Interface Configuration (Ethernet, Port Channel) mode
+*mode=config
++ ethernet valid list 0/1 0/2 0/5
++ ethernet invalid list 0/1000 10000/1-4 0/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+interface (ethernet %dev_port | port-channel %trunkID)
+
+# 5.2 interface range ethernet
+*help=Entering of Interface Configuration (Ethernet) mode for multiple ports simultaneously
+*mode=config
++ all valid list 0
++ all invalid list -1 10000 100000 100001 old
++ port-range valid list 0/1-5 0/2-5 0/1
++ port-range invalid list 10001/1-5 0/-1 -1/1
+interface range ethernet (all | all %devId | %port-range) # cli_parser bug for @port-range
+
+# 5.3 shutdown
+*help=Disabling of an interface
+*mode=interface
+shutdown
+
+# 5.3 no shutdown
+*help=Restarting of an interface
+*mode=interface
+no shutdown
+
+# 5.4 speed
+*help=Configuration of the full/half duplex
+*mode=interface
++ port_speed valid list 100 1000 10000
++ port_speed invalid list 51 101 -1
++ mode valid list RXAUI XAUI XLG
++ mode invalid list XXX 45 ddddd
+speed %port_speed [mode %port_interface_mode]
+
+# 5.5 flow-control
+*help=The flow control of a given interface running at full-duplex
+*mode=interface
+flow-control (auto | on | off | rx | tx)
+
+# 5.5 no flow-control
+*help=Restore default flow control mode of a given interface running at full-duplex
+*mode=interface
+no flow-control
+
+# 5.6 flow-control periodic
+*help=Enabling transmission of periodic fc messages
+*mode=interface
+flow-control periodic
+
+# 5.6 no flow-control periodic
+*help=Disabling transmission of periodic fc messages
+*mode=interface
+no flow-control periodic
+
+# 5.7 jumbo-frame
+*help=Enabling of jumbo frames
+*mode=interface
++ max_received_packet_size valid list 1000 9000
++ max_received_packet_size invalid list -1 17000
+jumbo-frame [%max_received_packet_size] # bug in parser.py with absence of possibilyty
+                                        # to set single optinal numeric param
+
+# 5.7 no jumbo-frame
+*help=Disabling of jumbo frames
+*mode=interface
+no jumbo-frame
+
+# 5.8 port-mac learning
+*help=Enabling of MAC addresses learning
+*mode=interface
+port-mac learning
+
+# 5.8 no port-mac learning
+*help=Disabling of MAC addresses learning
+*mode=interface
+no port-mac learning
+
+# 5.9 crc port disable
+*help=Disabling of CRC check on a specific port (or a range of ports)
+*mode=interface
+crc port disable
+
+# 5.9 crc port disable
+*help=Enabling of CRC check on a specific port (or a range of ports)
+*mode=interface
+no crc port disable
+
+# 5.10 show interfaces configuration
+*help=Showing of port configuration
+*mode=exec
++ all valid list 0
++ all invalid list -1 10000 100000 100001 ddd
++ ethernet valid list 0/1-5 0/2-5 0/2
++ ethernet invalid list 0/1000-1001 10000/1-4 0/-2-1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show interfaces configuration (all | all %devId | ethernet %port-range | port-channel %trunkID)
+
+# 5.11 show interfaces status
+*help=Showing of interfaces status
+*mode=exec
++ all valid list 0
++ all invalid list -1 10000 100000 100001 ddd
++ ethernet valid list 0/1-5 0/2-5 0/2
++ ethernet invalid list 0/1000-1001 10000/1-4 0/-2-1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show interfaces status (all | all %devId | ethernet %port-range | port-channel %trunkID)
+
+# 5.12 show interfaces mac counters
+*help=Showing of statistics on traffic seen by the physical interface
+*mode=exec
++ all valid list 0
++ all invalid list -1 10000 100000 100001 ddd
++ ethernet valid list 0/1-5 0/2-5 0/2
++ ethernet invalid list 0/1000-1001 10000/1-4 0/-2-1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show interfaces mac counters (all | all %devId | ethernet %port-range | port-channel %trunkID)
+
+# 5.13 clear mac counters
+*help=Clearing of statistics on an interface
+*mode=exec
++ all valid list 0
++ all invalid list -1 10000 100000 100001 ddd
++ ethernet valid list 0/1-5 0/2-5 0/2
++ ethernet invalid list 0/1000-1001 10000/1-4 0/-2-1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+clear mac counters (all | all %devId | ethernet %port-range | port-channel %trunkID)
+
+# 5.14 interface config auto-detect
+*help=Specifing of a list of <interface mode, speed> pairs
+*mode=interface
+interface config auto-detect [XLG_40000 | RXAUI_10000 | XAUI_10000 | XAUI_20000 | SGMII_1000 | SGMII_2500 | QSGMII_1000] # bug in parser.py
+
+
+# 6.1 channel-group
+*help=Adding of an interface to a channel group
+*mode=interface
++ trunkID valid list 1 10 11
++ trunkID invalid list -1 1000 zzz
+channel-group %trunkID
+
+# 6.1 no channel-group
+*help=Removing of an interface from a channel group
+*mode=interface
++ trunkID valid list 1 10 11
++ trunkID invalid list -1 1000 zzz
+no channel-group %trunkID
+
+# 6.2 show interfaces port-channel
+*help=Show port-channel information for all port channels or for a specific port channel
+*mode=exec
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show interfaces (port-channel %trunkID)
+
+#6.3 port-channel load-balance
+*help=Configuring the load-balancing policy of the port channeling
+*mode=config
+port-channel load-balance (src-dst-mac | src-dst-ip | src-dst-mac-ip | src-dst-mac-ip-port)
+
+#6.3 no port-channel load-balance
+*help=Returning to default of the load-balancing policy of the port channeling
+*mode=config
+no port-channel load-balance
+
+
+# 7.1 mac address-table static
+*help=Adding of MAC-layer station source address to the bridge table
+*mode=config
++ mac-address valid list 01:00:00:11:22:33 01:00:00:00:00:00 FF:FF:FF:FF:FF:FF
++ mac-address invalid list 001:00:00:11:22:33 00:00:G0:11:22 dddd
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vlan valid list 1
++ vlan invalid list -1 33000 34000 35000
++ ethernet valid list 0/1 0/2 0/5
++ ethernet invalid list 0/1000 10000/1-4 0/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+mac address-table static %mac-address (device %devID_all) (vlan %vlanID) [ethernet %dev_port | port-channel %trunkID]
+
+# 7.1 no mac address-table static
+*help=Deleting of the MAC address
+*mode=config
++ mac-address valid list 01:00:00:11:22:33 01:00:00:00:00:00 FF:FF:FF:FF:FF:FF
++ mac-address invalid list 001:00:00:11:22:33 00:00:G0:11:22 dddd
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vlan valid list 1
++ vlan invalid list -1 33000 34000 35000
++ ethernet valid list 0/1 0/2 0/5
++ ethernet invalid list 0/1000 10000/1-4 0/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+no mac address-table static %mac-address (device %devID_all) (vlan %vlanID) [ethernet %dev_port | port-channel %trunkID]
+
+# 7.2 bridge multicast ipv4 mode
+*help=Configuring of the multicast bridging mode for ipv4 multicast packets
+*mode=vlan_configuration
+bridge multicast ipv4 mode (mac-group | ip-group | ip-src-group)
+
+# 7.2 no bridge multicast ipv4 mode
+*help=Setting to default of the multicast bridging mode for ipv4 multicast packets
+*mode=vlan_configuration
+no bridge multicast ipv4 mode
+
+# 7.3 bridge multicast mac address
+*help=Registering of MAC-layer multicast address to the bridge table and assign interfaces to this multicast address
+*mode=vlan_configuration
++ mac-address-mc valid list 01:00:00:11:22:33 01:00:00:00:00:00 FD:FD:FD:FD:FD:FD
++ mac-address-mc invalid list 00:00:00:11:22 00:00:G0:11:22 dddd
++ ethernet valid list 0/1-5 0/2-5 0/1
++ ethernet invalid list 10001/1-5 0/-1 -1/1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+bridge multicast mac address group %mac-address-mc [ethernet %port-range | port-channel %trunkID] # bug in cli_parser: could not add checking for [add | remove]
+
+# 7.3 no bridge multicast mac address
+*help=Deregistering of MAC-layer multicast address to the bridge table and assign interfaces to this multicast address
+*mode=vlan_configuration
++ mac-address-mc valid list 01:00:00:11:22:33 01:00:00:00:00:00 FD:FD:FD:FD:FD:FD
++ mac-address-mc invalid list 00:00:00:11:22 00:00:G0:11:22 dddd
+no bridge multicast mac address group %mac-address-mc
+
+# 7.4 bridge multicast ipv4 address
+*help=Registering of IP-layer multicast address to the bridge table and assign interfaces to this multicast address
+*mode=vlan_configuration
++ ipv4_mc valid list 224.224.224.224 225.226.227.228 240.240.240.240
++ ipv4_mc invalid list 1.1.1.1 100.100.100 asdaf
++ ethernet valid list 0/1-5 0/2-5 0/1
++ ethernet invalid list 10001/1-5 0/-1 -1/1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+bridge multicast ipv4 address group %ipv4_mc [ethernet %port-range | port-channel %trunkID] # bug in cli_parser: could not add checking for [add | remove]
+
+# 7.4 no bridge multicast ipv4 address
+*help=Deregistering of IP-layer multicast address to the bridge table and assign interfaces to this multicast address
+*mode=vlan_configuration
++ ipv4_mc valid list 224.224.224.224 225.226.227.228 240.240.240.240
++ ipv4_mc invalid list 1.1.1.1 100.100.100 asdaf
+no bridge multicast ipv4 address group %ipv4_mc
+
+# 7.5 bridge multicast ipv4 source-group address
+*help=Registering of source IP address - multicast IP address pair to the bridge table and assign interfaces to this source-group pair
+*mode=vlan_configuration
++ ipv4 valid list 1.1.1.1 224.224.224.224 0.0.0.0
++ ipv4 invalid list 257.227.1.0 1.1.1 dda
++ ipv4_mc valid list 224.224.224.224 225.226.227.228 240.240.240.240
++ ipv4_mc invalid list 1.1.1.1 100.100.100 asdaf
++ ethernet valid list 0/1-5 0/2-5 0/1
++ ethernet invalid list 10001/1-5 0/-1 -1/1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+bridge multicast ipv4 source-group address source %ipv4 group %ipv4_mc [ethernet %port-range | port-channel %trunkID] # bug in cli_parser: could not add checking for [add | remove]
+
+# 7.5 no bridge multicast ipv4 source-group address
+*help=Deregistering of source IP address - multicast IP address pair to the bridge table and assign interfaces to this source-group pair
+*mode=vlan_configuration
++ ipv4 valid list 1.1.1.1 224.224.224.224 0.0.0.0
++ ipv4 invalid list 257.227.1.0 1.1.1 dda
++ ipv4_mc valid list 224.224.224.224 225.226.227.228 240.240.240.240
++ ipv4_mc invalid list 1.1.1.1 100.100.100 asdaf
+no bridge multicast ipv4 source-group address source %ipv4 group %ipv4_mc
+
+# 7.6 bridge multicast ipv6 mode
+*help=Configuring of the multicast bridging mode for ipv6 multicast packets
+*mode=vlan_configuration
+bridge multicast ipv6 mode (mac-group | ip-group | ip-src-group)
+
+# 7.6 no bridge multicast ipv6 mode
+*help=Setting to default of the multicast bridging mode for ipv6 multicast packets
+*mode=vlan_configuration
+no bridge multicast ipv6 mode
+
+# 7.7 bridge multicast ipv6 address
+*help=Registering of IP-layer multicast address to the bridge table and assign interfaces to this multicast address
+*mode=vlan_configuration
++ ipv6_mc valid list FF01:1111:2:3:4:5:6:7 FF01:1111::7 FF01:0::
++ ipv6_mc invalid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 1F10:0::
++ ethernet valid list 0/1-5 0/2-5 0/1
++ ethernet invalid list 10001/1-5 0/-1 -1/1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+bridge multicast ipv6 address group %ipv6_mc [ethernet %port-range | port-channel %trunkID] # bug in cli_parser: could not add checking for [add | remove]
+
+# 7.7 no bridge multicast ipv6 address
+*help=Deregistering of IP-layer multicast address to the bridge table and assign interfaces to this multicast address
+*mode=vlan_configuration
++ ipv6_mc valid list FF01:1111:2:3:4:5:6:7 FF01:1111::7 FF01:0::
++ ipv6_mc invalid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 1F10:0::
+no bridge multicast ipv6 address group %ipv6_mc
+
+# 7.8 bridge multicast ipv6 source-group address
+*help=Registering of IP-layer multicast address to the bridge table and assign interfaces to this multicast address
+*mode=vlan_configuration
++ ipv6 valid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 ::0
++ ipv6 invalid list 1.1.1.1 1F10:AA0A:2:3:4:5:6 ::0::
++ ipv6_mc valid list FF01:1111:2:3:4:5:6:7 FF01:1111::7 FF01:0::
++ ipv6_mc invalid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 1F10:0::
++ ethernet valid list 0/1-5 0/2-5 0/1
++ ethernet invalid list 10001/1-5 0/-1 -1/1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+bridge multicast ipv6 source-group address source %ipv6 group %ipv6_mc [ethernet %port-range | port-channel %trunkID] # bug in cli_parser: could not add checking for [add | remove]
+
+# 7.8 no bridge multicast ipv6 address
+*help=Deregistering of IP-layer multicast address to the bridge table and assign interfaces to this multicast address
+*mode=vlan_configuration
++ ipv6 valid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 ::0
++ ipv6 invalid list 1.1.1.1 1F10:AA0A:2:3:4:5:6 ::0::
++ ipv6_mc valid list FF01:1111:2:3:4:5:6:7 FF01:1111::7 FF01:0::
++ ipv6_mc invalid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 1F10:0::
+no bridge multicast ipv6 source-group address source %ipv6 group %ipv6_mc
+
+# 7.9. bridge multicast unregistered
+*help=Configuring of the forwarding state of unregistered multicast addresses
+*mode=interface
+bridge multicast unregistered (forward | drop)
+
+# 7.9. no bridge multicast unregistered
+*help=Setting to default of the forwarding state of unregistered multicast addresses
+*mode=interface
+no bridge multicast unregistered
+
+# 7.10 mac address-table aging-time
+*help=Setting of the aging time of the address table
+*mode=config
++ second valid list 0 5000 10000
++ second invalid list -1 1000001 fff
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+mac address-table aging-time %second (device %devID_all)
+
+# 7.10 no mac address-table aging-time
+*help=Setting of the aging time of the address table to default
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no mac address-table aging-time (device %devID_all)
+
+# 7.11 mac address-table aging-mode
+*help=Setting the aging mode of the address table
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+mac address-table aging-mode (auto-removal | no-removal) (device %devID_all)
+
+# 7.11 mac address-table aging-mode
+*help=Setting the aging mode of the address table
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no mac address-table aging-mode (device %devID_all)
+
+# 7.12 clear mac address-table dynamic
+*help=Removing of dynamic entries from the forwarding database
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ address valid list 00:00:00:11:22:33 00:00:00:00:00:00 FF:FF:FF:FF:FF:FF
++ address invalid list 00:00:00:11:22 00:00:G0:11:22 dddd
++ ethernet valid list 0/1 0/2 0/5
++ ethernet invalid list 0/1000 10000/1-4 0/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
++ vlan valid list 1
++ vlan invalid list -1 33000 34000 35000
+clear mac address-table dynamic (device %devID_all) (address %mac-address | ethernet %dev_port | port-channel %trunkID | vlan %vlanId) [skipped]
+
+# 7.13 show mac address-table
+*help=Showing of entries in the bridge-forwarding database
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vlan valid list 1
++ vlan invalid list -1 33000 34000 35000
++ ethernet valid list 0/1 0/2 0/5
++ ethernet invalid list 0/1000 10000/1-4 0/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
++ address valid list 00:00:00:11:22:33 00:00:00:00:00:00 FF:FF:FF:FF:FF:FF
++ address invalid list 00:00:00:11:22 00:00:G0:11:22 dddd
+show mac address-table [static | dynamic | all] (device %devID_all) [vlan %vlanId] [ethernet %dev_port | port-channel %trunkID] [address %mac-address] [skipped]
+
+# 7.14 show mac address-table count
+*help=Showing of the number of addresses present in the Forwarding Database
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vlan valid list 1
++ vlan invalid list -1 33000 34000 35000
++ ethernet valid list 0/1 0/2 0/5
++ ethernet invalid list 0/1000 10000/1-4 0/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show mac address-table count (device %devID_all) [vlan %vlanId] [ethernet %dev_port | port-channel %trunkID] [static | dynamic]
+
+# 7.15 show mac address-table aging
+*help=Showing of the aging time of addresses present in the Forwarding Database
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+show mac address-table aging (device %devID_all)
+
+# 7.16 show bridge multicast mode
+*help=Showing of multicast bridging mode
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vlan valid list 1
++ vlan invalid list -1 33000 34000 35000
+show bridge multicast mode (device %devID_all) [vlan %vlanId]
+
+# 7.17 show bridge multicast address-table
+*help=Showing of the bridge multicast address table information
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vlan valid list 1
++ vlan invalid list -1 33000 34000 35000
++ address valid list 01:00:00:11:22:33 224.224.224.224 FF00:FF::0
++ address invalid list 00:00:00:11:22 1.1.1.1 0::
++ source valid list 1.1.1.1 1:1:1::0 0::
++ source invalid list 256.256.256.256 ::0:: 0:::0
+show bridge multicast address-table (device %devID_all) [vlan %vlanId] [address %multicast] [source %ipv4_ipv6] [format ip | format mac]
+
+# 7.18 show bridge multicast unregistered
+*help=Showing of the unregistered multicast command configuration
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ ethernet valid list 0/1 0/2 0/5
++ ethernet invalid list 0/1000 0/1-4 10/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show bridge multicast unregistered (device %devID_all) [ethernet %dev_port | port-channel %trunkID]
+
+
+# 8.1 port monitor
+*help=Starting of port monitoring session
+*mode=interface
++ dev_port valid list 0/1 0/2 0/10
++ dev_port invalid list 0/1000-1001 10000/1 0/-2
+port monitor %dev_port [rx | tx | both]
+
+# 8.1 no port monitor
+*help=Stopping of port monitoring session
+*mode=interface
++ dev_port valid list 0/1 0/2 0/10
++ dev_port invalid list 0/1000-1001 10000/1 0/-2
+no port monitor %dev_port
+
+# 8.2 show port monitor
+*help=Showing of port monitoring status
+*mode=exec
+show port monitor
+
+
+# 9.1 interface vlan
+*help=Entering of Vlan Interface Configuration mode
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vid valid list 1
++ vid invalid list -1 33000 34000 35000
+interface vlan (device %devID_all) (vid %vlanID)
+
+# 9.1 no interface vlan
+*help=Deleting of Vlans
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vid valid list 1
++ vid invalid list -1 33000 34000 35000
+no interface vlan (device %devID_all) (vid %vlanID)
+
+# 9.2 interface range vlan
+*help=Entering of Vlan range Interface Configuration mode
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vid valid list 1
++ vid invalid list -1 33000 34000 35000
+interface range vlan (device %devID_all) (vid %vlan-range | all)
+
+# 9.2 interface range vlan
+*help=Deleting of Vlans range
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ vid valid list 1
++ vid invalid list -1 33000 34000 35000
+no interface range vlan (device %devID_all) (vid %vlan-range | all)
+
+# 9.3 vlan-mac learning
+*help=Enabling of learning of MAC addresses on a specific Vlans
+*mode=vlan_configuration
+vlan-mac learning
+
+# 9.3 no vlan-mac learning
+*help=Disabling of learning of MAC addresses on a specific Vlans
+*mode=vlan_configuration
+no vlan-mac learning
+
+# 9.4 vlan-mtu
+*help=Setting of the maximum packet size on a VLAN (or range of Vlans)
+*mode=vlan_configuration
+vlan-mtu
+
+# 9.4 no vlan-mtu
+*help=Setting of the maximum packet size on a VLAN (or range of Vlans) to default
+*mode=vlan_configuration
+no vlan-mtu
+
+# 9.5 switchport allowed vlan add
+*help=Add VLANs to ports
+*mode=interface
++ vlan-range valid list 1
++ vlan-range invalid list -1-0 33000-33001 34000-34010 35000-36000
+switchport allowed vlan add %vlan-range (tagged | untagged)
+
+# 9.5 switchport allowed vlan remove
+*help=Delete VLANs from ports
+*mode=interface
++ vlan-range valid list 1
++ vlan-range invalid list -1-0 33000-33001 34000-34010 35000-36000
+switchport allowed vlan remove %vlan-range
+
+# 9.6 switchport pvid
+*help=Setting the port PVID
+*mode=interface
++ vlanID valid list 1
++ vlanID invalid list -1 33000 34000 35000
+switchport pvid %vlanID
+
+# 9.6 no switchport pvid
+*help=Setting the default port PVID
+*mode=interface
+no switchport pvid
+
+# 9.7 switchport ingress-filtering
+*help=Enabling of ingress filtering of n interface
+*mode=interface
+switchport ingress-filtering
+
+# 9.7 no switchport ingress-filtering
+*help=Disabling of ingress filtering of an interface
+*mode=interface
+no switchport ingress-filtering
+
+# 9.8 switchport customer vlan
+*help=Setting of the port’s outer (service) VLAN when the interface is in customer mode
+*mode=interface
++ vlanID valid list 1
++ vlanID invalid list -1 33000 34000 35000
+switchport customer vlan %vlanID
+
+# 9.8 no switchport customer vlan
+*help=Setting to default of the port’s outer (service) VLAN when the interface is in customer mode
+*mode=interface
+no switchport customer vlan
+
+# 9.9 cascade dsa
+*help=Setting of the port to be DSA-tagged
+*mode=interface
+cascade dsa (regular | extended)
+
+# 9.9 no cascade dsa
+*help=Returning to default of the port to be DSA-tagged
+*mode=interface
+no cascade dsa
+
+# 9.10 show vlan
+*help=Showing of vlan information
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ tag valid list 1
++ tag invalid list -1 33000 34000 35000
+show vlan (device %devID_all) [tag %vlanID]
+
+# 9.11 show protocols-groups
+*help=Showing of protocols-groups information
+*mode=exec
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
+show protocols-groups %devID
+
+# 9.12 show interfaces switchport
+*help=Showing of switchport configuration
+*mode=exec
++ ethernet valid list 0/1 0/2 0/2
++ ethernet invalid list 0/1000-1001 10000/1 0/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show interfaces switchport (ethernet %dev_port | port-channel %trunkID)
+
+
+# 10.1 access-list
+*help=Switch to access list mode
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ pcl-ID valid list 1 10 11
++ pcl-ID invalid list -1 100000 zzz
+access-list (device %devID_all) (pcl-ID %pclID)
+
+# 10.2 delete access-list
+*help=Delete an access list
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ pcl-id valid list 1 10 11
++ pcl-id invalid list -1 100000 zzz
+delete access-list (device %devID_all) (pcl-id %pclID)
+
+# 10.3 policy-id
+*help=Set a policy rule
+*mode=config
++ policerID valid list 1 10
++ policerID invalid list -1 100000 zzz
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ police valid list 100 10000
++ police invalid list -1 0 zzz
++ burst valid list 3000 10000
++ burst invalid list -1 100 zzz
++ exceed-action valid drop policed-dscp-transmit
++ exceed-action invalid list -1 100000 zzz
+policy-id %policerID (device %devID_all) (police %commitedRateKbps) (burst %commitedBurstByte) (exceed-action %exceedAction)
+
+# 10.4 rule-id
+*help=Creating of rules for an Access List (ACL)
+*mode=config-acl
++ ruleID valid list 1 10
++ ruleID invalid list -1 100000 zzz
++ set-vpt valid list 0 7
++ set-vpt invalid list -1 8 zzz
++ set-dscp valid list 0 63
++ set-dscp invalid list -1 64 zzz
++ set-queue valid list 1 8
++ set-queue invalid list 0 9 zzz
+rule-id %ruleID (action permit | action deny) [set-vpt %priority | set-dscp %dscp | set-queue %vptQueue]
+
+# 10.4 rule-id
+*help=Creating of rules for an Access List (ACL)
+*mode=config-acl
++ ruleID valid list 1 10
++ ruleID invalid list -1 100000 zzz
++ ipv6-source_ipv6 valid list 1111:: 0000:0000:0000:0000:0000:0000:0000:0000  0000::0000
++ ipv6-source_ipv6 invalid list 11111:: 0000:00z0:0000:0000:0000:0000:0000:0000  0000:
++ ipv6-source_ipv6Mask valid list 1111:: 0000:0000:0000:0000:0000:0000:0000:0000  0000::0000 /128
++ ipv6-source_ipv6Mask invalid list -1 /342 zzz
++ ipv6-destination_ipv6 valid list 1111:: 0000:0000:0000:0000:0000:0000:0000:0000  0000::0000
++ ipv6-destination_ipv6 invalid list 11111:: 0000:00z0:0000:0000:0000:0000:0000:0000  0000:
++ ipv6-destination_ipv6Mask valid list 1111:: 0000:0000:0000:0000:0000:0000:0000:0000  0000::0000 /128
++ ipv6-destination_ipv6Mask invalid list -1 /342 zzz
+rule-id %ruleID (action permit | action deny) [ipv6-source %ipv6 %ipv6Mask] [ipv6-destination %ipv6 %ipv6Mask]
+
+# 10.4 rule-id
+*help=Creating of rules for an Access List (ACL)
+*mode=config-acl
++ ruleID valid list 1 10
++ ruleID invalid list -1 100000 zzz
++ mac-source_mac-address valid list 00:00:00:00:00:00  FF:FF:FF:FF:FF:FF
++ mac-source_mac-address invalid list 10:00:00:00:00 z
++ mac-source_macMask valid list 00:00:00:00:00:00  FF:FF:FF:FF:FF:FF /48
++ mac-source_macMask invalid list -1 /342 10:00:00:00:0
++ mac-destination_mac-address valid list 00:00:00:00:00:00  FF:FF:FF:FF:FF:FF
++ mac-destination_mac-address invalid list 10:00:00:00:00 z
++ mac-destination_macMask valid list 00:00:00:00:00:00  FF:FF:FF:FF:FF:FF /48
++ mac-destination_macMask invalid list -1 /342 10:00:00:00:0
+rule-id %ruleID (action permit | action deny) [mac-source %mac-address %macMask] [mac-destination %mac-address %macMask]
+
+# 10.4 rule-id
+*help=Creating of rules for an Access List (ACL)
+*mode=config-acl
++ ruleID valid list 1 10
++ ruleID invalid list -1 100000 zzz
++ ipv4-source_ipv4 valid list 1.2.3.4  255.255.255.255
++ ipv4-source_ipv4 invalid list 256.0.0.0 z
++ ipv4-source_ipv4Mask valid list 1.2.3.4 /32 /0
++ ipv4-source_ipv4Mask invalid list 2555.5.5.5 /43 z
++ ipv4-destination_ipv4 valid list 1.2.3.4  255.255.255.255
++ ipv4-destination_ipv4 invalid list 256.0.0.0 z
++ ipv4-destination_ipv4Mask valid list 1.2.3.4 /32 /0
++ ipv4-destination_ipv4Mask invalid list 2555.5.5.5 /43 z
+rule-id %ruleID (action permit | action deny) [ipv4-source %ipv4 %ipv4Mask] [ipv4-destination %ipv4 %ipv4Mask]
+
+# 10.4 rule-id
+*help=Creating of rules for an Access List (ACL)
+*mode=config-acl
++ ruleID valid list 1 10
++ ruleID invalid list -1 100000 zzz
++ dscp valid list 0 63
++ dscp invalid list -1 64 zzz
++ source-port valid list 0 1
++ source-port invalid list -1 364 zzz
++ isTagged valid list true false
++ isTagged invalid list 0 9 zzz
+rule-id %ruleID (action permit | action deny) [dscp %dscp] [source-port %portNum] [isTagged %bool]
+
+# 10.4 rule-id
+*help=Creating of rules for an Access List (ACL)
+*mode=config-acl
++ ruleID valid list 1 10
++ ruleID invalid list -1 100000 zzz
++ vid valid list 1
++ vid invalid list -1 4096 zzz
++ up valid list 0 7
++ up invalid list -1 8 zzz
++ qosProfile valid list 0 255
++ qosProfile invalid list -1 256 zzz
++ policy valid list 1 2
++ policy invalid list -1 9000000 zzz
+rule-id %ruleID (action permit | action deny) [vid %vlanID] [up %priority] [qosProfile %qos_profile] [policy %policerID]
+
+# 10.5 delete rule-id
+*help=Delete a rule id
+*mode=config-acl
++ rule-id valid list 1 10
++ rule-id invalid list -1 100000 zzz
+delete (rule-id %ruleID)
+
+# 10.6 qos map policed-dscp
+*help=Map a list of DSCP values to a specific value
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ dscp-list valid list 1,2,4 0,63
++ dscp-list invalid list a,b,c -2
++ to valid list 0 63
++ to invalid list 0/1000-1001 -2 zz
+qos map policed-dscp (device %devID_all) (dscp-list %dscpMap) (to %dscpVal)
+
+# 10.6 no qos map policed-dscp
+*help=Map a list of DSCP values to their default value
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ dscp-list valid list 1,2,4 0,63
++ dscp-list invalid list a,b,c -2
+no qos map policed-dscp (device %devID_all) (dscp-list %dscpMap)
+
+# 10.7 qos map dscp-queue
+*help=Map a list of DSCP values to a queue id
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ dscp-list valid list 1,2,4 0,63
++ dscp-list invalid list a,b,c -2
++ to valid list 1 2 8
++ to invalid list 0 9 -1
+qos map dscp-queue (device %devID_all) (dscp-list %dscpMap) (to %vptQueue)
+
+# 10.7 no qos map dscp-queue
+*help=Map a list of DSCP values to their default value
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ dscp-list valid list 1,2,4 0,63
++ dscp-list invalid list a,b,c -2
+no qos map dscp-queue (device %devID_all) (dscp-list %dscpMap)
+
+# 10.8 qos map vpt-queue
+*help=Map a list of vpt values to a queue
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ queue-id valid list 1 2 4
++ queue-id invalid list a,b,c -2
++ vpt valid list 1,2,7 0
++ vpt invalid list a,b,c -2 8
+qos map vpt-queue (device %devID_all) (queue-id %vptQueue) (vpt %vptList)
+
+# 10.8 no qos map vpt-queue
+*help=Map a queue id to its default value
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ queue-id valid list 1 2 4
++ queue-id invalid list a,b,c -2
+no qos map vpt-queue (device %devID_all) [queue-id %vptQueue]
+
+# 10.9 qos map dscp-dp
+*help=Map a list of dscp values to a dp
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ dscp-list valid list 1,2,4 0,63
++ dscp-list invalid list a,b,c -2
++ to valid list 0 2
++ to invalid list 1 a
+qos map dscp-dp (device %devID_all) (dscp-list %dscpMap) (to %dropPrecedence)
+
+# 10.9 no qos map dscp-dp
+*help=Map a list of dscp values to the default dp
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ dscp-list valid list 1,2,4 0,63
++ dscp-list invalid list a,b,c -2
+no qos map dscp-dp (device %devID_all) [dscp-list %dscpMap]
+
+# 10.10 qos trust
+*help=Set an interface's qos trust mode
+*mode=interface
++ trustMode valid list vpt dscp dscp-vpt
++ trustMode invalid list 1 -2 a
+qos trust %trustMode
+
+# 10.10 no qos trust
+*help=Set an interface's qos trust mode to default
+*mode=interface
+no qos trust
+
+# 10.11 qos traffic shape
+*help=Set qos traffic shaper parameters
+*mode=interface
+*modeSetCmd=configure
+*modeSetCmd=interface ethernet 0/0
++ commited-rate valid list 300 88888
++ commited-rate invalid list 0/1000-1001 -2 zz
++ commited-burst valid list 4096 1000000 10777000
++ commited-burst invalid list 0 3000 a
+qos traffic shape (commited-rate %commitedRateKbpsShape) (commited-burst %commitedBurst4KShape)
+
+# 10.11 no qos traffic shape
+*help=Disable interface's qos traffic shaper
+*mode=interface
+no qos traffic shape
+
+# 10.12 qos traffic shape queue
+*help=Set qos traffic shaper parameters
+*mode=interface
+*modeSetCmd=configure
+*modeSetCmd=interface ethernet 0/0
++ vptQueue valid list 1 8
++ vptQueue invalid list 0 9 zz
++ commited-rate valid list 300 88888
++ commited-rate invalid list 0/1000-1001 -2 zz
++ commited-burst valid list 4096 1000000 10777000
++ commited-burst invalid list 0 3000 a
+qos traffic shape queue %vptQueue (commited-rate %commitedRateKbpsShape) (commited-burst %commitedBurst4KShape)
+
+# 10.12 no qos traffic shape queue
+*help=Set qos traffic shaper parameters
+*mode=interface
+no qos traffic shape queue
+
+# 10.13	qos wrr-queue bandwidth
+*help=Set device's wrr-queue parameters
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ weight valid list 1,2,3,4,5,6,7,8 sp,sp,sp,sp,sp,sp,sp,sp 1,2,3,4,sp,sp,sp,sp
++ weight invalid list sp,sp,sp,sp,sp 0,-4,1,2,3,4,5,6 zz
+qos wrr-queue bandwidth (device %devID_all) (weight %queueWeightOrSp)
+
+# 10.13	no qos wrr-queue bandwidth
+*help=Disable device's wrr-queue
+*mode=config
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
+no qos wrr-queue bandwidth (device %devID_all)
+
+# 10.14 qos wrr-queue threshold
+*help=Assigning of queue thresholds globally
+*mode=config
++ vptQueue valid list 1 2 8
++ vptQueue invalid list 0 9 -1
++ threshold-percentage valid list 1 50 99
++ threshold-percentage invalid list -1 101 dd
+qos wrr-queue threshold %vptQueue %threshold-percentage
+
+# 10.14 no qos wrr-queue threshold queue-id
+*help=Returning to default of queue thresholds globally
+*mode=config
++ vptQueue valid list 1 2 8
++ vptQueue invalid list 0 9 -1
+no qos wrr-queue threshold %vptQueue
+
+# 10.15	service-acl
+*help=Set access control to an interface
+*mode=interface
++ pcl-ID valid list 0 100
++ pcl-ID invalid list 0/1000-1001 -2 zz
++ lookup valid list 0 1
++ lookup invalid list -2 2 a
+service-acl (pcl-ID %pclID) (lookup %lookupNum)
+
+# 10.15	no service-acl
+*help=Disable access control to an interface
+*mode=interface
++ pcl-ID valid list 0 100
++ pcl-ID invalid list 0/1000-1001 -2 zz
+no service-acl (pcl-ID %pclID)
+
+# 10.16 show policy
+*help=Showing of policy valid configuration
+*mode=exec
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ policy-id  valid list 1
++ policy-id  invalid list 0/1000-1001 -2 zz
+show policy (device %devID) [policy-id %policy-id]
+
+# 10.17	show access-list
+*help=Show pcl rules
+*mode=exec
++ device valid list 0 all
++ device invalid list 0/1000-1001 -2 zz
++ pcl-id valid list 0 100
++ pcl-id invalid list 0/1000-1001 -2 zz
+show access-list (device %devID) [pcl-id %pclID]
+
+# 10.18	show qos interface
+*help=Show qos interface parameters
+*mode=exec
++ qosInterfaceOptions valid list buffers-threshold vpt-queue policed-dscp
++ qosInterfaceOptions invalid list dscp 2 a
++ port-channel valid list 1 4
++ port-channel invalid list -2 a
++ ethernet valid list 0/1 0/3-4
++ ethernet invalid list 1-3 0,0
+show qos map %qosInterfaceOptions
+
+# 10.19	show qos map
+*help=Show qos map parameters
+*mode=exec
++ qosMapOptions valid list policed-dscp dscp-queue dscp-dp vpt-queue buffers-threshold
++ qosMapOptions invalid list 2 a
+show qos map (%qosMapOptions)
+
+
+# 11.1 ip routing
+*help=Enable of routing globally
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+ip routing (device %devID_all)
+
+# 11.1 ip routing
+*help=Disable of routing globally
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no ip routing (device %devID_all)
+
+# 11.2 ip routing
+*help=Enabling of routing on an interface
+*mode=interface
+ip routing
+
+# 11.2 ip routing
+*help=Disabling of routing on an interface
+*mode=interface
+no ip routing
+
+# 11.3 ip route
+*help=Creating of IP Routes
+*mode=config
++ ipv4 valid list 1.1.1.1 224.224.224.224 0.0.0.0
++ ipv4 invalid list 257.227.1.0 1.1.1 dda
++ ipv4-mask valid list 255.255.255.255 255.255.255.0 128.0.0.0
++ ipv4-mask invalid list 255.255.0.255 0.0.1 ddd
++ nexthop valid list 0 1 5
++ nexthop invalid list -1 f 4294967296
+ip route %ipv4 %ipv4-mask (nexthop %next-hop-id)
+
+# 11.3 ip route
+*help=Destroing of IP Routes
+*mode=config
++ ipv4 valid list 1.1.1.1 224.224.224.224 0.0.0.0
++ ipv4 invalid list 257.227.1.0 1.1.1 dda
++ ipv4-mask valid list 255.255.255.255 255.255.255.0 128.0.0.0
++ ipv4-mask invalid list 255.255.0.255 0.0.1 ddd
+no ip route %ipv4 %ipv4-mask
+
+# 11.4 ipv6 route
+*help=Creating of IP v6 Routes
+*mode=config
++ ipv6 valid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 ::0
++ ipv6 invalid list 1.1.1.1 1F10:AA0A:2:3:4:5:6 ::0::
++ ipv6-mask valid list /32 /16 /1
++ ipv6-mask invalid list /-1 1 /0
++ nexthop valid list 0 1 5
++ nexthop invalid list -1 f 4294967296
+# ipv6 route %ipv6 %ipv6-mask (nexthop %next-hop-id)
+
+# 11.4 ipv6 route
+*help=Destroing of IP v6 Routes
+*mode=config
++ ipv6 valid list 1F10:AA0A:2:3:4:5:6:7 1F10:AA0A::7 ::0
++ ipv6 invalid list 1.1.1.1 1F10:AA0A:2:3:4:5:6 ::0::
++ ipv6-mask valid list /32 /16 /1
++ ipv6-mask invalid list /-1 1 /0
+# no ipv6 route %ipv6 %ipv6-mask
+
+# 11.5 ip next-hop
+*help=Configuring of unicast/multicast route next hop entry
+*mode=config
++ next-hop-id valid list 0 1 5
++ next-hop-id invalid list -1 f 4294967296
++ vid valid list 1
++ vid invalid list -1 33000 34000 35000
++ ethernet valid list 0/1 0/2 0/10
++ ethernet invalid list 0/1000-1001 10000/1 0/-2
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
++ mac valid list 01:00:00:11:22:33 01:00:00:00:00:00 FF:FF:FF:FF:FF:FF
++ mac invalid list 001:00:00:11:22:33 00:00:G0:11:22 dddd
+ip next-hop %next-hop-id (vid %vlanId) (ethernet %dev_port| port-channel %trunkID) (mac %mac-address)
+
+# 11.5 ip next-hop
+*help=Deleting of unicast/multicast route next hop entry
+*mode=config
++ next-hop-id valid list 0 1 5
++ next-hop-id invalid list -1 f 4294967296
+no ip next-hop %next-hop-id
+
+# 11.6 show ip route
+*help=Showing of the global status of IP routing and the configured IP Routes
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+show ip route (device %devID_all)
+
+# 11.7 show ipv6 route
+*help=Showing of the global status of IP v6 routing and the configured IP v6 Routes
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+# show ipv6 route (device %devID_all)
+
+# 11.8 show ip next-hop
+*help=Showing of the next-hop table
+*mode=exec
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+show ip next-hop (device %devID_all)
+
+# 11.* ip arp
+*help=Writing of the MAC address to the router ARP table
+*mode=config
++ arp_entry_index valid list 1 2 3
++ arp_entry_index invalid list 4294967297 -1 ddd
++ mac-address valid list 00:00:00:11:22:33 00:00:00:00:00:00 FF:FF:FF:FF:FF:FF
++ mac-address invalid list 00:00:00:11:22 00:00:G0:11:22 dddd
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+ip arp %arp_entry_index %mac-address (device %devID_all)
+
+# 11.* show ip arp
+*help=Reading of the entries from the router ARP table
+*mode=exec
++ arp-index valid list 1 2 3
++ arp-index invalid list 4294967297 -1 ddd
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+show ip arp [arp-index %arp_entry_index] (device %devID_all) # bug with arp-index
+
+
+# 12.1 dce priority-flow-control enable
+*help=Enabling of PFC for an interface per a list of queues
+*mode=interface
++ priority valid list 0 4 7
++ priority invalid list -1 10 ddd
+dce priority-flow-control enable (priority %priority)
+
+# 12.1 no dce priority-flow-control enable
+*help=Disabling of PFC for an interface per a list of queues
+*mode=interface
+no dce priority-flow-control enable
+
+# 12.2 dce qcn cnm
+*help=Configuring of the priority to use for all Congestion Notification Messages (CNMs) transmitted by the device
+*mode=config
++ priority valid list 0 4 7
++ priority invalid list -1 10 ddd
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce qcn cnm (priority %priority) (device %devID_all)
+
+# 12.2 no dce qcn cnm
+*help=Setting of default of the priority to use for all Congestion Notification Messages (CNMs) transmitted by the device
+*mode=config
++ priority valid list 0 4 7
++ priority invalid list -1 10 ddd
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no dce qcn cnm (priority %priority) (device %devID_all)
+
+# 12.3 dce qcn cp enable queue
+*help=Enabling of CP creation for an interface
+*mode=interface
+dce qcn cp enable queue
+
+# 12.3 no dce qcn cp enable
+*help=Disabling of CP creation for an interface
+*mode=interface
+no dce qcn cp enable
+
+# 12.4 dce qcn cp
+*help=Configuring of the Feedback Weight of a QCN egress queue
+*mode=config
++ feedback-weight valid list -10 0 10
++ feedback-weight invalid list -20 100 fff
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce qcn cp (feedback-weight %feedback_weight) (device %devID_all)
+
+# 12.4 no dce qcn cp
+*help=Setting to default of the Feedback Weight of a QCN egress queue
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no dce qcn cp feedback-weight (device %devID_all)
+
+# 12.5 dce qcn cp set-point pfc
+*help=Configuring of the QCN set-point of an egress queue
+*mode=config
++ pfc valid list 512 4294967295 1000
++ pfc invalid list -1 4294967297 fff
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce qcn cp set-point (pfc %set_point_bytes) (device %devID_all)
+
+# 12.5 dce qcn cp set-point non-pfc
+*help=Configuring of the QCN set-point of an egress queue
+*mode=config
++ non-pfc valid list 512 4294967295 1000
++ non-pfc invalid list -1 4294967297 fff
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce qcn cp set-point (non-pfc %set_point_bytes) (device %devID_all)
+
+# 12.5 no dce qcn cp set-point pfc
+*help=Setting to default of the QCN set-point of an egress queue
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no dce qcn cp set-point pfc (device %devID_all)
+
+# 12.5 no dce qcn cp set-point non-pfc
+*help=Setting to default of the QCN set-point of an egress queue
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no dce qcn cp set-point non-pfc (device %devID_all)
+
+# 12.6 dce qcn cp min-sample-base
+*help=Configuring of the minimum number of bytes to enqueue in a QCN egress queue between transmissions of Congestion Notification Messages
+*mode=config
++ min-sample-base valid list 10000 4294967295 20000
++ min-sample-base invalid list -1 1 dsdf
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce qcn cp (min-sample-base %min_sample_base) (device %devID_all)
+
+# 12.6 no dce qcn cp min-sample-base
+*help=Returning to default of the minimum number of bytes to enqueue in a QCN egress queue between transmissions of Congestion Notification Messages
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no dce qcn cp min-sample-base (device %devID_all)
+
+# 12.7 dce cut-through enable
+*help=Enabling of cut-through
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce cut-through enable (device %devID_all)
+
+# 12.7 no dce cut-through enable
+*help=Disabling of cut-through
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no dce cut-through enable (device %devID_all)
+
+# 12.8 dce cut-through enable
+*help=Enabling of cut-through for an interface
+*mode=interface
+dce cut-through enable
+
+# 12.8 no dce cut-through enable
+*help=Disabling of cut-through for an interface
+*mode=interface
+no dce cut-through enable
+
+# 12.9 dce cut-through priority enable
+*help=Enabling of cut-through for a priority
+*mode=config
++ priority valid list 0 4 7
++ priority invalid list -1 10 ddd
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce cut-through priority %priority enable (device %devID_all)
+
+# 12.9 dce cut-through priority enable
+*help=Disable of cut-through for a priority
+*mode=config
++ priority valid list 0 4 7
++ priority invalid list -1 10 ddd
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce cut-through priority %priority enable (device %devID_all)
+
+# 12.10 dce cut-through untagged enable
+*help=Enabling cut-through for untagged packets for an interface
+*mode=interface
+dce cut-through untagged enable
+
+# 12.11 dce cut-through packet-length
+*help=Configuring of the default packet length that is assigned to a packet in the Cut-Through mode
+*mode=config
++ packet-length valid list 257 16383 500
++ packet-length invalid list -1 2 jj
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+dce cut-through (packet-length %packet_length_bytes) (device %devID_all)
+
+# 12.11 no dce cut-through packet-length
+*help=Returning to default of the default packet length that is assigned to a packet in the Cut-Through mode
+*mode=config
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
+no dce cut-through packet-length (device %devID_all)
+
+# 12.12 show dce cut-through
+*help=Showing of the information on cut-through
+*mode=exec
++ all valid list 0
++ all invalid list -1 10000 100000 100001 ddd
++ ethernet valid list 0/1-5 0/2-5 0/2
++ ethernet invalid list 0/1000-1001 10000/1-4 0/-2-1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show dce cut-through (all | all %devId | ethernet %port-range | port-channel %trunkID)
+
+# 12.13 show dce qcn
+*help=Showing of the information of the QCN feature
+*mode=exec
++ all valid list 0
++ all invalid list -1 10000 100000 100001 ddd
++ ethernet valid list 0/1-5 0/2-5 0/2
++ ethernet invalid list 0/1000-1001 10000/1-4 0/-2-1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+show dce qcn (all | all %devId | ethernet %port-range | port-channel %trunkID)
+
+
+# 13.1 show cpu rx
+*help=Showing of the traffic received by the CPU
+*mode=exec
+show cpu rx
+
+# 13.2 cpu capture start
+*help=Enabling of capture of packets by the CPU
+*mode=debug
++ all valid list 0
++ all invalid list -1 10000 100000 100001 ddd
++ ethernet valid list 0/1-5 0/2-5 0/2
++ ethernet invalid list 0/1000-1001 10000/1-4 0/-2-1
++ port-channel valid list 1 10 11
++ port-channel invalid list -1 1000 zzz
+cpu capture start [all | all %devId | ethernet %port-range | port-channel %trunkID]
+
+# 13.2 cpu capture stop
+*help=Disabling of capture of packets by the CPU
+*mode=debug
+cpu capture stop
+
+# 13.3 cpu clear capture
+*help=Clearing of the CPU RX table
+*mode=debug
+cpu clear capture
+
+# 13.4 cpu tx
+*help=Transmiting of traffic from the CPU and set frames attributes
+*mode=debug
++ frames valid list 1 500 100000
++ frames invalid list -1 0 100001
++ length valid list 60 100 10000
++ length invalid list -1 20000 ff
++ pattern valid list 00
++ pattern invalid list pat
++ vid valid list 1
++ vid invalid list -1 33000 34000 35000
++ priority valid list 0 4 7
++ priority invalid list -1 10 ddd
++ cfi valid list 0 1
++ cfi invalid list 0 -1 dfd
++ txq valid list 0
++ txq invalid list -1
+cpu tx (frames %number) (length %frame_length) (pattern %binary_pattern) [dsa regular | dsa extended] [vid %vlanID] [priority %priority] [cfi %cfi] [txq %traffic_class]
+
+# 13.4 cpu tx
+*help=Transmiting of traffic from the CPU and set frames attributes
+*mode=debug
++ frames valid list 1 500 100000
++ frames invalid list -1 0 100001
++ length valid list 60 100 10000
++ length invalid list -1 20000 ff
++ pattern valid list 00
++ pattern invalid list pat
++ regular valid list 00
++ regular invalid list pat
++ extended valid list 00
++ extended invalid list pat
++ vid valid list 1
++ vid invalid list -1 33000 34000 35000
++ priority valid list 0 4 7
++ priority invalid list -1 10 ddd
++ cfi valid list 0 1
++ cfi invalid list 0 -1 dfd
++ txq valid list 0
++ txq invalid list -1
+cpu tx (frames %number) (length %frame_length) (pattern %binary_pattern) dsa (regular %binary_pattern | extended %binary_pattern) [vid %vlanID] [priority %priority] [cfi %cfi] [txq %traffic_class]
+
+# 13.5 cpss enable
+*help=Enabling of the printing to the screen of the CPSS APIs being executed by the CLI commands
+*mode=debug
+cpss enable
+
+# 13.5 no cpss enable
+*help=Disabling of the printing to the screen of the CPSS APIs being executed by the CLI commands
+*mode=debug
+no cpss enable
+
+# 13.6 register read
+*help=Reading of the value of a specified Packet Processor register
+*mode=debug
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ port-group valid list 0 all
++ port-group invalid list -1 1000 10000 1001 sss
++ offset valid list 0
++ offset invalid list qq ww rr
++ mask valid list 0 1 0xFF
++ mask invalid list qq ww rr
+register read (device %devID) [port-group %portGroup] (offset %register_address) (mask %register_mask)
+
+# 13.7 register write
+*help=Writing of a value to a specified Packet Processor register
+*mode=debug
++ device valid list 0 all
++ device invalid list -1 10000 100000 100001 old
++ port-group valid list 0 all
++ port-group invalid list -1 1000 10000 1001 sss
++ offset valid list 0
++ offset invalid list qq ww rr
++ mask valid list 0 1 0xFF
++ mask invalid list qq ww rr
++ data valid list 0 1 0x10
++ data invalid list -1 zzz 0xN
+register write (device %devID) [port-group %portGroup] (offset %register_address) (mask %register_mask) (data %register_word)
+
+# 13.8 show drop counters
+*help=Reading of all Packet processors drop counters
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
+show drop counters %devID
+
+# 13.9 show cli commands
+*help=Showing of the commands which currently reside on the system’s database and are available for use
+*mode=debug
+show cli commands
+
+# 13.10 dce priority-flow-control profile
+*help=Setting of a PFC profile per priority
+*mode=debug
++ profile valid list 0 4 7
++ profile invalid list -1 8 fff
++ dev valid list 0
++ dev invalid list -1 10000 100000 100001 old
++ priority valid list 0 3 7
++ priority invalid list -1 8 dd
++ xon valid list 0 10 1000
++ xon invalid list -1 100000 ddd
++ xoff valid list 0 10 1000
++ xoff invalid list -1 100000 ddd
+dce priority-flow-control (profile %pfc_profile) (dev %devID) (priority %priority) (xon %xon_bit11) (xoff %xoff_bit11)
+
+# 13.11 dce priority-flow-control bind profile
+*help=Binding of a PFC profile to an interface
+*mode=debug
++ profile valid list 0 4 7
++ profile invalid list -1 8 fff
++ interface valid list 0/1-5 0/2-5 0/2
++ interface invalid list 0/1000-1001 10000/1-4 0/-2-1
+dce priority-flow-control bind (profile %pfc_profile) (interface %pfc_profile_interface)
+
+# 13.12 dce priority-flow-control global drop
+*help=Enabling of PFC global drop
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
+dce priority-flow-control global drop %devID
+
+# 13.12 no dce priority-flow-control global drop
+*help=Disabling of PFC global drop
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
+no dce priority-flow-control global drop %devID
+
+# 13.13 dce priority-flow-control global queue
+*help=Performing of global PFC settings for a given queue (traffic class)
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
++ priority valid list 0 3 7
++ priority invalid list -1 8 dd
++ xoff valid list 0 10 1000
++ xoff invalid list -1 100000 ddd
++ drop valid list 0 10 1000
++ drop invalid list -1 100000 ddd
+dce priority-flow-control global queue %devID (priority %priority) (xoff %xoff_bit11) (drop %drop_threshold_bit11)
+
+# 13.14 port fc profile bind
+*help=Binding of an interface to a flow control profile
+*mode=debug
++ fc_profile_interface valid list 0
++ fc_profile_interface invalid list -1 ddd
++ profile valid list 0 2 3
++ profile invalid list -1 4 ddd
+port fc profile bind %fc_profile_interface (profile %fc_profile)
+
+# 13.15 port rx buffer limit
+*help=Setting of the port rx buffer limit (per profile)
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
++ profile valid list 0 2 3
++ profile invalid list -1 4 ddd
++ limit valid list 0
++ limit invalid list -1 ddd
+port rx buffer limit %devID (profile %flow_control_profile) (limit %rx_buffer_limit)
+
+# 13.16 port xoff limit
+*help=Setting of the port flow control xoff threshold (per profile)
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
++ profile invalid list 0 2 3
++ profile valid list -1 4 ddd
++ limit invalid list 0
++ limit valid list -1 ddd
+port xoff limit %devID (profile %xoff_profile) (limit %xoff_threshold)
+
+# 13.17 port xon limit
+*help=Setting of the port flow control xon threshold (per profile)
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
++ profile invalid list 0 2 3
++ profile valid list -1 4 ddd
++ limit invalid list 0
++ limit valid list -1 ddd
+port xon limit %devID (profile %xoff_profile) (limit %xon_threshold)
+
+# 13.18 port taildrop profile bind
+*help=Binding of an interface to a taildrop profile
+*mode=debug
++ bind valid list 0
++ bind invalid list -1 ddd
++ profile valid list 0 3 7
++ profile invalid list -1 8 ddd
+port taildrop profile (bind %binding_interface) (profile %binding_interface_profile)
+
+# 13.19 port taildrop profile set
+*help=Configuring of the port’s buffers and descriptors limits (per taildrop profile)
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
++ profile valid list 0 3 7
++ profile invalid list -1 8 ddd
++ buffers valid list 0
++ buffers invalid list -1 ddd
++ descriptors valid list 0
++ descriptors invalid list -1 ddd
+port taildrop profile set %devID (profile %taildrop_profile) (buffers %port_buffers_limit) (descriptors %port_descriptors_limit)
+
+# 13.20 port queue taildrop profile set
+*help=Configuring of the taildrop profiles buffers and descriptors limits per traffic class (egress queue)
+*mode=debug
++ devID valid list 0
++ devID invalid list -1 10000 100000 100001 old
++ profile valid list 0
++ profile invalid list -1 ddd
++ queue valid list 0
++ queue invalid list -1 ddd
++ queue_buffers valid list 1
++ queue_buffers invalid list -1 ddd
++ queue_descr valid list 1
++ queue_descr invalid list -1 ddd
++ dp0_buffers valid list 1
++ dp0_buffers invalid list -1 ddd
++ dp1_buffers valid list  1
++ dp1_buffers invalid list -1 ddd
++ dp2_buffers valid list 1
++ dp2_buffers invalid list -1 ddd
++ dp0_desc valid list 1
++ dp0_desc invalid list -1 ddd
++ dp1_desc valid list 1
++ dp1_desc invalid list -1 ddd
++ dp2_desc valid list 1
++ dp2_desc invalid list -1 ddd
+port queue taildrop profile set %devID (profile %taildrop_profile) (queue %profile_queue) (queue_buffers %queue_buffers) (queue_descr %queue_descriptor) (dp0_buffers %queue_buffers_limit) (dp1_buffers %queue_buffers_limit) (dp2_buffers %queue_buffers_limit) (dp0_desc %queue_descriptos_limit) (dp1_desc %queue_descriptos_limit) (dp2_desc %queue_descriptos_limit)
+
+# ~ set print pause
+*help=Configuring of interrupting message periodical showing at table printing
+*mode=debug
+set print pause (enable | disable)
+
+
+# 16.1 cpu capture start
+*help=Showing of cpu capture
++ port valid list 0
++ port invalid list -1 ddd
++ cpu-code valid list 0 1
++ cpu-code invalid list -1 ddd
+cpu capture start [port %source-port] [cpu-code %cpu-code]
+
+# 16.2 negotiation
+*help=Enabling of auto negotiation operation for the speed and duplex parameters
+*mode=interface
++ negotiation valid list 10h 10f 100h 100f 1000f 10000f
++ negotiation invalid list -1 ddsdd 10 2000f
+negotiation [%negotiation] # bug in parser.py
+
+# 16.2 no negotiation
+*help=Disabling of auto negotiation operation for the speed and duplex parameters
+*mode=interface
+no negotiation
+
+
+# 17.1 duplex
+*help=Configuration of the full/half duplex
+*mode=interface
+# duplex (half | full)
+
+# 17.1 no duplex
+*help=Restore default full/half duplex params
+*mode=interface
+# no duplex
+
+# 17.2 back-pressure
+*help=Enabling of the back pressure
+*mode=interface
+back-pressure
+
+# 17.2 no back-pressure
+*help=Disabling of the back pressure
+*mode=interface
+no back-pressure
+
+# 17.3 name
+*help=Adding of a name to a VLAN
+*mode=vlan_configuration
+# name
+
+# 17.3 no name
+*help=Removing of a name from the VLAN
+*mode=vlan_configuration
+# no name
+

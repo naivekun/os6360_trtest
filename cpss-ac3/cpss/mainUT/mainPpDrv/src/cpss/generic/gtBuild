@@ -1,0 +1,27 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+#List of subfolders to include in build
+SUBDIRS := \
+ bridge \
+ config \
+ labServices \
+ networkIf \
+ phy \
+ trunk 
+
+ifeq (YES, $(INCLUDE_TM))
+	SUBDIRS += tm
+endif
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

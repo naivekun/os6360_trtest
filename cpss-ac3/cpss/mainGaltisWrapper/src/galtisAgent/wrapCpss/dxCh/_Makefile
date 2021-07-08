@@ -1,0 +1,64 @@
+# $(warning "Started")
+
+
+#List of subfolders to include in build
+MODULES := \
+ IpLpmEngine \
+ bridge \
+ cnc \
+ config \
+ cos \
+ cpssHwInit \
+ cscd \
+ cutThrough \
+ diag \
+ exactMatch \
+ fabric \
+ hsu \
+ ip \
+ ipCtrl \
+ ipfix \
+ l2Mll \
+ latencyMonitoring \
+ logicalTarget \
+ lpm \
+ mirror \
+ multiPortGroup \
+ networkIf \
+ nst \
+ oam \
+ pcl \
+ pha \
+ phy \
+ policer \
+ port \
+ protection \
+ ptp \
+ resourceManager \
+ tcam \
+ trunk \
+ tti \
+ tunnel \
+ version \
+ virtualTcam \
+ vnt
+
+ifeq (YES, $(INCLUDE_TM))
+    MODULES +=  tmGlue
+endif
+
+#List of files to include in list
+FILES :=
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINGALTISWRAPPER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

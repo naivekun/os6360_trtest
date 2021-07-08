@@ -1,0 +1,72 @@
+// TAG:               routing, mc, ipv4, mc routing by vlan;
+// Short Description: set mc routing configuration
+// Description:       configure mc routing on ports 1,2,3
+//------------------------------------------------------------------------------
+
+end
+configure
+mac address 00:01:02:03:04:05
+ip routing device ${dev}
+
+// configure VRF-IDs 100,500
+
+ip vrf-id 100
+ip vrf-id 500
+
+// configure VLAN 100 with VRF-ID = 500
+
+interface vlan device ${dev} vid 100
+ip routing
+ip mc-routing
+ip vrf-id 500
+exit
+
+// configure VLAN 200
+
+interface vlan device ${dev} vid 200
+ip routing
+ip mc-routing
+exit
+
+// configure VLAN 300
+
+interface vlan device ${dev} vid 300
+ip routing
+ip mc-routing
+exit
+
+// configure ports 1,2,3,4
+
+interface ethernet ${dev}/${port[1]}
+switchport allowed vlan add 100 tagged
+ip routing
+ip mc-routing
+exit
+
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan add 200 tagged
+ip routing
+ip mc-routing
+exit
+
+interface ethernet ${dev}/${port[3]}
+switchport allowed vlan add 300 tagged
+ip routing
+ip mc-routing
+exit
+
+interface ethernet ${dev}/${port[4]}
+switchport allowed vlan add 200 tagged
+switchport allowed vlan add 300 tagged
+ip routing
+ip mc-routing
+exit
+
+// configure mc-routing
+
+ip mc-next-hop 101 vid 200 ethernet ${dev}/${port[2]}
+ip mc-next-hop 201 vid 300 ethernet ${dev}/${port[3]}
+ip mc-route 224.1.1.1/32 nexthop 101 vrf-id 500
+ip mc-route 224.1.1.1/32 nexthop 201 vrf-id 100
+
+end

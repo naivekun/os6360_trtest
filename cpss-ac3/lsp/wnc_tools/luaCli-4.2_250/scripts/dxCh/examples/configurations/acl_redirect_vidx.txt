@@ -1,0 +1,28 @@
+// TAG:               acl; pcl-ID; redirect; access-list
+// Short Description: Configures acl redirect feature
+// Description:       Configures for pcl-ID 11 with rule-id 18 an action that
+//                    will redirect packet to port 18.
+//                    in addition, binding port 36 to pcl-ID 11
+end
+configure
+
+//Configure vidx2 with port 18 as member
+callCpssAPI cpssDxChBrgMcEntryWrite
+<<<PARAMS
+{
+    { "IN", "GT_U8", "devNum", ${dev} },
+    { "IN", "GT_U16", "vidx", 1 },
+    { "IN", "CPSS_PORTS_BMP_STC", "portBitmap",
+        { ports = ${port_bitmap} }
+    }
+}
+>>>
+
+access-list device ${dev} pcl-ID 11
+rule-id 18 action  permit source-port ${port[1]} redirect-vidx 1
+exit
+
+interface ethernet ${dev}/${port[1]}
+service-acl pcl-ID 11 lookup 0
+end
+

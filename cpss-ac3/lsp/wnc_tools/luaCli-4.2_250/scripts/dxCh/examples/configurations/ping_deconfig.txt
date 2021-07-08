@@ -1,0 +1,16 @@
+// TAG:               ping; loopback;
+// Short Description: Restore default configuration
+// Description:       Restore default configuration
+end
+traffic
+no protocol enable ping
+no protocol enable arp
+exit
+configure
+interface ethernet ${dev}/${port[1]}
+no ip address
+no loopback
+no force link up
+exit
+no mac address
+end

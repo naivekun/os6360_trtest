@@ -1,0 +1,42 @@
+# !!! NOTE: New info please add above "Port info table", due to port parsing done in file-portmap !!!
+
+# Total MAC units
+UNIT_CNT=1
+
+# Inter-port combination for segment
+IPORTLINK_SET=
+
+# Total front port number
+LPORT_NUM=28
+
+# Port info table
+LPort Dev/PPort PhyType     PortType    MaxSpeed    SupportedSpeed      PhyAddr
+----- --------- ----------  --------    --------    --------------      -------
+1     0/0       88E1680     COPPER      1G          10,100,1000         0x0
+2     0/1       88E1680     COPPER      1G          10,100,1000         0x1
+3     0/2       88E1680     COPPER      1G          10,100,1000         0x2
+4     0/3       88E1680     COPPER      1G          10,100,1000         0x3
+5     0/4       88E1680     COPPER      1G          10,100,1000         0x4
+6     0/5       88E1680     COPPER      1G          10,100,1000         0x5
+7     0/6       88E1680     COPPER      1G          10,100,1000         0x6
+8     0/7       88E1680     COPPER      1G          10,100,1000         0x7
+9     0/8       88E1680     COPPER      1G          10,100,1000         0x8
+10    0/9       88E1680     COPPER      1G          10,100,1000         0x9
+11    0/10      88E1680     COPPER      1G          10,100,1000         0xA
+12    0/11      88E1680     COPPER      1G          10,100,1000         0xB
+13    0/12      88E1680     COPPER      1G          10,100,1000         0xC
+14    0/13      88E1680     COPPER      1G          10,100,1000         0xD
+15    0/14      88E1680     COPPER      1G          10,100,1000         0xE
+16    0/15      88E1680     COPPER      1G          10,100,1000         0xF
+17    0/16      88E1680     COPPER      1G          10,100,1000         0x0
+18    0/17      88E1680     COPPER      1G          10,100,1000         0x1
+19    0/18      88E1680     COPPER      1G          10,100,1000         0x2
+20    0/19      88E1680     COPPER      1G          10,100,1000         0x3
+21    0/20      88E1680     COPPER      1G          10,100,1000         0x4
+22    0/21      88E1680     COPPER      1G          10,100,1000         0x5
+23    0/22      88E1680     COPPER      1G          10,100,1000         0x6
+24    0/23      88E1680     COPPER      1G          10,100,1000         0x7
+25    0/26      88X3220     COMBO       10G         10,100,1000,10000   0xD
+26    0/24      88X3220     COMBO       10G         10,100,1000,10000   0xC
+27    0/25      IntPHY      FIBER       10G         1000,10000          N/A
+28    0/27      IntPHY      FIBER       10G         1000,10000          N/A

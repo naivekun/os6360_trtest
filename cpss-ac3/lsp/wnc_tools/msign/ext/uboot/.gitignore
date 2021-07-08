@@ -1,0 +1,4 @@
+*.o
+Makefile
+mkmf.log
+uboot.so

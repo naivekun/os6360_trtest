@@ -1,0 +1,14 @@
+cpssEnabler_confi_SRC1                :=
+cpssEnabler_dragonite_SRC1            :=
+cpssEnabler_ed_SRC1                   :=
+cpssEnabler_extPhyM_SRC1              :=
+cpssEnabler_gtOs_SRC1                 :=
+cpssEnabler_gtStack_SRC1              :=
+cpssEnabler_gtUtil_SRC1               :=
+cpssEnabler_luaCLI_SRC1               :=
+cpssEnabler_mainCmd_SRC1              :=
+cpssEnabler_mainExtDrv_SRC1           :=
+cpssEnabler_mainExtDrvShared_SRC1     :=
+cpssEnabler_mainPhy_SRC1              :=
+cpssEnabler_mainSysConfig_SRC1        :=
+cpssEnabler_shrMemIntraCPSSdata_SRC1  :=

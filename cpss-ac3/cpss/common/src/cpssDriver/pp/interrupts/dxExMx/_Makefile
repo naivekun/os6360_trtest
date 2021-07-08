@@ -1,0 +1,44 @@
+# $(warning "Started")
+LIB_NAME = cpssDrvPpInterruptsDxExMx.lib
+
+
+#List of files to include in list
+
+
+
+FILES := \
+ cpssDrvPpIntCtrl.c \
+ cpssDrvPpIntInit.c \
+ cpssDrvPpIntInterrupts.c
+
+
+ifeq (EXISTS, $(CHX_FAMILY))
+  FILES += cpssDrvPpIntDxChEventsUnify.c \
+                 cpssDrvPpIntDefDxChLion2.c \
+                 cpssDrvPpIntDefDxChBobcat2.c cpssDrvPpIntDefDxChXcat3.c \
+                 cpssDrvPpIntDefDxChBobcat3.c cpssDrvPpIntDefDxChBobK.c \
+                 cpssDrvPpIntDefDxChAldrin.c \
+                 cpssDrvPpIntDefDxChFalcon.c \
+                 cpssDrvPpIntDefDxChAldrin2.c
+endif
+
+ifeq (EXISTS, $(PX_FAMILY))
+  FILES += cpssDrvPpIntDefPxPipe.c
+
+endif
+
+#List of subfolders to include in build
+MODULES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+COMMON_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

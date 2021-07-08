@@ -1,0 +1,86 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+#SUBDIRS =
+
+##############
+## CPSS PP  ##
+##############
+
+addExMx =
+addCh =
+addSal =
+addDriver =
+
+SUBDIRS = NONE
+ifeq (EXISTS, $(EX_FAMILY))
+addExMx = YES
+SUBDIRS =
+endif
+
+ifeq (EXISTS, $(MX_FAMILY))
+addExMx = YES
+SUBDIRS =
+endif
+
+ifeq (EXISTS, $(CHX_FAMILY))
+addCh = YES
+addDriver = YES
+SUBDIRS =
+endif
+
+ifeq (EXISTS, $(SAL_FAMILY))
+addSal = YES
+SUBDIRS =
+endif
+
+ifeq (EXISTS, $(TG_FAMILY))
+addExMx = YES
+SUBDIRS =
+endif
+
+ifeq (EXISTS, $(TD_FAMILY))
+addExMx = YES
+SUBDIRS =
+endif
+
+ifeq (EXISTS, $(PM_FAMILY))
+addPm = YES
+addDriver = YES
+SUBDIRS =
+endif
+
+
+ifeq (YES, $(addExMx))
+SUBDIRS += exMx
+endif
+
+ifeq (YES, $(addCh))
+SUBDIRS += dxCh
+endif
+
+ifeq (YES, $(addSal))
+SUBDIRS += dxSal
+endif
+
+ifeq (YES, $(addPm))
+SUBDIRS += exMxPm
+endif
+
+SUBDIRS += generic
+
+ifeq (YES, $(addDriver))
+SUBDIRS += cpssDriver
+endif
+
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

@@ -1,0 +1,20 @@
+// TAG:               flow-control; vlan;
+// Short Description: Configure flow control
+// Description:       Configure flow control on ports vlan10
+end
+configure
+interface vlan device ${dev} vid 10
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]}
+switchport allowed vlan add 10 tagged
+flow-control on
+force link up
+do show flow-control device ${dev}
+exit
+interface ethernet ${dev}/${port[3]}
+flow-control periodic
+flow-control on
+force link up
+do show flow-control device ${dev}
+end
+//speed 1000 mode 1000Base_X - removed, caused problems on ports 1-3

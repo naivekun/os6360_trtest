@@ -1,0 +1,497 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+###  Global variables
+# Assign any content to print debug message
+DBG_PRINTF=
+DBG_PRINTF_TIME=
+
+# System information parsed from DB (sysinfo file)
+UNIT_CNT=`sysinfo_get_mac_units $(dirname $0)/prod_sysinfo`
+CPU_PORT=`grep -w "CPU_PORT" $(dirname $0)/prod_sysinfo | cut -d '=' -f2`
+
+# For CPU packet counter checking
+PKT_CNT_LAST=0
+
+# Skip the basic checking for loop ID that had checked in check stage
+SKIP_LID_CHECK=false
+
+# Counter related informations #
+CW_RESULT=""
+PORT_CNT_INFO=""
+ALL_CNT_INFO="Port  Rx PPS    Tx PPS    Rx Pkts (Good/NG)      Tx Pkts (Good/NG)\n----- --------- --------- ---------------------- ----------------------"
+
+# Index of these arrays is lport and these arrays are used to record counter results for each test loop
+RX_PPS_LIST=()
+TX_PPS_LIST=()
+RX_OK_LIST=()
+RX_NG_LIST=()
+TX_OK_LIST=()
+TX_NG_LIST=()
+
+### Local functions ### 
+# Get system information from SDK
+function get_sys_info()
+{
+    local sdk_cpu_port sdk_unit_cnt
+
+    sdk_cpu_port=`rtk_get_cpu_portidx 0`
+    [ -n "$DBG_PRINTF" ] && echo "INFO: The CPU port from SDK is $sdk_cpu_port."
+    if [ "$CPU_PORT" != "$sdk_cpu_port" ]; then
+        echo "FAIL: The CPU port parsed from SDK is $sdk_cpu_port and is different from sysinfo file ($CPU_PORT)!"
+        exit 3
+    fi
+
+    sdk_unit_cnt=`rtk_get_switch_info | grep -o "Unit ID:" | wc -l | sed "s/ //g"`
+    [ -n "$DBG_PRINTF" ] && echo "INFO: The MAC unit count from SDK is $sdk_unit_cnt."
+    if [ "$UNIT_CNT" != "$sdk_unit_cnt" ]; then
+        echo "FAIL: The SDK MAC unit count ($sdk_unit_cnt) is different from sysinfo file ($UNIT_CNT)!"
+        UNIT_CNT="$sdk_unit_cnt"
+    fi
+}
+
+# Get all ports status to record them record in log file later.
+function get_all_port_status()
+{
+    local stime=`date +%s`
+    local info_file="metadata/all_port_status.log"
+    local all_port_status
+    local pport lport
+    
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        # Get all port's link status from SDK
+        all_port_status=`rtk_get_port_link_status $unit all`
+
+        # Remap the portmap to front port (lport)
+        [ -n "$DBG_PRINTF" ] && echo "Remap the port info for the file - $info_file."
+        for pport in `echo "$all_port_status" | awk '{print $2}'`; do
+            pport=`echo $pport | tr -d ":"`
+            unit_pport=`echo "$unit:$pport"`
+            lport=`map_to_front_port "$unit_pport"`
+            if [ -n "$lport" ]; then
+                all_port_status=`echo "$all_port_status" | sed "s/Port $pport:/Lport $lport:/g"` # Replace pport to lport
+                [ -n "$DBG_PRINTF" ] && echo "[Verb] Remap the port from pport $pport to lport $lport for the file - $info_file."
+            fi
+        done
+        echo "$all_port_status" >> "$info_file"
+    done
+
+    # Calculate execution time
+    [ -n "$DBG_PRINTF_TIME" ] && echo ""
+    print_exec_time_debug "$DBG_PRINTF_TIME" "port link status record" "$stime"
+}
+
+function check_counter()
+{
+    local lid=$1
+    local unit=$2
+    local lport=$3
+    local pport=$4
+
+    # Get port counter informations via WNC APIs (wnc_counter_hr_XXX())
+    RX_OK_LIST[$lport]=`rtk_cw_hr_rx_ok_get $unit $pport`
+    TX_OK_LIST[$lport]=`rtk_cw_hr_tx_ok_get $unit $pport`
+    RX_NG_LIST[$lport]=`rtk_cw_hr_rx_ng_get $unit $pport`
+    TX_NG_LIST[$lport]=`rtk_cw_hr_tx_ng_get $unit $pport`
+    TX_CNT="${TX_OK_LIST[$lport]}/${TX_NG_LIST[$lport]}"
+    RX_CNT="${RX_OK_LIST[$lport]}/${RX_NG_LIST[$lport]}"
+
+    # Record counter information
+    PORT_CNT_INFO=`printf "%-5d|%9s|%9s|%22s|%22s\n" $lport ${RX_PPS_LIST[$lport]} ${TX_PPS_LIST[$lport]} ${RX_CNT} ${TX_CNT}`
+    ALL_CNT_INFO="$ALL_CNT_INFO\n$PORT_CNT_INFO"
+
+    [ -n "$DBG_PRINTF" ] && echo -e "Info: Counter information for lport $lport:\n$PORT_CNT_INFO"
+
+    # Check if there is error counter on the test port
+    if [ ${TX_NG_LIST[$lport]} != 0 ] || [ ${RX_NG_LIST[$lport]} != 0  ]; then
+        [ -n "$DBG_PRINTF" ] && echo "FAIL: Get ng counters on pport $pport, TX_NG_LIST[$lport]=${TX_NG_LIST[$lport]} and RX_NG_LIST[$lport]=${RX_NG_LIST[$lport]}!"
+        echo "FAIL: Get the error counters on the port $lport of traffic loop $lid!" | tee -a $(dirname $0)/metadata/stop_fail_result
+        return 1
+    fi
+
+    # Check if Tx get wrong at the very beginning (the PPS will be zero)
+    if [ ${TX_PPS_LIST[$lport]} -eq 0 ] || [ ${RX_PPS_LIST[$lport]} -eq 0 ]; then
+        [ -n "$DBG_PRINTF" ] && echo "FAIL: Get no PPS on pport $pport, TX_PPS_LIST[$lport]=${TX_PPS_LIST[$lport]} and RX_PPS_LIST[$lport]=${RX_PPS_LIST[$lport]}!"
+        echo "FAIL: The traffic is not looped due to failure packet transmission on the port $lport of loop $lid!" | tee -a $(dirname $0)/metadata/stop_fail_result
+        return 1
+    fi
+
+    return 0
+}
+
+function check_tx_rx_counter()
+{
+    local lid=$1
+    local unit1=$2
+    local port1=$3
+    local unit2=$4
+    local port2=$5
+    local lport1 lport2
+
+    lport1=`map_to_front_port "$unit1:$port1"`
+    lport2=`map_to_front_port "$unit2:$port2"`
+
+    if [ "$lport1" != "$lport2" ]; then
+        # port pair
+        if [ "${TX_OK_LIST[$lport1]}" != "${RX_OK_LIST[$lport2]}" ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Got Tx/Rx counters not the same, TX_OK_LIST[$lport1]=${TX_OK_LIST[$lport1]} and RX_OK_LIST[$lport2]=${RX_OK_LIST[$lport2]}!"
+            echo "FAIL: Get TX/RX packet counter mismatch on the port-pair $lport1/$lport2 of traffic loop $lid!" | tee -a $(dirname $0)/metadata/stop_fail_result
+            return 1
+        fi
+
+        if [ "${RX_OK_LIST[$lport1]}" != "${TX_OK_LIST[$lport2]}" ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Got Rx/Tx counters not the same, RX_OK_LIST[$lport1]=${RX_OK_LIST[$lport1]} and TX_OK_LIST[$lport2]=${TX_OK_LIST[$lport2]}!"
+            echo "FAIL: Get TX/RX packet counter mismatch on the port-pair $lport1/$lport2 of traffic loop $lid!" | tee -a $(dirname $0)/metadata/stop_fail_result
+            return 1
+        fi
+    else
+        # single port
+        if [ "${TX_OK_LIST[$lport1]}" != "${RX_OK_LIST[$lport1]}" ]; then
+            [ -n "$DBG_PRINTF" ] && echo "FAIL: Got Tx/Rx counters not the same, TX_OK_LIST[$lport1]=${TX_OK_LIST[$lport1]} and RX_OK_LIST[$lport1]=${RX_OK_LIST[$lport1]}!"
+            echo "FAIL: Get TX/RX packet counter mismatch on the single port $lport1 of traffic loop $lid!" | tee -a $(dirname $0)/metadata/stop_fail_result
+            return 1
+        fi
+    fi
+
+}
+
+# Restore default loopabck setting for single port loop
+function reset_loopback ()
+{
+    local lid=$1
+    local unit=$2
+    local pport=$3
+    local lb_mode=`grep -w "LOOPBACK" $(dirname $0)/data/${lid}_loop | cut -d '=' -f2`
+    local port_type pol tx_pol rx_pol
+
+    if [ "$lb_mode" != "none" ]; then
+        # Restore polarity settings for SFP port.
+        port_type="`sysinfo_get_portinfo pport "$unit:$pport" PortType "$(dirname $0)/prod_sysinfo"`"
+        if [ "$port_type" == "FIBER" ]; then
+            pol=`cat $(dirname $0)/metadata/${unit}_${pport}_port_polarity | sed "s/inversed/inverse/g"`
+            tx_pol=`echo $pol | awk '{print $4}' | tr -d ","`
+            rx_pol=`echo $pol | awk '{print $6}'`
+            [ -n "$DBG_PRINTF" ] && echo "Restore polarity settings with TX ($tx_pol) and RX ($rx_pol) on the SFP port ($unit:$pport)."
+            rtk_set_polarity_port "$unit" "$pport" "$tx_pol" "$rx_pol"
+        fi
+        [ -n "$DBG_PRINTF" ] && echo "Info: Disable $lb_mode loopback on the port ($unit:$pport)."
+        rtk_disable_phy_loop_port "$unit" "$pport"
+    else
+        # Disable MDI loopback
+        port_type="`sysinfo_get_portinfo pport "$unit:$pport" PortType "$(dirname $0)/prod_sysinfo"`"
+        if [ "$port_type" == "COPPER" ]; then
+            [ -n "$DBG_PRINTF" ] && echo "Info: Disable the MDI loopback for copper port ($unit:$pport)."
+            rtk_disable_rj45_loop_port "$unit" "$pport"
+        fi
+    fi
+}
+
+function restore_sdk_settings ()
+{
+    local stime=`date +%s`
+
+    [ -n "$DBG_PRINTF_TIME" ] && echo "Info: Restore default settings."
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        # Restore OAM global settings.
+        [ -n "$DBG_PRINTF" ] && echo "Restore OAM global settings."
+        rtk_disable_sys_oam "$unit"
+
+        # Stop the packet watcher
+        [ -n "$DBG_PRINTF" ] && echo "Stop the packet watcher."
+        rtk_pw_stop "$unit"
+
+        # Disable CW
+        [ -n "$DBG_PRINTF" ] && echo "Disable counter watcher(HR)."
+        rtk_cw_hr_stop "$unit" all
+
+        # Clear VLAN settings
+        [ -n "$DBG_PRINTF" ] && echo "Clear VLAN settings."
+        rtk_clear_vlan "$unit"
+        rtk_set_pvid "$unit" 1 all
+
+        # Restore OAM mode of each port
+        [ -n "$DBG_PRINTF" ] && echo "Restore the OAM mode for each port."
+        rtk_set_oam_port_all "$unit" 1
+    done
+
+    # Stop the traffic test to inform traffic RX handler not to process all CPU packets.
+    rtk_trtest_stop
+
+    # Calculate execution time
+    print_exec_time_debug "$DBG_PRINTF_TIME" "SDK settings restore" "$stime"
+}
+
+function redirect_traffic()
+{
+    local flow_cnt=$1
+    local unit=$2
+    local pport=$3
+    local ret=0
+
+    if [ $flow_cnt -eq 1 ]; then
+        [ -n "$DBG_PRINTF" ] && echo "Info: Redirect traffic from port $unit:$pport (lport:$lport) to CPU via OAM."
+        rtk_set_oam_port "$unit" "$pport" "3" # By OAM for single port loopback
+    else
+        [ -n "$DBG_PRINTF" ] && echo "Info: Redirect traffic from port $unit:$pport (lport:$lport) to CPU via ACL."
+        rtk_valid_acl_entry "$unit" "$pport" # By ACL for port-pair loopback
+    fi
+
+    return 0
+}
+
+function check_cpu_packet()
+{
+    local lid=$1
+    local lport=$2
+    local pport=$3
+    local ret=0
+    local quit=false
+    local has_pkt=false
+    local rx_packet_file="metadata/${pport}_packet.txt"
+    local start_time=`expr \`date +%s\`` # Get time with the unit - 1s
+    local expire_time=$((start_time+1)) # Expired in 1s
+
+    while [ $quit != true ]; do
+        # Get CPU RX counter
+        pkt_cnt=`rtk_show_cpu_tx_ust_counter 0 $CPU_PORT | cut -d ':' -f2`
+        pkt_cnt=`expr $pkt_cnt`
+
+        if [ $has_pkt == true ];then
+            if [ $pkt_cnt -gt $PKT_CNT_LAST ]; then # The trapped traffic has not stop
+                [ -n "$DBG_PRINTF" ] && echo "Verb: Currnt packet count($pkt_cnt) is not equl last packet count($PKT_CNT_LAST)."
+                PKT_CNT_LAST=`expr $pkt_cnt` # Update when get packet
+                usleep 100000 # 0.1s
+            else # The trapped traffic had stop
+                # Touch the done file for parallel process
+                touch ${rx_packet_file}_done
+                sync;sync;sync
+
+                [ -n "$DBG_PRINTF" ] && echo "Info: RX count of CPU port is $pkt_cnt."
+                quit=true
+            fi
+        else
+            now_time=`expr \`date +%s\``
+            if [ $pkt_cnt -le $PKT_CNT_LAST ] && [ $has_pkt == false ]; then # No trapped traffic to CPU.
+                if [ $now_time -lt $expire_time ]; then
+                    [ -n "$DBG_PRINTF" ] && echo "Verb: Not exired. now_time=$now_time, and expire_time=$expire_time, pkt_cnt is same($pkt_cnt)."
+                    usleep 100000 # 0.1s
+                else
+                    echo "FAIL: Timout! CPU have no packet received from the port $lport of traffic loop $lid!" | tee -a $(dirname $0)/metadata/stop_fail_result
+                    ret=1
+                    quit=true
+                fi
+            else
+                has_pkt=true
+                PKT_CNT_LAST=`expr $pkt_cnt` # Update when get packet
+            fi
+        fi
+    done
+
+    return $ret
+}
+
+function parsing_cpu_rx_packet()
+{
+    local lid=$1
+    local lport=$2
+    local pport=$3
+    local tx_packet_list=`grep -w "PID_LIST_REMAP" $(dirname $0)/data/${lid}_loop | cut -d '=' -f2`
+    local rx_packet_file="$(dirname $0)/metadata/${pport}_packet.txt"
+    local compare_str=""
+    local pid
+    local ret=0
+    local quit=false
+    local start_time=`expr \`date +%s\`` # Get time with the unit - 1s
+    local expire_time=$((start_time+1)) # Expired in 1s
+    local cmp_tx_pkt_file="$(dirname $0)/metadata/expt_rx_pkt.txt"
+    local cmp_rx_pkt_file="$(dirname $0)/metadata/real_rx_pkt.txt"
+
+    [ -n "$DBG_PRINTF" ] && echo "Info: Check packet content for plist ($tx_packet_list) with rx_pkt_file $rx_packet_file."
+
+    # Wait for rx packet file ready in 1s
+    while [ $quit != true ]; do
+        usleep 100000 # 0.1s
+        [ -n "$DBG_PRINTF" ] && echo "Verb: Waiting for packet information checking done."
+        # check timer expiration
+        if [ -f "${rx_packet_file}_done" ] || [ `date +%s` -ge $expire_time ]; then
+            quit=true
+        fi
+    done
+
+    # Check if RX file existed
+    if [ ! -f "${rx_packet_file}" ]; then
+        echo -e "\nFAIL: There is no valid RX packet received on the port $lport of traffic loop $lid!" | tee -a $(dirname $0)/metadata/stop_fail_result
+        ret=1
+    else
+        # Check rx packet with each injected packet
+        for pid in $tx_packet_list; do
+            compare_str=`cat $(dirname $0)/data/${pid}_packet.txt`
+            if [ ! -z "`grep -i "$compare_str" $rx_packet_file 2>/dev/null`" ]; then
+                tx_packet_list=`echo $tx_packet_list | sed "s/${pid}//g"` # Remove the match packet from packet list
+                [ -n "$DBG_PRINTF" ] && echo "Info: Get match packet content for packet id $pid, unchecked pid_list=$tx_packet_list."
+            fi
+        done
+
+        # Check if there is mismatch packet on the examined port
+        for pid in $tx_packet_list; do
+            echo -e "\nFAIL: The TX/RX packet content for packet id $pid does not match on the port $lport of traffic loop $lid!" | tee -a $(dirname $0)/metadata/stop_fail_result
+
+            # Compose expected rx packet based on ${pid}_packet.txt, with CRC
+            cp $(dirname $0)/data/${pid}_packet.txt $cmp_tx_pkt_file
+            sed -i 's/$/&55555555/g' $cmp_tx_pkt_file
+
+            # Compose pure Rx pkt content without other info
+            cp $rx_packet_file $cmp_rx_pkt_file
+            sed -i '/from port/d' $cmp_rx_pkt_file
+            sed -i '/^$/d' $cmp_rx_pkt_file
+            sed -i 's/ //g' $cmp_rx_pkt_file
+
+            trtest_err_byte_show "$cmp_tx_pkt_file" "$cmp_rx_pkt_file"
+            rm -f $cmp_tx_pkt_file $cmp_rx_pkt_file
+
+            ret=1
+        done
+    fi
+
+
+    if [ $ret -eq 0 ]; then
+        [ -n "$DBG_PRINTF" ] && echo "Info: Packet checking passed on port $pport of traffic loop $lid."
+    fi
+
+    return $ret
+} 
+
+function record_pkt_rate()
+{
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        # Disable CW before test
+        cw_result_unit=`rtk_cw_stop $unit`
+        [ -n "$DBG_PRINTF" ] && echo -e "Info: Counter result for unit $unit:\n$cw_result_unit"
+        CW_RESULT="$cw_result_unit$CW_RESULT"
+    done
+    [ -n "$DBG_PRINTF" ] && echo -e "Info: All counter results:\n$CW_RESULT"
+}
+
+function exam_packet()
+{
+    local lidlist=$@
+    local lid seg
+    local unit_port1 unit_port2 unit1 unit2 port1 port2
+    local stime=`date +%s`
+
+    echo -n "Check contents of received packets for valid loops"    # Show the action in frontend
+    for lid in $lidlist; do
+        echo -n "."    # Generate process bar in frontend
+        if [ $SKIP_LID_CHECK == false ]; then
+            [ -z "`ls $(dirname $0)/data/${lid}_loop 2>/dev/null`" ] && continue
+            [ `grep -w "" $(dirname $0)/metadata/${lid}_loop | grep -c INVALID_SEGMENT ` -ne 0 ] && continue
+        fi
+
+        # Parse segment list from loop file and unit/port information from segment list
+        seglist=`grep -w "SEG_LIST_REMAP" $(dirname $0)/metadata/${lid}_loop | cut -d '=' -f2`
+
+        # Parse unit/port information
+        seg=${seglist% *}
+        unit_port1=${seg%,*}
+        unit_port2=${seg#*,}
+        unit1=${unit_port1%:*}
+        unit2=${unit_port2%:*}
+        port1=${unit_port1#*:}
+        port2=${unit_port2#*:}
+        port1=${port1%i*}        # Discard "i" if got one
+        port2=${port2%i*}        # Discard "i" if got one
+
+        # Count tarffic flow, one for single segment and two for port-pair segment.
+        [ "$unit_port1" == "$unit_port2" ] && flow_cnt=1 || flow_cnt=2
+
+        # Record counter information, redirect traffic to CPU port and exam packet 
+        for ((i=1; i<=$flow_cnt; i=i+1)); do
+            if [ $i -eq 1 ]; then
+                unit=$unit1
+                pport=$port1
+            else
+                unit=$unit2
+                pport=$port2
+            fi
+
+            # Remap pport and record the front port information and traffic rate before redirect test flow
+            lport=`map_to_front_port "$unit:$pport"`
+            RX_PPS_LIST[$lport]=`rtk_cw_hr_rx_pps_get $unit $pport`
+            TX_PPS_LIST[$lport]=`rtk_cw_hr_tx_pps_get $unit $pport`
+
+            # Redirect traffic to CPU (to stop traffic)
+            redirect_traffic $flow_cnt $unit $pport
+
+            # Record packet counter after traffic stop
+            check_counter $lid $unit $lport $pport
+
+            if [ "$PKT_CHK_MODE" == "CONTENT" ]; then
+
+                # Check if receive pkt from CPU in 1s
+                check_cpu_packet $lid $lport $pport
+
+                # Check packet content for each packet ID and if there is mismatch packet on some port
+                parsing_cpu_rx_packet $lid $lport $pport &
+            fi
+
+            # Reset loopback for single port loop
+            [ $flow_cnt -eq 1 ] && reset_loopback $lid $unit $pport &
+        done # (for i # For both ports)
+
+        # if [ "$PKT_CHK_MODE" == "CNT" ] || [ "$PKT_CHK_MODE" == "CONTENT" ]; then
+        #     # Check whether got packet loss or not, if check_counter is done
+        #     check_tx_rx_counter $lid $unit1 $port1 $unit2 $port2
+        # fi
+
+    done # (for lid)
+
+    # Calculate execution time
+    print_exec_time_debug "$DBG_PRINTF_TIME" "packet exam" "$stime"
+}
+
+### MAIN ###
+STIME_STOP=`date +%s` # For execution time calculation
+
+# Get system information from SDK
+get_sys_info
+
+# Get port mapping array once and for all
+get_portmap_array "$(dirname $0)/prod_sysinfo"
+
+# Get all ports status before stopping the traffic
+get_all_port_status &
+
+# Remove the test result before stop the test
+rm -f $(dirname $0)/metadata/stop_fail_result
+rm -f $(dirname $0)/metadata/*.log*
+rm -f $(dirname $0)/metadata/*_packet.txt # Delete all rx packets that parsed in last time
+
+# Stop the Counter Watcher to record traffic rate before redirect traffic
+record_pkt_rate &
+
+# Record loop list
+if [ -f $(dirname $0)/metadata/test_looplist ];then
+    lidlist=`grep -w "LIDLIST_VALID" $(dirname $0)/metadata/valid_lidlist | cut -d '=' -f2`
+    SKIP_LID_CHECK=true
+else
+    lidlist=$@
+fi
+
+# Configure packat watcher for packet content examination
+exam_packet $lidlist
+
+# For execution time calculation
+ETIME_STOP=`date +%s`
+EXEC_TIME=$(($ETIME_STOP - $STIME_STOP))
+[ -n "$DBG_PRINTF_TIME" ] && echo "Done(${EXEC_TIME}s)" || echo "Done"
+
+# Restore default settings in backgroud to save time.
+restore_sdk_settings &
+
+# To show the traffic rate/counter in the foreground
+echo -e "\nTest result with traffic rate and counters:\n"
+echo -e "$ALL_CNT_INFO" | tee $(dirname $0)/metadata/trtest_pkt.log;
+echo ""
+
+[ -f $(dirname $0)/metadata/stop_fail_result ] && exit 1 || exit 0

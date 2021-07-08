@@ -1,0 +1,18 @@
+--
+-- ACL matched and not matched packets
+-- 
+local aclNotMatchContent =
+    "0000BBCCDDEE000000003402"..
+    "810000019100003300000000"..
+    "000000000000000000000000"..
+    "000000000000000000000000"..
+    "000000000000000000000000"
+
+local aclMatchContent =
+    "00AABBCCDDEE000000003402"..
+    "811500019114003300000000"..
+    "000000000000000000000000"..
+    "000000000000000000000000"..
+    "000000000000000000000000"
+
+return { aclNotMatch = aclNotMatchContent, aclMatch = aclMatchContent}

@@ -1,0 +1,9 @@
+// TAG:               cnc; egress-queue; count-drop;
+// Short Description: Configures egress-queue cnc counters
+// Description:       Enables cnc counters for egress-queue client
+//		      for dev#0. Bind also the DROP counters.
+end
+configure
+counters egress-queue device ${dev} count-drop
+
+end

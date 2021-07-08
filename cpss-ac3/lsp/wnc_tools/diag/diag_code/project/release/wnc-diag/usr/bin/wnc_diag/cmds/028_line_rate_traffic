@@ -1,0 +1,551 @@
+#!/bin/bash
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/include
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+DUR="5"
+GRP=""
+PORTS_RJ45_LIST_S=""
+PORTS_RJ45_LIST_E=""
+PORTS_COMBO_RJ45_LIST_S=""
+PORTS_COMBO_RJ45_LIST_E=""
+PORTS_COMBO_FIBER_LIST_S=""
+PORTS_COMBO_FIBER_LIST_E=""
+PORTS_SFP_LIST_S=""
+PORTS_SFP_LIST_E=""
+PORTS_IPORT_LIST_S=""
+PORTS_IPORT_LIST_E=""
+COPPER_LINK_CHK_CNT="15"    # 15 times
+COPPER_LINK_CHK_INT="1"     # every 1 sec
+PKT_CHK_MODE="CONTENT"
+TRTEST_PATH="/etc/opt/trtest"
+MFG_FLAG="/etc/opt/trtest/mfg_mode"
+TRTEST_MFG_PATH="/etc/opt/trtest/mfg_cfg"
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - line rate traffic test for all ports
+
+SYNOPSIS
+       $prog_name -g <group> [-p pkt-chk-mode] [-d <duration>] [-h]
+
+DESCRIPTION
+       The command is a line rate traffic tester for all ports. It sets an
+       environment to loop the same packets sent from a RJ45 port and a SFP+
+       ports back to itself with loopback module, and to loop two 2.5G RJ45
+       ports and two 10G RJ45 combo ports with loopback cable. The amount of
+       packets sent are designed to nearly reach the line rate of the port.
+       After reaching the test timeout, the command will retrieve packets from
+       each port and check contents to determine whether they are correctly
+       delivered and received.
+
+       Because combo ports have copper and fiber interfaces, we divide the
+       test into two groups, which group 1 is to test all front ports except
+       the 10G fiber combo ports, and group 2 is to test the rest including
+       internal ports. Parameter \"-g\" is to select which group to test.
+
+       Parameter \"-p\" is to set how we verify the received packets and
+       determine whether it is passed or not. There are 3 availavle options,
+       which are \"NG\", \"CNT\" and \"CONTENT\" mode. Previous two modes
+       check the received counters only, and the last mode will check packet
+       content as well. Without this option default is \"CONTENT\" mode.
+
+       Parameter \"-d\" is to set the running duration of traffic flow from
+       sending out packets to capturing packets. However, the total command
+       execution time will also include the time of setting up environment
+       and analyzing received packets, which is correlated to the number of
+       total ports and the number of packets we send.
+
+MANDATORY OPTIONS
+       -g    Select which port group to test.
+             1: to test all front ports except fiber ports of 10G combo PHY.
+             2: to test 10G combo fiber ports and internal ports.
+
+OPTIONAL OPTIONS
+       -p    To select the received packets checking mode to \"NG\", \"CNT\"
+             or \"CONTENT\". With \"NG\", it will check whether got NG
+             counters or not. With \"CNT\", besides checking NG counters, it
+             will also check whether the Tx counter equals to the Rx counter
+             per loop. With \"CONTENT\", besides checking counters, it will
+             check the content of received packets. Without option \"-p\",
+             default is \"CONTENT\" mode.
+
+       -d    Duration between starting to send packets and stopping the traffic
+             flow. Default is 5 seconds and the acceptable value is from 5 to
+             86400 seconds.
+
+       -h    Show this help message.
+
+PASS CRITERIA
+       - Test each port with loopback traffic:
+           SUCCESS: all ports send and receive packets correctly
+             Display: \"Result: PASS\" with traffic rates and Tx/Rx packet
+                      counts of ports that are tested
+             Return code : 0
+
+           ERROR: any port fails to send, or receives packets incorrectly
+             Display: \"Result: FAIL\" with further messages like
+                      \"FAIL: Get MAC link-down on port 1!\"
+                      or
+                      \"FAIL: Not got packet# 1 that CPU injects to port 1\"
+                      \"FAIL: Packet checking failed on port 1\"
+             Return code : 1
+
+EXAMPLE
+       $prog_name -g 1 -d 5
+       $prog_name -g 2 -d 5
+       $prog_name -g 1 -p \"CNT\" -d 5
+       $prog_name -g 2 -p \"CNT\" -d 5
+       $prog_name -h
+">&2
+}
+
+function chk_rj45_link_status() {
+    local check_cnt
+    local reg_value
+
+    check_cnt=0
+    while [ $check_cnt -lt $COPPER_LINK_CHK_CNT ]; do
+        if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+            # Check front port 25
+            reg_value=`cpss_10g_phy_register_read "0" "26" "0x8008" "3" "0xd"`
+        elif [ "$SKU" == "OS6360-P48X" ]; then
+            # Check front port 49
+            reg_value=`cpss_10g_phy_register_read "1" "25" "0x8008" "3" "0xd"`
+        fi
+
+        if [ $((reg_value >> 10 & 0x1)) -eq 1 ]; then   # Bit 10 for copper link status
+            # Link up, break and do traffic test
+            return 0
+        fi
+        check_cnt=$((check_cnt + 1))
+        sleep $COPPER_LINK_CHK_INT
+    done
+
+    echo -e "Check copper link status failed within 15 second!\n"
+    res=$FAIL
+    quit $res
+}
+
+function switch_combo_inf() {
+    local inf_media=$1
+
+    if [ "$inf_media" == "fiber" ]; then
+        if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+            # Power down copper
+            cpss_10g_phy_register_write "0" "26" "0x0000" "1" "0xd" "0xa840"
+            cpss_10g_phy_register_write "0" "24" "0x0000" "1" "0xc" "0xa840"
+
+            # Power up fiber
+            cpss_10g_phy_register_write "0" "26" "0x1000" "3" "0xd" "0xa040"
+            cpss_10g_phy_register_write "0" "24" "0x1000" "3" "0xc" "0xa040"
+        elif [ "$SKU" == "OS6360-P48X" ]; then
+            # Power down copper
+            cpss_10g_phy_register_write "1" "25" "0x0000" "1" "0xd" "0xa840"
+            cpss_10g_phy_register_write "1" "24" "0x0000" "1" "0xc" "0xa840"
+            # Power up fiber
+            cpss_10g_phy_register_write "1" "25" "0x1000" "3" "0xd" "0xa040"
+            cpss_10g_phy_register_write "1" "24" "0x1000" "3" "0xc" "0xa040"
+        fi
+        echo -e "Swtich interface media to fiber done!\n"
+
+    elif [ "$inf_media" == "copper" ]; then
+        if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+            # Power down fiber
+            cpss_10g_phy_register_write "0" "26" "0x1000" "3" "0xd" "0xa840"
+            cpss_10g_phy_register_write "0" "24" "0x1000" "3" "0xc" "0xa840"
+            # Power up copper
+            cpss_10g_phy_register_write "0" "26" "0x0000" "1" "0xd" "0xa040"
+            cpss_10g_phy_register_write "0" "24" "0x0000" "1" "0xc" "0xa040"
+        elif [ "$SKU" == "OS6360-P48X" ]; then
+            # Power down fiber
+            cpss_10g_phy_register_write "1" "25" "0x1000" "3" "0xd" "0xa840"
+            cpss_10g_phy_register_write "1" "24" "0x1000" "3" "0xc" "0xa840"
+            # Power up copper
+            cpss_10g_phy_register_write "1" "25" "0x0000" "1" "0xd" "0xa040"
+            cpss_10g_phy_register_write "1" "24" "0x0000" "1" "0xc" "0xa040"
+        fi
+        echo -e "Swtich interface media to copper done!\n"
+
+        chk_rj45_link_status
+    elif [ "$inf_media" == "restore" ]; then
+        # Power up both copper and fiber
+        if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+            cpss_10g_phy_register_write "0" "26" "0x0000" "1" "0xd" "0xa040"
+            cpss_10g_phy_register_write "0" "24" "0x0000" "1" "0xc" "0xa040"
+            cpss_10g_phy_register_write "0" "26" "0x1000" "3" "0xd" "0xa040"
+            cpss_10g_phy_register_write "0" "24" "0x1000" "3" "0xc" "0xa040"
+        elif [ "$SKU" == "OS6360-P48X" ]; then
+            cpss_10g_phy_register_write "1" "25" "0x0000" "1" "0xd" "0xa040"
+            cpss_10g_phy_register_write "1" "24" "0x0000" "1" "0xc" "0xa040"
+            cpss_10g_phy_register_write "1" "25" "0x1000" "3" "0xd" "0xa040"
+            cpss_10g_phy_register_write "1" "24" "0x1000" "3" "0xc" "0xa040"
+        fi
+    fi
+}
+
+function get_all_port_range() {
+    case $SKU in
+        OS6360-10 | OS6360-P10)
+            PORTS_RJ45_LIST_S="1"
+            PORTS_RJ45_LIST_E="10"
+            PORTS_SFP_LIST_S="11"
+            PORTS_SFP_LIST_E="12"
+            ;;
+        OS6360-P24X | OS6360-PH24)
+            PORTS_RJ45_LIST_S="1"
+            PORTS_RJ45_LIST_E="24"
+            PORTS_COMBO_RJ45_LIST_S="25"
+            PORTS_COMBO_RJ45_LIST_E="25"
+            PORTS_COMBO_FIBER_LIST_S="25"
+            PORTS_COMBO_FIBER_LIST_E="26"
+            PORTS_SFP_LIST_S="27"
+            PORTS_SFP_LIST_E="28"
+            ;;
+        OS6360-P48X)
+            PORTS_RJ45_LIST_S="1"
+            PORTS_RJ45_LIST_E="47"
+            PORTS_COMBO_RJ45_LIST_S="49"
+            PORTS_COMBO_RJ45_LIST_E="49"
+            PORTS_COMBO_FIBER_LIST_S="49"
+            PORTS_COMBO_FIBER_LIST_E="50"
+            PORTS_SFP_LIST_S="51"
+            PORTS_SFP_LIST_E="52"
+            PORTS_IPORT_LIST_S="1"
+            PORTS_IPORT_LIST_E="1"
+            ;;
+        *) # OS6360-10 or OS6360-P10
+            PORTS_RJ45_LIST_S="1"
+            PORTS_RJ45_LIST_E="10"
+            PORTS_SFP_LIST_S="11"
+            PORTS_SFP_LIST_E="12"
+            ;;
+    esac
+}
+
+function echo_w_red() {
+    echo -n -e "\033[31m$1\033[0m"
+}
+
+function echo_w_sky_blue() {
+    echo -n -e "\033[36m$1\033[0m"
+}
+
+function show_check_log() {
+    if [ "$GRP" == "FIRST" ]; then
+
+echo " If failed on port `echo_w_red "1~10"` on 10/P10,
+              port `echo_w_red "1~24"` on P24X/PH24 or
+              port `echo_w_red "1~46"` on P48X,
+ please use command \"`echo_w_sky_blue "016_rj45_traffic -d 10"`\" to reconfirm.
+
+ If failed on port `echo_w_red "11~12"` on 10/P10,
+              port `echo_w_red "27~28"` on P24X/PH24 or
+              port `echo_w_red "51~52"` on P48X,
+ please use command \"`echo_w_sky_blue "023_sfp_traffic -d 10"`\" to reconfirm.
+
+ If failed on port `echo_w_red "25~26"` on P24X/PH24 or
+              port `echo_w_red "49~50"` on P48X,
+ please use command \"`echo_w_sky_blue "020_combo_traffic -i 0 -d 10"`\" to reconfirm.
+">&2
+
+    elif [ "$GRP" == "SECOND" ]; then
+
+echo " If failed on port `echo_w_red "25~26"` on P24X/PH24 or
+              port `echo_w_red "49~50"` on P48X,
+ please use command \"`echo_w_sky_blue "020_combo_traffic -i 1 -d 10"`\" to reconfirm.
+
+ If failed on port `echo_w_red "i11"` or `echo_w_red "i21"` on P48X,
+ please use command \"`echo_w_sky_blue "024_inter_chip_traffic -d 10"`\" to reconfirm.
+">&2
+
+    fi
+}
+
+function pre_set_for_gp2_config() {
+    local CLI_CMD=""
+
+    if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+        CLI_CMD="do configure"
+        CLI_CMD="${CLI_CMD}\ninterface range ethernet 0/0,1,25"
+        CLI_CMD="${CLI_CMD}\nshutdown"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface ethernet 0/26"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan remove 26"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan add 2 untagged"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 2"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface ethernet 0/24"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan remove 26"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan add 3 untagged"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 3"
+        CLI_CMD="${CLI_CMD}\nend"
+    elif [ "$SKU" == "OS6360-P48X" ]; then
+        CLI_CMD="do configure"
+        CLI_CMD="${CLI_CMD}\ninterface range vlan device 1 vid 2-4"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface ethernet 1/25"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan add 2 untagged"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 2"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface ethernet 1/24"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan add 3 untagged"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 3"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface range ethernet 0/26,1/26"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan add 4 untagged"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 4"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface ethernet 0/2"
+        CLI_CMD="${CLI_CMD}\nshutdown"
+        CLI_CMD="${CLI_CMD}\nend"
+    fi
+    [ -n "$CLI_CMD" ] && mrvl_luash -q -c "`echo -e $CLI_CMD`"
+}
+
+function post_set_after_gp2_done() {
+    local CLI_CMD=""
+
+    if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+        CLI_CMD="do configure"
+        CLI_CMD="${CLI_CMD}\ninterface ethernet 0/26"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan remove 2"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan add 26 untagged"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 26"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface ethernet 0/24"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan remove 3"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan add 26 untagged"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 26"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface range ethernet 0/0,1,25"
+        CLI_CMD="${CLI_CMD}\nno shutdown"
+        CLI_CMD="${CLI_CMD}\nend"
+    elif [ "$SKU" == "OS6360-P48X" ]; then
+        CLI_CMD="do configure"
+        CLI_CMD="${CLI_CMD}\ninterface ethernet 0/2"
+        CLI_CMD="${CLI_CMD}\nno shutdown"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface range ethernet 1/25"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan remove 2"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 49"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface range ethernet 1/24"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan remove 3"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 49"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\ninterface range ethernet 0/26,1/26"
+        CLI_CMD="${CLI_CMD}\nswitchport allowed vlan remove 4"
+        CLI_CMD="${CLI_CMD}\nswitchport pvid 48"
+        CLI_CMD="${CLI_CMD}\nexit"
+        CLI_CMD="${CLI_CMD}\nno interface range vlan device 1 vid 2-4"
+        CLI_CMD="${CLI_CMD}\nend"
+    fi
+    [ -n "$CLI_CMD" ] && mrvl_luash -q -c "`echo -e $CLI_CMD`"
+}
+
+# In traffic test, MGMT port cannot be tested except burn-in station and
+# all ports will be tested only during burn-in station.
+# Metadata are different for burn-in and non burn-in station and need to been generated.
+pre_mfg_mode() {
+# First, remove metadata folder to prevent abnormal interruption last time
+        [ -d "${TRTEST_MFG_PATH}/${SKU}/metadata" ] && rm -rf "${TRTEST_MFG_PATH}/${SKU}/metadata"
+		
+		if [ "$GRP" == "FIRST" ]; then
+			# group 1
+			ln -sf ${TRTEST_MFG_PATH}/${SKU}/metadata_gp1 ${TRTEST_MFG_PATH}/${SKU}/metadata
+		elif [ "$GRP" == "SECOND" ]; then
+			# group 2
+			ln -sf ${TRTEST_MFG_PATH}/${SKU}/metadata_gp2 ${TRTEST_MFG_PATH}/${SKU}/metadata
+		else
+			# Default group 1
+			ln -sf ${TRTEST_MFG_PATH}/${SKU}/metadata_gp1 ${TRTEST_MFG_PATH}/${SKU}/metadata
+		fi
+		
+		#if [ ! -d ${TRTEST_MFG_PATH}/metadata ]; then
+		#	res=$FAIL
+        #    quit $res
+		#fi
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    res=$FAIL
+    quit $res
+    echo "">&2
+fi
+
+while getopts "g:p:d:h" arg; do
+    case $arg in
+        g) # test group
+            case $OPTARG in
+                1)
+                    GRP="FIRST"
+                    ;;
+                2)
+                    if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+                        echo "SKU without 10G combo ports or internal ports. No need to test group 2!"
+                        res=$FAIL
+                        quit $res
+                    fi
+                    GRP="SECOND"
+                    ;;
+                *)
+                    echo "Wrong group number!"
+                    res=$FAIL
+                    quit $res
+                    ;;
+            esac
+            ;;
+        p) # packet checking mode
+            if [ "$OPTARG" != "NG" ] && [ "$OPTARG" != "CNT" ] && [ "$OPTARG" != "CONTENT" ]; then
+                echo "Illegal parameter \"$OPTARG\" with option -p, please check or see help!"
+                res=$FAIL
+                quit $res
+            fi
+            PKT_CHK_MODE="$OPTARG"
+            ;;
+        d) # test duration
+            DUR=$OPTARG
+            ;;
+        h | *) # display usage
+            usage
+            quit_ok
+            ;;
+    esac
+done
+
+if [ -z $GRP ]; then
+    echo "Miss mandatory option \"-g\", please refer to the usage!"
+    res=$FAIL
+    quit $res
+    echo "">&2
+fi
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    print_fail "CPSS not ready!"
+    exit 1
+fi
+
+# To ensure in the right folder, since the relative path is used
+pushd ${dir_path} >/dev/null
+
+# Clean previous generated files
+rm -f ./trtest/data/*
+
+# Get port range according to the SKU
+get_all_port_range
+
+# Copy loop files from data_plan to trtest/data
+if [ "$GRP" == "FIRST" ]; then
+    # RJ45
+    for ((idx=${PORTS_RJ45_LIST_S}; idx<=${PORTS_RJ45_LIST_E}; idx++)); do
+        cp ./cmd_cfg/data_plan/${idx}_rj45_lb ./trtest/data/${idx}_loop
+    done
+    # SFP+
+    for ((idx=${PORTS_SFP_LIST_S}; idx<=${PORTS_SFP_LIST_E}; idx++)); do
+        cp ./cmd_cfg/data_plan/${idx}_sfp_lb ./trtest/data/${idx}_loop
+    done
+    # Combo RJ45
+    if [ -n "$PORTS_COMBO_RJ45_LIST_S" ]; then
+        for ((idx=${PORTS_COMBO_RJ45_LIST_S}; idx<=${PORTS_COMBO_RJ45_LIST_E}; idx++)); do
+            cp ./cmd_cfg/data_plan/${idx}_combo_cable ./trtest/data/${idx}_loop
+        done
+
+        # Change combo PHY to copper interface
+        switch_combo_inf "copper"
+    fi
+
+    if [ -f "/etc/opt/trtest/trtest_mfg.cfg" ]; then
+        # Do it only when in MFG mode, to soft link the pre-generate loop files
+        if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+            ln -fs "${TRTEST_PATH}/mfg_precfg/metadata_gp1_24" "${TRTEST_PATH}/metadata_pregen"
+            ln -fs "${TRTEST_PATH}/mfg_precfg/mfg_pregen_gp1_24" "${TRTEST_PATH}/mfg_pregen"
+        elif [ "$SKU" == "OS6360-P48X" ]; then
+            ln -fs "${TRTEST_PATH}/mfg_precfg/metadata_gp1_48" "${TRTEST_PATH}/metadata_pregen"
+            ln -fs "${TRTEST_PATH}/mfg_precfg/mfg_pregen_gp1_48" "${TRTEST_PATH}/mfg_pregen"
+        else
+            ln -fs "${TRTEST_PATH}/mfg_precfg/metadata_gp1_10" "${TRTEST_PATH}/metadata_pregen"
+            ln -fs "${TRTEST_PATH}/mfg_precfg/mfg_pregen_gp1_10" "${TRTEST_PATH}/mfg_pregen"
+        fi
+    fi
+elif [ "$GRP" == "SECOND" ]; then
+    remap_idx=1    # In order to first test combo fiber, and then test internal ports
+
+    if [ -n "$PORTS_COMBO_FIBER_LIST_S" ]; then
+        # Combo fiber, both on P24 and P48
+        for ((idx=${PORTS_COMBO_FIBER_LIST_S}; idx<=${PORTS_COMBO_FIBER_LIST_E}; idx++)); do
+            cp ./cmd_cfg/data_plan/${idx}_combo_lb ./trtest/data/${remap_idx}_loop
+
+            remap_idx=$((remap_idx + 1))
+        done
+
+        # Change combo PHY to fiber interface
+        switch_combo_inf "fiber"
+    fi
+
+    # Internal ports if exist
+    if [ -n "$PORTS_IPORT_LIST_S" ]; then
+        # internal port, only on P48
+        for ((idx=${PORTS_IPORT_LIST_S}; idx<=${PORTS_IPORT_LIST_E}; idx++)); do
+            cp ./cmd_cfg/data_plan/${idx}_iport_lb ./trtest/data/${remap_idx}_loop
+
+            remap_idx=$((remap_idx + 1))
+        done
+    fi
+
+    if [ -f "/etc/opt/trtest/trtest_mfg.cfg" ]; then
+        # Change the VLAN setting
+        pre_set_for_gp2_config
+
+        # Do it only when in MFG mode, to soft link the pre-generate loop files
+        if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+            ln -fs "${TRTEST_PATH}/mfg_precfg/metadata_gp2_24" "${TRTEST_PATH}/metadata_pregen"
+            ln -fs "${TRTEST_PATH}/mfg_precfg/mfg_pregen_gp2_24" "${TRTEST_PATH}/mfg_pregen"
+        elif [ "$SKU" == "OS6360-P48X" ]; then
+            ln -fs "${TRTEST_PATH}/mfg_precfg/metadata_gp2_48" "${TRTEST_PATH}/metadata_pregen"
+            ln -fs "${TRTEST_PATH}/mfg_precfg/mfg_pregen_gp2_48" "${TRTEST_PATH}/mfg_pregen"
+        fi
+    fi
+fi
+
+# Generate a 1518B unicast packet with random pattern
+./traffic-test edit-pkt -i 1 -l 1514 -d 00:00:00:00:00:01 -s 00:00:00:00:00:02 -e 0800 -p 5
+
+res=$PASS
+# Run traffic tester with timeout setting (default 10 sec)
+if [ -f $MFG_FLAG ]; then
+    pre_mfg_mode
+    ./traffic-test run -l all -f "/etc/opt/trtest/mfg_cfg/trtest_mfg_init.cfg" -p "$PKT_CHK_MODE" -d "$DUR"
+else
+    ./traffic-test run -l all -p "$PKT_CHK_MODE" -d "$DUR"
+fi
+if [ "$?" != "0" ]; then
+    res=$FAIL
+
+#    # Show DIAG commands to test more if res=$FAIL
+#    show_check_log
+fi
+
+# Restore combo ports if needed
+if [ -n "$PORTS_COMBO_RJ45_LIST_S" ] || [ -n "$PORTS_COMBO_FIBER_LIST_S" ]; then
+    switch_combo_inf "restore"
+fi
+
+if [ -f "/etc/opt/trtest/trtest_mfg.cfg" ] && [ "$GRP" == "SECOND" ]; then
+    # Restore the VLAN for group 1
+    post_set_after_gp2_done
+fi
+[ -e "${TRTEST_PATH}/metadata_pregen" ] && rm -f "${TRTEST_PATH}/metadata_pregen"
+[ -e "${TRTEST_PATH}/mfg_pregen" ] && rm -f "${TRTEST_PATH}/mfg_pregen"
+
+# Back to the folder where the command is executed
+popd >/dev/null
+
+exit $res

@@ -1,0 +1,677 @@
+#!/bin/bash
+# Script name: version
+# Script version: V1.00.00
+# Author: RAY TSAI
+# History: 
+#     V0.00.01 - New release - 2020.01.13
+#     V0.00.02 - Modify ALL - 2020.01.14
+#     V0.01.01 - Enhance switch chip reversion - 2020.01.20
+#####################################################################
+
+## Select test mode (in VM) (test mode=1)
+TEST_select=0
+
+# ----- Declare ----- #
+prog_name=$(basename $0)
+
+# ----- Function ----- #
+function usage() {
+echo "
+usage
+NAME
+       version - display Diag OS, Linux kernel, Diag package, CPLD, CPSS,
+	   U-Boot version, switch revision
+
+SYNOPSIS
+       version [-g] 
+               [-o OS_ver] 
+               [-k Kernal_ver] 
+               [-p Diag_ver] 
+               [-c \"CPLD_ver,date_code_ver\"] 
+               [-s CPSS_ver] 
+               [-u U-Boot_ver]
+               [-d]			   
+               [-h]
+       
+DESCRIPTION
+       version is a command to display Diag OS, Linux kernel, Diag pac-
+       kage, CPLD, CPSS, U-Boot version, switch revision installed 
+	   in this device. 
+       Test if input version is same as the software version installed 
+       in the device for checking software version when manufacturing. 
+       
+MANDATORY OPTIONS
+       At least one optional option is needed.           
+       
+OPTIONAL OPTIONS
+       -g    Get wnc Diag. OS, Linux kernel, Diag. package, CPLD, CPSS,
+             U-Boot version, switch revision.
+	   
+       -o    Verify Diag. OS version
+       
+       -k    Verify Linux kernel version	   
+	   
+       -p    Verify Diag. package version	   
+	   
+       -c    Verify CPLD version	   
+	   
+       -s    Verify CPSS version
+
+       -u    Verify u-boot version
+
+       -d    Verify switch revision	   
+	   
+       -h    Display this usage.
+ 
+PASS CRITERIA
+       
+      - Display Diag OS, Linux kernel, Diag package, CPLD, CPSS,
+        U-Boot version, switch revision (-g) :
+          SUCCESS: could get software version
+            Display: PASS
+            Return code : 0
+			
+          ERROR: couldn't get software version
+            Display: FAIL
+            Return code : 2			
+			
+      - Verify version with input value (-o, -k, -p, -c, -s, -u, -d) :
+          SUCCESS: version is match with user expected
+            Display: PASS
+            Return code : 0
+
+          ERROR: version is not match with user expected
+            Display: FAIL
+            Return code : 3			
+	   
+      - Wrong options :
+          ERROR  : Input option is none or not matching OPTIONAL OPTIONS
+            Display : FAIL
+            Return code : 1
+
+ 
+EXAMPLE
+       version -g
+       version -o 0.1.3
+       version -k 4.4.120-armada-18.09.2
+       version -p 0.1.0
+       version -c \"0x1,0xa107\"
+       version -s 4.2.380
+       version -u 0.1.3
+       version -d	   
+	   
+" >&2
+}
+
+# ----- Function ----- #
+
+PASS=0
+FAIL=1
+
+function quit() {
+	local rc=''
+	local tmp_path="/sys/bus/i2c/devices/6-0048/hwmon/hwmon0/temp1_input"
+    local temp=`cat ${tmp_path}`
+    local tmp_int=`echo $((${temp}/1000))`
+    local tmp_point=`echo $((${temp}/100-${tmp_int}*10))`    
+
+	if [ "$1" = "" ]; then
+		rc=$FAIL
+		echo -e "\nquit(): miss input argument\n" >&2
+	else
+		rc=$1
+	fi
+
+	if [ "$rc" = "$PASS" ]; then
+		echo -e "\nResult: PASS"
+	else
+		echo -e "\nResult: FAIL" >&2
+	fi
+	
+    echo "${tmp_int}.${tmp_point} deg C"
+
+	exit $rc
+}
+
+function quit_ok() {
+    exit 0
+}
+
+function print_pass() {
+	echo -n "$*"
+	echo " [OK]"
+}
+
+function print_fail() {
+	echo -n "$*">&2
+	echo " [Oops]">&2
+}
+
+function print_exact() {
+	echo -n "$*">&2
+	echo " [Exact]">&2
+}
+
+function filename() {
+	echo -n "$(cd $(dirname $1) && pwd -P)/$(basename $1)"
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result_software_ver=${PASS}
+
+# test_mode status.
+disp_mode=false
+test_software_mode=0
+#====================================================================
+
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":go:k:p:c::s:u:dh" arg
+do
+    case ${arg} in
+        g)
+            disp_mode=true
+						
+			if [ ${TEST_select} -eq 1 ]; then
+				# SW version.
+				SW_ver="41cd4cbfb90-3357145a18d-0aed0ff3418"
+
+				# Linux kernel version.
+				linux_ver="4.4.120-armada-18.09.2"
+
+				# diag version.
+				diag_ver="0.1.0"
+
+				# CPLD version.
+				CPLD_ver="0x1"
+				date_code_ver="0xa107"
+
+				# CPSS version.
+				CPSS_ver="4.2.380"
+
+				# U-Boot version.
+				U_Boot_ver="0.1.3"				
+				
+				# chip version
+				sku="OS6360-P10"
+				if [ ${sku} = "OS6360-P10" ] || \
+				[ ${sku} = "OS6360-10" ] || \
+				[ ${sku} = "OS6360-P24X" ] || \
+				[ ${sku} = "OS6360-PH24" ]; then
+					# find chip version
+					open=`mrvl_luash -c debug`
+					chip_ver="Device:0         Offset:0xF8200  value=0x00b05c13"
+					tmp=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp & 255))`
+					chip_ver1=" "
+					close=`mrvl_luash -c exit`
+				elif [ ${sku} = "OS6360-P48X" ]; then
+					# find chip version
+					open=`mrvl_luash -c debug`
+					# two chip version
+					chip_ver="Device:0         Offset:0xF8200  value=0x00b05c10"
+					tmp0=${chip_ver#*value=}
+					chip_ver="Device:1         Offset:0xF8200  value=0x00b05c10"
+					tmp1=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp0 & 255))`
+					chip_ver1=`printf "0x%.2x" $((tmp1 & 255))`
+					close=`mrvl_luash -c exit`					
+				else
+				    echo " Unknown sku "
+				fi				
+			else
+			
+				# SW version.
+				SW_ver=`cat /etc/welcome | grep "SW VERSION"`
+				tmp=${SW_ver#*-}
+				SW_ver=${tmp%-*}
+
+				# Linux kernel version.
+				linux_ver=`uname -a | cut -d " " -f 3`
+
+				# diag version.
+				diag_ver=`cat /usr/local/diagver | cut -d " " -f 3`
+
+				# CPLD version.
+				CPLD_ver=`cat /sys/bus/i2c/devices/0-007f/cpld_rev`
+				date_code_ver=`cat /sys/bus/i2c/devices/0-007f/date_code`
+
+				# CPSS version.
+				CPSS_ver=`echo "show version" | nc 127.0.0.1 54321 | grep "CPSS version" | cut -d " " -f 4| tr -d '\r'`
+
+				# U-Boot version.
+				U_Boot_ver=`fw_printenv | grep version | awk -F '=' '{print $2}'`	
+				
+				# chip version
+				sku=`cat /usr/local/sku`
+				if [ ${sku} = "OS6360-P10" ] || \
+				[ ${sku} = "OS6360-10" ] || \
+				[ ${sku} = "OS6360-P24X" ] || \
+				[ ${sku} = "OS6360-PH24" ]; then
+					# find chip version
+					open=`mrvl_luash -c debug`
+					chip_ver=`mrvl_luash -c "dfx-register read device all offset 0xf8200 step 0x4 num 0x2" | grep "0xF8200" | tr -d '\r'`
+					tmp=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp & 255))`
+					chip_ver1=" "
+					close=`mrvl_luash -c exit`
+				elif [ ${sku} = "OS6360-P48X" ]; then
+					# find chip version
+					open=`mrvl_luash -c debug`
+					# two chip version
+					chip_ver=`mrvl_luash -c "dfx-register read device all offset 0xf8200 step 0x4 num 0x2" | grep "Device:0" | grep "0xF8200" | tr -d '\r'`
+					tmp0=${chip_ver#*value=}
+					chip_ver=`mrvl_luash -c "dfx-register read device all offset 0xf8200 step 0x4 num 0x2" | grep "Device:1" | grep "0xF8200" | tr -d '\r'`
+					tmp1=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp0 & 255))`
+					chip_ver1=`printf "0x%.2x" $((tmp1 & 255))`
+					close=`mrvl_luash -c exit`					
+				else
+				    echo " Unknown sku: ${sku} "
+					# find chip version
+					open=`mrvl_luash -c debug`
+					chip_ver=`mrvl_luash -c "dfx-register read device all offset 0xf8200 step 0x4 num 0x2" | grep "0xF8200" | tr -d '\r'`
+					tmp=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp & 255))`
+					chip_ver1=" "
+					close=`mrvl_luash -c exit`
+				fi
+			fi
+            ;;
+        o)
+            input_SW_ver=${OPTARG}
+            test_software_mode=1
+			
+			if [ ${TEST_select} -eq 1 ]; then
+				# SW version.
+				SW_ver="41cd4cbfb90-3357145a18d-0aed0ff3418"
+			else
+				# SW version.
+				SW_ver=`cat /etc/welcome | grep "SW VERSION"`
+				tmp=${SW_ver#*-}
+				SW_ver=${tmp%-*}
+			fi
+			
+			if  [ -z ${SW_ver} ]; then
+            echo
+            echo "===================================="
+            print_fail "No OS version get"
+            echo "===================================="
+            quit 2
+            fi
+			
+            ;;
+        k)
+            input_linux_ver=${OPTARG}
+            test_software_mode=2
+			if [ ${TEST_select} -eq 1 ]; then
+
+				# Linux kernel version.
+				linux_ver="4.4.120-armada-18.09.2"
+
+			else
+				# Linux kernel version.
+				linux_ver=`uname -a | cut -d " " -f 3`
+			fi
+		
+			if  [ -z ${linux_ver} ]; then
+            echo
+            echo "===================================="
+            print_fail "No linux version get"
+            echo "===================================="
+            quit 2
+            fi		
+			
+            ;;
+        p)
+            input_diag_ver=${OPTARG}
+            test_software_mode=3
+			if [ ${TEST_select} -eq 1 ]; then
+				# diag version.
+				diag_ver="0.1.0"
+
+			else
+				# diag version.
+				diag_ver=`cat /usr/local/diagver | cut -d " " -f 3`	
+			fi
+			
+			if  [ -z ${diag_ver} ]; then
+            echo
+            echo "===================================="
+            print_fail "No diag version get"
+            echo "===================================="
+            quit 2
+            fi			
+			
+            ;;
+        c)
+			input_CPLD_ver=`echo ${OPTARG} | awk -F "," '{print $1}' | sed 's/ *$//g'`
+			input_date_code_ver=`echo ${OPTARG} | awk -F "," '{print $2}' | sed 's/ *//g'`
+            test_software_mode=4
+			if [ ${TEST_select} -eq 1 ]; then
+				# CPLD version.
+				CPLD_ver="0x1"
+				date_code_ver="0xa107"
+			else			
+				# CPLD version.
+				CPLD_ver=`cat /sys/bus/i2c/devices/0-007f/cpld_rev`
+				date_code_ver=`cat /sys/bus/i2c/devices/0-007f/date_code`
+			fi
+
+			if  [ -z ${CPLD_ver} ]; then
+                echo
+                echo "===================================="
+                print_fail "No CPLD version get"
+                echo "===================================="
+                quit 2
+			
+			elif  [ -z ${date_code_ver} ]; then
+                echo
+                echo "===================================="
+                print_fail "No CPLD code version get"
+                echo "===================================="
+                quit 2             
+            fi	
+			
+            ;;
+        s)
+            input_CPSS_ver=${OPTARG}
+            test_software_mode=5
+			if [ ${TEST_select} -eq 1 ]; then
+				# CPSS version.
+				CPSS_ver="4.2.380"
+			else
+				# CPSS version.
+				CPSS_ver=`echo "show version" | nc 127.0.0.1 54321 | grep "CPSS version" | cut -d " " -f 4| tr -d '\r'`
+			fi
+			
+			if  [ -z ${CPSS_ver} ]; then
+            echo
+            echo "===================================="
+            print_fail "No CPSS version get"
+            echo "===================================="
+            quit 2
+            fi			
+            
+			;;
+		u)
+            input_U_Boot_ver=${OPTARG}
+            test_software_mode=6
+			if [ ${TEST_select} -eq 1 ]; then
+				# U-Boot version.
+				U_Boot_ver="0.1.3"
+			else
+				# U-Boot version.
+				U_Boot_ver=`fw_printenv | grep version | awk -F '=' '{print $2}'`
+			fi
+			
+			if  [ -z "${U_Boot_ver}" ]; then
+            echo
+            echo "===================================="
+            print_fail "No U_Boot version get"
+            echo "===================================="
+            quit 2
+            
+			fi			
+            ;;	
+        d)
+            test_software_mode=7
+			if [ ${TEST_select} -eq 1 ]; then
+				# chip version
+				sku="OS6360-P10"
+				if [ ${sku} = "OS6360-P10" ] || \
+				[ ${sku} = "OS6360-10" ] || \
+				[ ${sku} = "OS6360-P24X" ] || \
+				[ ${sku} = "OS6360-PH24" ]; then
+					# find chip version
+					open=`mrvl_luash -c debug`
+					chip_ver="Device:0         Offset:0xF8200  value=0x00b05c13"
+					tmp=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp & 255))`
+					chip_ver1=" "
+					close=`mrvl_luash -c exit`
+				elif [ ${sku} = "OS6360-P48X" ]; then
+					# find chip version
+					debug=`mrvl_luash -c debug`
+					# two chip version
+					chip_ver="Device:0         Offset:0xF8200  value=0x00b05c10"
+					tmp0=${chip_ver#*value=}
+					chip_ver="Device:1         Offset:0xF8200  value=0x00b05c10"
+					tmp1=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp0 & 255))`
+					chip_ver1=`printf "0x%.2x" $((tmp1 & 255))`
+					close=`mrvl_luash -c exit`					
+				else
+				    echo " Unknown sku "
+				fi				
+			else
+				# chip version
+				sku=`cat /usr/local/sku`
+				if [ ${sku} = "OS6360-P10" ] || \
+				[ ${sku} = "OS6360-10" ] || \
+				[ ${sku} = "OS6360-P24X" ] || \
+				[ ${sku} = "OS6360-PH24" ]; then
+					# find chip version
+					open=`mrvl_luash -c debug`
+					chip_ver=`mrvl_luash -c "dfx-register read device all offset 0xf8200 step 0x4 num 0x2" | grep "0xF8200" | tr -d '\r'`
+					tmp=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp & 255))`
+					chip_ver1=" "
+					close=`mrvl_luash -c exit`
+				elif [ ${sku} = "OS6360-P48X" ]; then
+					# find chip version
+					debug=`mrvl_luash -c debug`
+					# two chip version
+					chip_ver=`mrvl_luash -c "dfx-register read device all offset 0xf8200 step 0x4 num 0x2" | grep "Device:0" | grep "0xF8200" | tr -d '\r'`
+					tmp0=${chip_ver#*value=}
+					chip_ver=`mrvl_luash -c "dfx-register read device all offset 0xf8200 step 0x4 num 0x2" | grep "Device:1" | grep "0xF8200" | tr -d '\r'`
+					tmp1=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp0 & 255))`
+					chip_ver1=`printf "0x%.2x" $((tmp1 & 255))`
+					close=`mrvl_luash -c exit`					
+				else
+				    echo " Unknown sku: ${sku} "
+					# find chip version
+					open=`mrvl_luash -c debug`
+					chip_ver=`mrvl_luash -c "dfx-register read device all offset 0xf8200 step 0x4 num 0x2" | grep "0xF8200" | tr -d '\r'`
+					tmp=${chip_ver#*value=}
+					# find last 2 hex number value
+					chip_ver=`printf "0x%.2x" $((tmp & 255))`
+					chip_ver1=" "
+					close=`mrvl_luash -c exit`
+				fi
+			fi
+			
+			if  [ -z ${sku} ]; then
+				echo
+				echo "===================================="
+				print_fail "No Sku get"
+				echo "===================================="
+				quit 2			
+			
+			elif  [ -z ${chip_ver} ]; then
+				echo
+				echo "===================================="
+				print_fail "No Switch revision get"
+				echo "===================================="
+				quit 2            
+			fi			
+            ;;			
+        h)
+            usage
+            quit_ok
+            ;;				
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+# display info.
+if [ ${disp_mode} = true ]; then
+    echo
+    echo "======================================"
+    echo "SW version     : ${SW_ver}"
+    echo "Linux version  : ${linux_ver}"
+	echo "Diag. version  : ${diag_ver}" 
+	echo "CPLD version   : ${CPLD_ver}" "${date_code_ver}"
+	echo "CPSS version   : ${CPSS_ver}"
+	echo "U-Boot version : ${U_Boot_ver}"
+	echo "Switch revision: ${chip_ver}"	"${chip_ver1}"
+    echo "======================================"
+fi
+
+# test SW version.
+if [ ${test_software_mode} = 1 ]; then
+    echo
+    echo "Verify SW version: ${SW_ver}"
+    echo "======================================"
+    if [ ${SW_ver} = ${input_SW_ver} ]; then
+        print_pass "Match with input"
+        result_software_ver=${PASS}
+    else
+        print_fail "Not match with input: ${input_SW_ver}"
+        result_software_ver=3
+    fi
+    echo "======================================"
+fi
+
+# test linux version.
+if [ ${test_software_mode} = 2 ]; then
+    echo
+    echo "Verify Linux version: ${linux_ver}"
+    echo "======================================"
+    if [ ${linux_ver} = ${input_linux_ver} ]; then
+        print_pass "Match with input"
+        result_software_ver=${PASS}
+    else
+        print_fail "Not match with input: ${input_linux_ver}"
+        result_software_ver=3
+    fi
+    echo "======================================"
+fi
+
+# test diag version.
+if [ ${test_software_mode} = 3 ]; then
+    echo
+    echo "Verify Diag. version: ${diag_ver}"
+    echo "======================================"
+    if [ ${diag_ver} = ${input_diag_ver} ]; then
+        print_pass "Match with input"
+        result_software_ver=${PASS}
+    else
+        print_fail "Not match with input: ${input_diag_ver}"
+        result_software_ver=3
+    fi
+    echo "======================================"
+fi
+
+# test CPLD version.
+if [ ${test_software_mode} = 4 ]; then
+    echo
+    echo "Verify CPLD version: ${CPLD_ver}" "Verify CPLD code version: ${date_code_ver}" 
+    echo "======================================"
+    if [ ${CPLD_ver} = ${input_CPLD_ver} ] && [ ${date_code_ver} = ${input_date_code_ver} ]; then
+        print_pass "Match with input"
+        result_software_ver=${PASS}
+    else
+        print_fail "Not match with input: CPLD version: ${input_CPLD_ver}, CPLD code version: ${input_date_code_ver}"
+        result_software_ver=3
+    fi
+    echo "======================================"
+fi
+
+# test CPSS version.
+if [ ${test_software_mode} = 5 ]; then
+    echo
+    echo "Verify CPSS version: ${CPSS_ver}"
+    echo "======================================"
+    if [ ${CPSS_ver} = ${input_CPSS_ver} ]; then
+        print_pass "Match with input"
+        result_software_ver=${PASS}
+    else
+        print_fail "Not match with input: ${input_CPSS_ver}"
+        result_software_ver=3
+    fi
+    echo "======================================"
+fi
+
+# test U_Boot version.
+if [ ${test_software_mode} = 6 ]; then
+    echo
+    echo "Verify U-Boot version: ${U_Boot_ver}"
+    echo "======================================"
+    if [ "${U_Boot_ver}" = "${input_U_Boot_ver}" ]; then
+        print_pass "Match with input"
+        result_software_ver=${PASS}
+    else
+        print_fail "Not match with input: ${input_U_Boot_ver}"
+        result_software_ver=3
+    fi
+    echo "======================================"
+fi
+
+# test switch revision.
+if [ ${test_software_mode} = 7 ]; then
+    echo
+    echo "Verify Switch revision: ${chip_ver} ${chip_ver1}"
+    echo "======================================"
+    if [ ${sku} = "OS6360-P10" ] || [ ${sku} = "OS6360-10" ]; then
+		if [ ${chip_ver} = "0x13" ];then
+			print_pass "Match with Sku"
+			result_software_ver=${PASS}
+		else
+			print_fail "Switch revision not match with Sku"
+			echo "Sku=${sku}," "Chip_ver=${chip_ver}"
+			result_software_ver=3			
+		fi
+	elif [ ${sku} = "OS6360-P24X" ] || [ ${sku} = "OS6360-PH24" ]; then
+		if [ ${chip_ver} = "0x10" ];then
+			print_pass "Match with Sku"
+			result_software_ver=${PASS}
+		else
+			print_fail "Switch revision not match with Sku"
+			echo "Sku=${sku}," "Chip_ver=${chip_ver}"
+			result_software_ver=3
+		fi
+	elif [ ${sku} = "OS6360-P48X" ]; then
+		if [ ${chip_ver} = "0x10" ] && [ ${chip_ver1} = "0x10" ];then
+			print_pass "Match with Sku"
+			result_software_ver=${PASS}
+		else
+			print_fail "Switch revision not match with Sku"
+			echo "Sku=${sku}," "Chip_ver=${chip_ver}," "Chip_ver1=${chip_ver1}"
+			result_software_ver=3			
+		fi		
+	
+    else
+        echo "Sku=${sku}," "Chip_ver=${chip_ver}" 
+        result_software_ver=3
+    fi
+    echo "======================================"
+fi
+
+
+if [  ${result_software_ver} -ne ${PASS} ]; then
+    result=3
+else
+    result=${PASS}
+fi
+
+quit ${result}

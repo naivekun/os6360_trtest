@@ -1,0 +1,106 @@
+
+###########################################
+##                                       ##
+##    Top Make file for CPSS drivers     ##
+##                                       ##
+###########################################
+
+#$(warning "INCLUDE_UTF=$(INCLUDE_UTF)")
+ifeq (YES, $(INCLUDE_UTF))
+        ## all those files should not be compiled if we not need it
+
+        $(PROJ_NAME)_BASE_PATH := \
+                $(PROJ_NAME)/h
+
+        #        $(OS_INCLUDE) <= $(SIM_INCLUDES)
+
+        $(PROJ_NAME)_PROJECT_PATH := \
+                $(PATH_COMMON)       \
+                $(PATH_UTFTOOL)      \
+                $(PATH_UTFTRAFFIC)   \
+                $(PATH_SYSCONFIG)    \
+                $(PATH_MAINOS)       \
+                $(PATH_EXT_DRV)      \
+                $(PATH_EXT_UTILS)
+
+
+ifeq (EXISTS, $(ASIC_SIMULATION))
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_SIM)
+endif
+        ifeq (EXISTS, $(CHX_FAMILY))
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_UTF_PP_DRV)
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_PP_DRV)
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_TM_API)
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_TM_API_CORE)
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_TM_API_PLATFORM)
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_LABSERVICE)
+        endif
+        ifeq (EXISTS, $(PX_FAMILY))
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_UTF_PX_DRV)
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_PX_DRV)
+        endif
+
+        # check if need to use 'GM_USED'.
+        #needed when 'force' image to use GM.
+        #also needed for Puma2,3 where use always GM. (for simulation)
+        ifeq (EXISTS, $(FORCE_GM_USE))
+          $(PROJ_NAME)_AD_CFLAGS += $(FD)GM_USED
+        endif
+
+
+        ifeq (YES, $(INCLUDE_ENHANCED_UTF))
+          $(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_TGF
+        endif
+
+
+        #################
+        ## DEBUG FLAGS ##
+        #################
+        ifdef PRESTERA_DEBUG
+               $(PROJ_NAME)_CDEBUG = $(FD)PRESTERA_DEBUG
+        endif
+
+        ifeq (DEBUG_ON, $(CPSS_DEBUG))
+                ifeq (DEBUG_ON, $(CPSS_DEBUG_VLAN))
+                       $(PROJ_NAME)_CDEBUG += $(FD)GT_VLAN_DEBUG
+                endif
+                ifeq (DEBUG_ON, $(CPSS_DEBUG_FDB))
+                       $(PROJ_NAME)_CDEBUG += $(FD)GT_MAC_DEBUG
+                endif
+                ifeq (DEBUG_ON, $(CPSS_DEBUG_TRUNK))
+                       $(PROJ_NAME)_CDEBUG += $(FD)GT_TRUNK_DEBUG
+                endif
+                ifeq (DEBUG_ON, $(CPSS_DEBUG_FDB_DUMP))
+                       $(PROJ_NAME)_CDEBUG += $(FD)GT_MAC_DEBUG_DUMP
+                endif
+                ifeq (DEBUG_ON, $(CPSS_DEBUG_IPV4))
+                       $(PROJ_NAME)_CDEBUG += $(FD)GT_DEBUG_IPV4
+                endif
+                ifeq (DEBUG_ON, $(CPSS_DEBUG_IPV6))
+                       $(PROJ_NAME)_CDEBUG += $(FD)GT_DEBUG_IPV6
+                endif
+                ifeq (DEBUG_ON, $(CPSS_DEBUG_PCL))
+                       $(PROJ_NAME)_CDEBUG += -DGT_DEBUG_PCL
+                endif
+                ifeq (DEBUG_ON, $(CPSS_DEBUG_TCM))
+                       $(PROJ_NAME)_CDEBUG += $(FD)GT_DEBUG_TCM
+                endif
+        endif
+
+        ##################
+        ## GALTIS FLAGS ##
+        ##################
+        ifneq (EXCLUDE_LIB, $(EXCLUDE_GALTIS))
+          $(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_GALTIS
+        endif
+
+        ############
+        ## CFLAGS ##
+        ############
+        #CFLAGS += $(CFLAGS1) $(CFLAGS2) $(CFLAGS_OPT) $(OS_DEFINE) $(CPU_FLAGS) $(LFLAGS) $(AD_CFLAGS) $(CDEBUG)
+
+        #$(PROJ_NAME)_CMD_CFLAGS += $(CMD_CFLAGS)
+
+endif
+## endif of INCLUDE_UTF
+

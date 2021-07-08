@@ -1,0 +1,7 @@
+// TAG:               FAST BOOT; restore
+// Short Description: Restore configurations
+// Description:       deconfigure FAST BOOT
+
+end
+
+

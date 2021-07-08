@@ -1,0 +1,10 @@
+// TAG:               link; counters
+// Short Description: Clean after test
+// Description:       Disable shutdown of port 0. Clean FDB.
+end
+configure
+do clear bridge type ${dev} all
+interface ethernet ${dev}/${port[1]}
+no shutdown
+end
+

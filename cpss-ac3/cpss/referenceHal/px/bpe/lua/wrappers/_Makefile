@@ -1,0 +1,21 @@
+#List of subfolders to include in build
+MODULES :=
+
+#List of files to include in list
+FILES := all_refhal_lua_c_type_wrappers.c \
+	 all_refhal_lua_c_type_manual_wrappers.c \
+	 wraplCpssPxBpe.c
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+$(PROJ_NAME)_AD_CFLAGS += -I$(CWD)/../../h
+
+#Add relative path to original Makefile, to each file in the list
+REFERENCEHAL_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

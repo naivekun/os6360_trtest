@@ -1,0 +1,7 @@
+// TAG:               mac; pdu; restore; default;
+// Short Description: Restore default mac pdu mode on dev#0
+// Description:       Disable (restore default) mac pdu mode on dev#0 for all mac pdu protocols
+end
+configure
+no mac pdu
+end

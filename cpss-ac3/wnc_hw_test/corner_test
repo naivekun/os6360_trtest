@@ -1,0 +1,130 @@
+#!/bin/bash
+
+source /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - command for corner test
+
+SYNOPSIS
+       $prog_name [-s] [-q] [-h]
+
+DESCRIPTION
+       To set up VLAN for corner test, or restore the corner test setting.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -s    To start the corner test.
+
+       -q    To quit the corner test.
+
+       -h    Show this help message.
+
+EXAMPLE
+       $prog_name -s
+       $prog_name -q
+       $prog_name -h
+
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    exit 1
+fi
+
+while getopts "sqh" arg; do
+    case $arg in
+        s) # start test
+            action="START"
+            ;;
+        q) # stop test 
+            action="STOP"
+            ;;
+        h | *) # display usage
+            usage
+            exit 0
+            ;;
+    esac
+done
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    echo "CPSS not ready!"
+    exit 1
+fi
+
+if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+    mrvl_luash -c "do load OS6360_P10_10_EMS_$action.txt" 2>&1 > /dev/null
+elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+    mrvl_luash -c "do load OS6360_P24X_PH24_EMS_$action.txt" 2>&1 > /dev/null
+elif [ "$SKU" == "OS6360-P48X" ]; then
+    mrvl_luash -c "do load OS6360_P48X_EMS_$action.txt" 2>&1 > /dev/null
+else
+    echo "SKU not matched, please check!"
+    exit 1
+fi
+
+# Change some ports to group by speed
+if [ "$action" == "START" ]; then
+    rm -f /tmp/corner_cmds
+    if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+        echo "do configure" 2>&1 > /tmp/corner_cmds
+        # change 0/1 from vlan 15 to vlan 13
+        echo "interface ethernet 0/1" >> /tmp/corner_cmds
+        echo "switchport allowed vlan remove 15" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 13 untagged" >> /tmp/corner_cmds
+        echo "switchport pvid 13" >> /tmp/corner_cmds
+        echo "exit" >> /tmp/corner_cmds
+        # change 0/26 from vlan 13 to vlan 15
+        echo "interface ethernet 0/26" >> /tmp/corner_cmds
+        echo "switchport allowed vlan remove 13" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 15 untagged" >> /tmp/corner_cmds
+        echo "switchport pvid 15" >> /tmp/corner_cmds
+        echo "end" >> /tmp/corner_cmds
+    elif [ "$SKU" == "OS6360-P48X" ]; then
+        echo "do configure" 2>&1 > /tmp/corner_cmds
+        # change 0/1 from vlan 27 to vlan 24
+        echo "interface ethernet 0/1" >> /tmp/corner_cmds
+        echo "switchport allowed vlan remove 27" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 24 untagged" >> /tmp/corner_cmds
+        echo "switchport pvid 24" >> /tmp/corner_cmds
+        echo "exit" >> /tmp/corner_cmds
+        # change 0/24 from vlan 24 to vlan 25
+        echo "interface ethernet 0/24" >> /tmp/corner_cmds
+        echo "switchport allowed vlan remove 24" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 25 untagged" >> /tmp/corner_cmds
+        echo "switchport pvid 25" >> /tmp/corner_cmds
+        echo "exit" >> /tmp/corner_cmds
+        # change 1/24 from vlan 25 to vlan 27
+        echo "interface ethernet 1/24" >> /tmp/corner_cmds
+        echo "switchport allowed vlan remove 25" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 27 untagged" >> /tmp/corner_cmds
+        echo "switchport pvid 27" >> /tmp/corner_cmds
+        echo "exit" >> /tmp/corner_cmds
+        # add 0/26,1,26 into vlan 25 and vlan 27
+        echo "interface ethernet 0/26" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 25 untagged" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 27 untagged" >> /tmp/corner_cmds
+        echo "exit" >> /tmp/corner_cmds
+        echo "interface ethernet 1/26" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 25 untagged" >> /tmp/corner_cmds
+        echo "switchport allowed vlan add 27 untagged" >> /tmp/corner_cmds
+        echo "end" >> /tmp/corner_cmds
+    fi
+
+    cpss_load_config_file "/tmp/corner_cmds" "no_show" 
+fi
+
+echo -e "=== Corner test $action ===\n"
+
+exit 0
+

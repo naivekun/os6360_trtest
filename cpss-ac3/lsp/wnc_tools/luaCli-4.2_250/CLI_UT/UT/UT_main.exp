@@ -1,0 +1,843 @@
+#
+# cpss luaCLI UT common procedures
+#
+# File version: 3 $ 
+#
+
+#
+# Internal Data
+#
+set UT_result [ list ]
+set UT_failed_list [ list ]
+set UT_current_suite ""
+set UT_current_suite_num_tests    0 
+set UT_current_suite_tests_ok     0 
+set UT_current_suite_tests_failed 0 
+set UT_current_test ""
+set UT_current_test_desc ""
+set UT_current_test_log ""
+
+#
+# UT_suite_enabled
+#
+# DESCRIPTION:
+#       Check if suite applicable
+#
+# INPUTS:
+#       suitename
+#
+# RETURNS:
+#       true if enabled
+#
+# COMMENTS:
+#       TODO
+proc UT_suite_enabled { suitename } {
+    return true
+}
+
+#
+# UT_suite_end
+#
+# DESCRIPTION:
+#       End current suite
+#
+# COMMENTS:
+#       TODO
+proc UT_suite_end { } {
+    UT_test_end NO_END
+    global UT_current_suite
+    global UT_result
+    global report_file
+    global UT_current_suite
+    global UT_current_suite_num_tests
+    global UT_current_suite_tests_ok
+    global UT_current_suite_tests_failed
+    if { $UT_current_suite != "" } {
+        lappend UT_result [list $UT_current_suite $UT_current_suite_num_tests $UT_current_suite_tests_ok $UT_current_suite_tests_failed]
+        puts $report_file "*** Suite $UT_current_suite FINISHED"
+    }
+    set UT_current_suite ""
+    set UT_current_suite_num_tests    0 
+    set UT_current_suite_tests_ok     0 
+    set UT_current_suite_tests_failed 0 
+}
+
+#
+# UT_suite_start
+#
+# DESCRIPTION:
+#       Start new suite
+#       Close previous one if not closed yet
+#
+# INPUTS:
+#       suitename
+#
+# COMMENTS:
+#       TODO
+proc UT_suite_start { suitename } {
+    UT_suite_end
+    global UT_current_suite
+    global report_file
+    set UT_current_suite $suitename
+    puts $report_file "*** Suite $suitename STARTED"
+}
+
+#
+# UT_test_enabled
+#
+# DESCRIPTION:
+#       Check if test applicable
+#
+# INPUTS:
+#       testname
+#
+# RETURNS:
+#       true if enabled
+#
+# COMMENTS:
+#       TODO
+proc UT_test_enabled { testname } {
+    return true
+}
+
+proc UT_log_reset {} {
+    global UT_current_test_log
+    set UT_current_test_log ""
+}
+
+proc UT_log { string } {
+    global UT_current_test_log
+    set UT_current_test_log "$UT_current_test_log$string"
+}
+proc UT_log_output {} {
+    upvar 1 expect_out exout
+    UT_log $exout(buffer)
+}
+proc UT_send_log args {
+    foreach arg $args {
+        send_log_saved $arg
+        UT_log $arg
+    }
+}
+proc UT_exp_send_log args {
+    foreach arg $args {
+        exp_send_log_saved join $arg
+        UT_log $arg
+    }
+}
+match_max 32768
+
+
+set UT_do_redir 0
+proc UT_redirect { do_redir } {
+    global UT_do_redir
+    if { $UT_do_redir == $do_redir } {
+        return true
+    }
+    if { $do_redir == 0 } {
+        # restore logger
+        rename send_log UT_send_log
+        rename exp_send_log UT_exp_send_log
+        rename send_log_saved send_log
+        rename exp_send_log_saved exp_send_log
+    } else {
+        # replace logger
+        rename send_log send_log_saved
+        rename exp_send_log exp_send_log_saved
+        rename UT_send_log send_log
+        rename UT_exp_send_log exp_send_log
+    }
+    set UT_do_redir $do_redir
+}
+
+#
+# UT_test_end
+#
+# DESCRIPTION:
+#       End current test
+#
+# INPUTS:
+#       status  - test status, SUCCESS if test successful
+#
+# COMMENTS:
+#       TODO
+proc UT_test_end { status } {
+    global UT_current_suite
+    global UT_current_test
+    global UT_current_test_desc
+    global UT_current_test_log
+    global UT_current_suite_tests_ok
+    global UT_current_suite_tests_failed
+    global UT_failed_list
+    global report_errors_file
+    if { $UT_current_test != "" } {
+        if { $status == "SUCCESS" } {
+            set UT_current_suite_tests_ok [expr { $UT_current_suite_tests_ok + 1 } ]
+        } else {
+            set UT_current_suite_tests_failed [expr { $UT_current_suite_tests_failed + 1 } ]
+            puts $report_errors_file "\n**** $UT_current_suite.$UT_current_test"
+            puts $report_errors_file $UT_current_test_log
+            lappend UT_failed_list "$UT_current_suite.$UT_current_test"
+        }
+        UT_redirect 0
+    }
+    set UT_current_test ""
+    set UT_current_test_desc ""
+    UT_log_reset
+}
+
+#
+# UT_test_start
+#
+# DESCRIPTION:
+#       Start new test
+#       Close previous one if not closed yet
+#
+# INPUTS:
+#       testname
+#
+# COMMENTS:
+#       TODO
+proc UT_test_start { testname { description "" } } {
+    UT_test_end NO_END
+    global UT_current_test
+    global UT_current_test_desc
+    global UT_current_suite_num_tests
+    set UT_current_suite_num_tests [expr { $UT_current_suite_num_tests + 1 } ]
+    set UT_current_test $testname
+    set UT_current_test_desc $description
+    UT_log_reset
+    UT_redirect 1
+
+    UT_event START
+}
+
+#
+# UT_print_result
+#
+# DESCRIPTION:
+#       Print test statistics
+#
+# COMMENTS:
+#       TODO
+proc UT_print_result { } {
+    UT_suite_end
+    global UT_result
+    global UT_failed_list
+    global report_file
+    puts $report_file "*****************"
+    puts $report_file "*****************"
+    puts $report_file "Failed tests:"
+    foreach test $UT_failed_list {
+        puts $report_file "    $test"
+    }
+    puts $report_file "*****************"
+    puts $report_file "*****************"
+    puts $report_file "Summary:"
+
+    send_user "*****************\n"
+    send_user "*****************\n"
+    send_user "Summary:\n"
+    foreach suite $UT_result {
+        foreach { name total ok failed } $suite {
+            send_user "SUITE: $name total: $total, Success: $ok, Failed: $failed\n"
+            puts $report_file "SUITE: $name total: $total, Success: $ok, Failed: $failed"
+        }
+    }
+}
+
+#
+# UT_event
+#
+# DESCRIPTION:
+#       Process test event
+#
+# INPUTS
+#       event   - One of:
+#                 SUCCESS   test successful, end test
+#                 FAILED    test failed, end test
+#                 OK        check ok, continue test
+#                 ERR       error in test, continue
+#       cause   - Comment string
+#
+# COMMENTS:
+#       TODO
+proc UT_event { event {cause ""}} {
+    global UT_current_suite
+    global UT_current_test
+    if { $UT_current_test == "" } { return }
+    # handle
+    send_log "**** $UT_current_suite.$UT_current_test $event $cause\n"
+    if { $event == "SUCCESS" } {
+        UT_test_end $event
+    }
+    if { $event == "FAILED" } {
+        UT_test_end $event
+    }
+}
+
+
+###########################
+### Type tests
+###########################
+
+#
+# UT_type_test
+#
+# DESCRIPTION:
+#       Execute test which tests CLI type
+#
+# INPUTS
+#       typename
+#       ut_proc     procedure to execute
+#
+# COMMENTS:
+#
+proc UT_type_test { typename ut_proc } {
+    if { [ UT_test_enabled $typename ] } {} else { return 1 }
+    UT_test_start $typename
+    send "lua\n"
+    expect "lua>"
+    UT_log_output
+    send "print(CLI_type_dict\['$typename'\] ~= nil)\n"
+    expect "\n"
+    UT_log_output
+    expect {
+        true { }
+        false {
+            UT_log_output
+            UT_event FAILED "No handler"
+            return 0
+        }
+        timeout {
+            UT_log_output
+            UT_event FAILED "Unexpected timeout"
+            return 0
+        }
+    }
+    UT_log_output
+    expect "lua>"
+    UT_log_output
+    send "type_name='$typename'\n"
+    expect "lua>"
+    UT_log_output
+    send "type_descr=CLI_type_dict\[type_name\]\n"
+    expect "lua>"
+    UT_log_output
+    send "print(type(type_descr.checker)=='function')\n"
+    expect "\n"
+    UT_log_output
+    expect {
+        true { }
+        false {
+            UT_log_output
+            UT_event SUCCESS "No checker"
+            send ".\n"
+            expect "CLI_PROMPT#"
+            return 1
+        }
+        timeout {
+            UT_log_output
+            UT_event FAILED "Unexpected timeout"
+            return 0
+        }
+    }
+    UT_log_output
+    expect "lua>"
+    UT_log_output
+    global UT_current_suite
+    global report_file
+    global UT_failed_list
+    if { [catch { $ut_proc $typename } retcode] } {
+        lappend UT_failed_list "$UT_current_suite.$typename"
+        puts $report_file "*** Test $UT_current_suite.$typename FAILED"
+        UT_event FAILED $retcode
+        send ".\n"
+        expect "CLI_PROMPT#"
+        UT_log_output
+        return 0
+    }
+    puts $report_file "*** Test $UT_current_suite.$typename SUCCEEDED"
+    UT_event SUCCESS
+    send ".\n"
+    expect "CLI_PROMPT#"
+    UT_log_output
+    return 1
+
+}
+
+#
+# UT_type_syntax_expect_v
+# (internal function)
+#
+# DESCRIPTION:
+#       Perform syntax check only
+#
+# INPUTS
+#       value   - input string
+#       result  - expected result (true/false)
+#
+# COMMENTS:
+#
+proc UT_type_syntax_expect_v { value result } {
+    send "valid = nil\n"
+    expect "lua>"
+    UT_log_output
+    send "valid, result = type_descr.checker('$value', type_name, type_descr)\n"
+    expect "lua>"
+    UT_log_output
+    send "print(valid)\n"
+    expect "\n"
+    UT_log_output
+    set res ""
+    expect {
+        true { set res true }
+        false { set res false }
+        nil { set res nil }
+        timeout {
+            UT_log_output
+            return -code error "Unexpected timeout"
+        }
+    }
+    UT_log_output
+    expect "lua>"
+    UT_log_output
+    if { $res == $result } {
+        UT_event OK "syntax check('$value'): $res expected: $result"
+        return 1
+    }
+    UT_event ERR "syntax check('$value'): $res expected: $result"
+    return -code error "syntax check('$value'): $res expected: $result"
+}
+
+#
+# UT_type_syntax_expect_ok
+#
+# DESCRIPTION:
+#       Perform syntax check only. The syntax expected to be correct
+#
+# INPUTS
+#       value   - input string
+#
+# COMMENTS:
+#
+proc UT_type_syntax_expect_ok { value } {
+    return [ UT_type_syntax_expect_v $value true ]
+}
+
+#
+# UT_type_syntax_expect_fail
+#
+# DESCRIPTION:
+#       Perform syntax check only. The syntax expected to be incorrect
+#
+# INPUTS
+#       value   - input string
+#
+# COMMENTS:
+#
+proc UT_type_syntax_expect_fail { value } {
+    return [ UT_type_syntax_expect_v $value false ]
+}
+
+#
+# UT_type_expect_v
+# (internal function)
+#
+# DESCRIPTION:
+#       After syntax check successful
+#       Check an expression
+#       The variable "result" will store computed value
+#
+# INPUTS
+#       expression  - expression to test
+#       result      - expected result (true/false)
+#
+# COMMENTS:
+#
+proc UT_type_expect_v { expression result } {
+    send "print($expression)\n"
+    expect "\n"
+    UT_log_output
+    set res ""
+    expect {
+        true { set res true }
+        false { set res false }
+        timeout {
+            UT_log_output
+            return -code error "Unexpected timeout"
+        }
+    }
+    UT_log_output
+    expect "lua>"
+    UT_log_output
+    if { $res == $result } {
+        UT_event OK "($expression) == $res expected: $result"
+        return 1
+    }
+    UT_event ERR "($expression) == $res expected: $result"
+    return -code error "($expression) == $res expected: $result"
+
+}
+
+#
+# UT_type_expect_ok
+#
+# DESCRIPTION:
+#       After syntax check successful
+#       Check an expression
+#       The expression expected to be true
+#       The variable "result" will store computed value
+#
+# INPUTS
+#       expression  - expression to test
+#
+# COMMENTS:
+#
+proc UT_type_expect_true { expression } {
+    return [ UT_type_expect_v $expression true ]
+}
+
+#
+# UT_type_expect_fail
+#
+# DESCRIPTION:
+#       After syntax check successful
+#       Check an expression
+#       The expression expected to be false
+#       The variable "result" will store computed value
+#
+# INPUTS
+#       expression  - expression to test
+#
+# COMMENTS:
+#
+proc UT_type_expect_false { expression } {
+    return [ UT_type_expect_v $expression false ]
+}
+
+
+
+###########################
+### command tests
+###########################
+
+set UT_command_last ""
+set UT_syntax_check_status false
+set UT_command_execution_status false
+set UT_command_output ""
+#
+# UT_do_command
+#
+# DESCRIPTION:
+#       Execute command in luaCLI
+#       Store result in variables:
+#           UT_syntax_check_status
+#                   true / false
+#           UT_command_execution_status
+#                   false       if command failed (syntax, missing var, etc)
+#                   0           successful ( command returns nothing, true, 0 )
+#                   Non-zero    failure ( command returns false or non-zero number )
+#           UT_command_output
+#                   Command output
+#
+# INPUTS
+#       commandline
+#
+# COMMENTS:
+#
+proc UT_do_command { commandline } {
+    global UT_command_last
+    global UT_syntax_check_status
+    global UT_command_execution_status
+    global UT_command_output
+
+    set UT_command_last $commandline
+    set UT_syntax_check_status false
+    set UT_command_execution_status false
+    set UT_command_output ""
+
+    send "$commandline\n"
+    expect "\n"
+    UT_log_output
+    expect {
+        -re "###ERR#SYNTAX\r?\n" {
+            set UT_syntax_check_status false
+        }
+        -re "###SYNTAXOK\r?\n" {
+            set UT_syntax_check_status true
+        }
+        timeout { 
+            UT_log_output
+            return -code error "Unexpected timeout"
+        }
+    }
+    UT_log_output
+    if { $UT_syntax_check_status == false } {
+        expect "CLI_PROMPT#"
+        UT_log_output
+        return
+    }
+    # UT_syntax_check_status == true
+    expect {
+        -re "###ERR#EXEC\r?\n" { set UT_command_execution_status false }
+        -re "###EXECOK#(\\d+)#\r?\n" { set UT_command_execution_status $expect_out(1,string) }
+        -re "^(\[^\r\n\]*\r?\n)" {
+            UT_log_output
+            set UT_command_output "$UT_command_output[string trim $expect_out(1,string) \r\n]\n"
+            exp_continue
+        }
+        timeout {
+            UT_log_output
+            return -code error "Unexpected timeout"
+    }
+    }
+    UT_log_output
+    expect "CLI_PROMPT#"
+    UT_log_output
+}
+
+#
+# UT_do_command_expect_success
+#
+# DESCRIPTION:
+#       Execute command in luaCLI
+#       It is expected the command successful
+#
+# INPUTS
+#       commandline
+#
+# COMMENTS:
+#
+proc UT_do_command_expect_success { commandline } {
+    global UT_syntax_check_status
+    global UT_command_execution_status
+    UT_do_command $commandline
+    if { $UT_syntax_check_status != "true" } {
+        UT_event FAILED "Command \"commandline\": Syntax error"
+        return -code error "Test failed"
+    }
+    if { $UT_command_execution_status != 0 } {
+        UT_event FAILED "Command \"$commandline\": Error while command executed"
+        return -code error "Test failed"
+    }
+    UT_event OK "Command \"$commandline\" successful"
+}
+
+#
+# UT_do_command_expect_syntax_error
+#
+# DESCRIPTION:
+#       Execute command in luaCLI
+#       It is expected a syntax error
+#
+# INPUTS
+#       commandline
+#
+# COMMENTS:
+#
+proc UT_do_command_expect_syntax_error { commandline } {
+    global UT_syntax_check_status
+    UT_do_command $commandline
+    if { $UT_syntax_check_status == "true" } {
+        UT_event FAILED "Command \"$commandline\" expected to be syntax error"
+        return -code error "Test failed"
+    }
+    UT_event OK "Command \"$commandline\" syntax error (expected)"
+}
+
+#
+# UT_syntax_expect_ok
+#
+# DESCRIPTION:
+#       Check command syntax in luaCLI
+#       It is expected a syntax ok
+#
+# INPUTS
+#       commandline
+#
+# COMMENTS:
+#
+proc UT_syntax_expect_ok { commandline } {
+    global UT_syntax_check_status
+    UT_do_command "#chk_syntax $commandline"
+    if { $UT_syntax_check_status != "true" } {
+        UT_event FAILED "Command \"$commandline\": Syntax error"
+        return -code error "Test failed"
+    }
+    UT_event OK "Command \"$commandline\" syntax ok"
+}
+
+#
+# UT_syntax_expect_fail
+#
+# DESCRIPTION:
+#       Check command syntax in luaCLI
+#       It is expected a syntax ok
+#
+# INPUTS
+#       commandline
+#
+# COMMENTS:
+#
+proc UT_syntax_expect_fail { commandline } {
+    global UT_syntax_check_status
+    UT_do_command "#chk_syntax $commandline"
+    if { $UT_syntax_check_status == "true" } {
+        UT_event FAILED "Command \"$commandline\" expected to be syntax error"
+        return -code error "Test failed"
+    }
+    UT_event OK "Command \"$commandline\" syntax error (expected)"
+}
+
+#
+# UT_do_command_expect_exec_error
+#
+# DESCRIPTION:
+#       Execute command in luaCLI
+#       It is expected an execution error
+#
+# INPUTS
+#       commandline
+#
+# COMMENTS:
+#
+proc UT_do_command_expect_exec_error { commandline } {
+    global UT_syntax_check_status
+    global UT_command_execution_status
+    UT_do_command $commandline
+    if { $UT_syntax_check_status != "true" } {
+        UT_event FAILED "Command \"commandline\": Syntax error"
+        return -code error "Test failed"
+    }
+    if { $UT_command_execution_status == false } {
+        UT_event FAILED "Command \"commandline\": Command crashed"
+        return -code error "Test failed"
+    }
+    if { $UT_command_execution_status == 0 } {
+        UT_event FAILED "Command \"commandline\": Expected to be an execution error"
+        return -code error "Test failed"
+    }
+    UT_event OK "Command \"$commandline\" error (expected)"
+}
+
+#
+# UT_command_output_lines
+#
+# DESCRIPTION:
+#       After command executed successfully
+#       Return command output split in lines
+#
+# COMMENTS:
+#
+proc UT_command_output_lines { } {
+    global UT_command_output
+    return [split $UT_command_output "\n"]
+}
+
+#
+# UT_command_output_must_match
+#
+# DESCRIPTION:
+#       After command executed successfully check its output
+#
+# INPUTS
+#       expression  - regular expression (TCL)
+#
+# COMMENTS:
+#
+proc UT_command_output_must_match { expression } {
+    global UT_command_last
+    global UT_command_output
+    if { [regexp -line $expression $UT_command_output] } {
+        UT_event OK "Command \"$UT_command_last\": output match $expression"
+        return
+    }
+    UT_event FAILED "Command \"commandline\": output doesn't match $expression"
+    return -code error "Test failed"
+}
+
+#
+# UT_command_output_must_not_match
+#
+# DESCRIPTION:
+#       After command executed successfully check its output
+#
+# INPUTS
+#       expression  - regular expression (TCL)
+#
+# COMMENTS:
+#
+proc UT_command_output_must_not_match { expression } {
+    global UT_command_output
+    if { [regexp -line $expression $UT_command_output] } {
+        UT_event FAILED "Command \"$UT_command_last\": output match $expression (should not)"
+        return -code error "Test failed"
+    }
+    UT_event OK "Command \"commandline\": output doesn't match $expression (expected)"
+}
+
+#
+# UT_test
+#
+# DESCRIPTION:
+#       Execute regular test
+#
+# INPUTS
+#       testname
+#       ut_proc     procedure to execute
+#
+# COMMENTS:
+#
+proc UT_test { testname ut_proc { description "" }} {
+    global report_file
+    global UT_current_suite
+    if { [ UT_test_enabled $testname ] } {} else { return 1 }
+    UT_test_start $testname $description
+    if { [catch { $ut_proc } retcode] } {
+        puts $report_file "*** Test $UT_current_suite.$testname ($description) FAILED"
+        UT_event FAILED $retcode
+        # collect failed tests
+        return 0
+    }
+    puts $report_file "*** Test $UT_current_suite.$testname ($description) SUCCEEDED"
+    UT_event SUCCESS
+    return 1
+}
+
+#
+# UT_test_in_mode
+#
+# DESCRIPTION:
+#       Change current mode
+#
+# INPUTS
+#       mode
+#       testname
+#       ut_proc     procedure to execute
+#
+# COMMENTS:
+#
+proc UT_test_in_mode { mode testname ut_proc { description "" } } {
+    send "lua\n"
+    expect "lua>"
+    UT_log_output
+    send "CLI_change_mode_push(\"$mode\")\n"
+    expect "lua>"
+    UT_log_output
+    send ".\n"
+    expect "CLI_PROMPT#"
+    UT_log_output
+
+    UT_test $testname $ut_proc $description
+
+    send "lua\n"
+    expect "lua>"
+    UT_log_output
+    send "CLI_change_mode_pop()\n"
+    expect "lua>"
+    UT_log_output
+    send ".\n"
+    expect "CLI_PROMPT#"
+    UT_log_output
+}

@@ -1,0 +1,239 @@
+// TAG:               PIP; Pre-Ingress Prioritization ;
+// Short Description: Configuration for device with PIP support.
+// Description:       Configuration for device with PIP support.
+//
+end
+//
+// enter the config context
+config
+//
+//Global set 4 different PIP "tpid+vid" :
+//1.	Tpid = 8100 , vid = 1
+//2.	Tpid = 8100 , vid = 5
+//3.	Tpid = 9100 , vid = 5
+//4.	Tpid = 9100 , vid = 4094
+// but first remove 'default HW' values (use vid = 0)
+no pip vid-ethertype device ${dev} etherType 8100 vid 0
+no pip vid-ethertype device ${dev} etherType 88A8 vid 0
+// add the 4 entries
+pip vid-ethertype device ${dev} etherType 8100 vid 1
+pip vid-ethertype device ${dev} etherType 8100 vid 5
+pip vid-ethertype device ${dev} etherType 9100 vid 5
+pip vid-ethertype device ${dev} etherType 9100 vid 4094
+//
+// add 'regular' TPID configurations
+//
+tpid device ${dev} direction ingress index 1 etherType 0x9100
+tpid device ${dev} direction egress  index 1 etherType 0x9100
+//
+//Global set 4 different udes:
+//1.	6789 --> index 0
+//2.	789a --> index 1
+//3.	abcd --> index 2
+//4.	fedc --> index 3
+pip user-defined-ethertype "ude0x6789" device ${dev} etherType 6789
+pip user-defined-ethertype "ude0x789a" device ${dev} etherType 789a
+pip user-defined-ethertype "ude0xabcd" device ${dev} etherType abcd
+pip user-defined-ethertype "ude0xfedc" device ${dev} etherType fedc
+//mac-da {pattern,mask}
+//Global set 4 different udes:
+//1.	01:80:C1:00:00:00 , FF:FF:FF:FF:00:00
+//2.	01:80:C2:00:00:00 , FF:FF:FF:00:00:00
+//3.	01:80:C3:00:00:00 , FF:00:FF:00:00:00
+//4.	01:00:0C:00:00:00 , FF:FF:FF:00:00:00 --> Cisco macs
+pip mac-da "mac-mc-IEEE-c1" device ${dev} address 01:80:c1:00:00:00 mask FF:FF:FF:FF:00:00
+pip mac-da "mac-mc-IEEE-c2" device ${dev} address 01:80:c2:00:00:00 mask FF:FF:FF:00:00:00
+pip mac-da "mac-mc-IEEE-c3" device ${dev} address 01:80:c3:00:00:00 mask FF:00:FF:00:00:00
+pip mac-da "mac-mc-CISCO"   device ${dev} address 01:00:0C:00:00:00 mask FF:FF:FF:FF:00:00
+//thresholds
+//set the 3 thresholds : 1023 (default)
+pip threshold 1023 device ${dev} priority high
+pip threshold 1023 device ${dev} priority medium
+pip threshold 1023 device ${dev} priority low
+//
+//pip-priority --> general
+//On all 4 profiles , set low priority :
+//on all : dsa-qos,dsa-up,vlan-up,mpls-exp,ipv4-tos,ipv6-tc,ude-index,mac-da-index
+pip profile all device ${dev} type all field all priority low
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// check values
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// check all profiles,all types,all fields
+expect pip profile all device ${dev} type all field all priority low
+// check specific values
+expect pip profile 1 device ${dev} type vlan-tag-up field   6   priority low
+expect pip profile 1 device ${dev} type mpls-exp    field   4   priority low
+expect pip profile 1 device ${dev} type ipv4-tos    field 0xab  priority low
+expect pip profile 1 device ${dev} type ipv6-tc     field 0xe7  priority low
+expect pip profile 1 device ${dev} type user-defined-ethertype field "ude0xabcd" priority low
+expect pip profile 1 device ${dev} type mac-da      field "mac-mc-IEEE-c2"   priority low
+expect pip profile 1 device ${dev} type mac-da      field "mac-mc-CISCO"     priority low
+expect pip profile 1 device ${dev} type dsa-qos     field 0x64  priority low
+expect pip profile 1 device ${dev} type dsa-up      field 5     priority low
+// check specific field all
+expect pip profile 1 device ${dev} type vlan-tag-up field all   priority low
+expect pip profile 1 device ${dev} type mpls-exp    field all   priority low
+expect pip profile 1 device ${dev} type ipv4-tos    field all  priority low
+expect pip profile 1 device ${dev} type ipv6-tc     field all  priority low
+expect pip profile 1 device ${dev} type user-defined-ethertype field all priority low
+expect pip profile 1 device ${dev} type mac-da      field all  priority low
+expect pip profile 1 device ${dev} type dsa-qos     field all  priority low
+expect pip profile 1 device ${dev} type dsa-up      field all  priority low
+// check type all
+expect pip profile 3 device ${dev} type all         field all   priority low
+// check profile range
+expect pip profile 1-2   device ${dev} type vlan-tag-up field   6   priority low
+expect pip profile 1-2   device ${dev} type mpls-exp    field   4   priority low
+expect pip profile 0-1,3 device ${dev} type ipv4-tos    field 0xab  priority low
+// check profile range + field all
+expect pip profile 1-2   device ${dev} type vlan-tag-up field all   priority low
+expect pip profile 1-2   device ${dev} type mpls-exp    field all   priority low
+expect pip profile 0-1,3 device ${dev} type ipv4-tos    field all   priority low
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//
+//On all ports :
+//1.	set default-priority --> low priority
+//2.	set priority for "tpid+vid" classification --> low priority
+interface range ethernet all
+pip priority-default low
+pip priority-vid-ethertype-classification low
+exit
+//
+// the cpu port was not included in "range ethernet all" so
+// duplicate the same configurations to it too.
+//
+interface ethernet ${dev}/63
+pip priority-default low
+pip priority-vid-ethertype-classification low
+exit
+//
+//pip-priority --> specific
+//1.	On pip-profile  = 2 
+//  a. Highest Priority for 'vlan-tag' for 'up' = 6 , 7
+//  b. Highest Priority for 'mpls' for 'EXP' = 4
+//  c. Highest Priority for 'ipv4' for 'TOS' = 0xab
+//  d. Highest Priority for 'ipv6' for 'TC' = 0xe7
+//  e. Highest Priority for 'ude' for 'index' = 2
+//  f. Highest Priority for 'mac-da' for 'index' = 1 , 3
+//  g. Highest Priority for 'dsa-qos' for 'qos' = 0x64
+//  h. Highest Priority for 'dsa-up' for 'up' = 5
+//
+pip profile 2 device ${dev} type vlan-tag-up field  6-7  priority ${priority0}
+pip profile 2 device ${dev} type mpls-exp    field   4   priority ${priority0}
+pip profile 2 device ${dev} type ipv4-tos    field 0xab  priority ${priority0}
+pip profile 2 device ${dev} type ipv6-tc     field 0xe7  priority ${priority0}
+pip profile 2 device ${dev} type user-defined-ethertype field "ude0xabcd" priority ${priority0}
+pip profile 2 device ${dev} type mac-da      field "mac-mc-IEEE-c2"   priority ${priority0}
+pip profile 2 device ${dev} type mac-da      field "mac-mc-CISCO"     priority ${priority0}
+pip profile 2 device ${dev} type dsa-qos     field 0x64  priority ${priority0}
+pip profile 2 device ${dev} type dsa-up      field 5     priority ${priority0}
+//
+//2.	On pip-profile  = 3
+//  i.	Set like for profile 2 but with pip-priority next after the highest
+pip profile 3 device ${dev} type vlan-tag-up field  6-7  priority ${priority1}
+pip profile 3 device ${dev} type mpls-exp    field   4   priority ${priority1}
+pip profile 3 device ${dev} type ipv4-tos    field 0xab  priority ${priority1}
+pip profile 3 device ${dev} type ipv6-tc     field 0xe7  priority ${priority1}
+pip profile 3 device ${dev} type user-defined-ethertype field "ude0xabcd" priority ${priority1}
+pip profile 3 device ${dev} type mac-da      field "mac-mc-IEEE-c2"   priority ${priority1}
+pip profile 3 device ${dev} type mac-da      field "mac-mc-CISCO"     priority ${priority1}
+pip profile 3 device ${dev} type dsa-qos     field 0x64  priority ${priority1}
+pip profile 3 device ${dev} type dsa-up      field 5     priority ${priority1}
+//
+//pip-priority --> for ingress port
+//
+//For ingress port :
+//1.	Set pip-profile  = 2
+//
+interface ethernet ${dev}/${port[2]}
+pip profile 2
+exit
+//
+//
+//vlan config:
+//vid = 5,15,4093,4094,4095		--> define and add 4 tested ports
+//
+interface range vlan device ${dev} vid 5,15,4093,4094,4095
+exit
+//
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan add 5,15,4093,4094,4095 do_not_modify
+exit
+//
+//FDB config:
+//mac-Da-UC , vid = 5,15,4093,4094,4095	--> egress port
+//
+mac address-table static 00:00:00:00:00:58 device ${dev} vlan 5,15,4093,4094,4095 ethernet ${dev}/${port[3]}
+//
+//
+end
+//
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+// check values
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//
+// enter the config context
+config
+//
+// check the 4 entries
+expect pip vid-ethertype device ${dev} etherType 8100 vid 1
+expect pip vid-ethertype device ${dev} etherType 8100 vid 5
+expect pip vid-ethertype device ${dev} etherType 9100 vid 5
+expect pip vid-ethertype device ${dev} etherType 9100 vid 4094
+// check the 4 entries
+expect pip user-defined-ethertype "ude0x6789" device ${dev} etherType 6789
+expect pip user-defined-ethertype "ude0x789a" device ${dev} etherType 789a
+expect pip user-defined-ethertype "ude0xabcd" device ${dev} etherType abcd
+expect pip user-defined-ethertype "ude0xfedc" device ${dev} etherType fedc
+// check the 4 entries
+expect pip mac-da "mac-mc-IEEE-c1" device ${dev} address 01:80:c1:00:00:00 mask FF:FF:FF:FF:00:00
+expect pip mac-da "mac-mc-IEEE-c2" device ${dev} address 01:80:c2:00:00:00 mask FF:FF:FF:00:00:00
+expect pip mac-da "mac-mc-IEEE-c3" device ${dev} address 01:80:c3:00:00:00 mask FF:00:FF:00:00:00
+expect pip mac-da "mac-mc-CISCO"   device ${dev} address 01:00:0C:00:00:00 mask FF:FF:FF:FF:00:00
+// check the 3 thresholds
+expect pip threshold 1023 device ${dev} priority high
+expect pip threshold 1023 device ${dev} priority medium
+expect pip threshold 1023 device ${dev} priority low
+// check the specific values
+expect pip profile 2 device ${dev} type vlan-tag-up field  6-7  priority ${priority0}
+expect pip profile 2 device ${dev} type mpls-exp    field   4   priority ${priority0}
+expect pip profile 2 device ${dev} type ipv4-tos    field 0xab  priority ${priority0}
+expect pip profile 2 device ${dev} type ipv6-tc     field 0xe7  priority ${priority0}
+expect pip profile 2 device ${dev} type user-defined-ethertype field "ude0xabcd" priority ${priority0}
+expect pip profile 2 device ${dev} type mac-da      field "mac-mc-IEEE-c2"   priority ${priority0}
+expect pip profile 2 device ${dev} type mac-da      field "mac-mc-CISCO"     priority ${priority0}
+expect pip profile 2 device ${dev} type dsa-qos     field 0x64  priority ${priority0}
+expect pip profile 2 device ${dev} type dsa-up      field 5     priority ${priority0}
+// check the specific values
+expect pip profile 3 device ${dev} type vlan-tag-up field  6-7  priority ${priority1}
+expect pip profile 3 device ${dev} type mpls-exp    field   4   priority ${priority1}
+expect pip profile 3 device ${dev} type ipv4-tos    field 0xab  priority ${priority1}
+expect pip profile 3 device ${dev} type ipv6-tc     field 0xe7  priority ${priority1}
+expect pip profile 3 device ${dev} type user-defined-ethertype field "ude0xabcd" priority ${priority1}
+expect pip profile 3 device ${dev} type mac-da      field "mac-mc-IEEE-c2"   priority ${priority1}
+expect pip profile 3 device ${dev} type mac-da      field "mac-mc-CISCO"     priority ${priority1}
+expect pip profile 3 device ${dev} type dsa-qos     field 0x64  priority ${priority1}
+expect pip profile 3 device ${dev} type dsa-up      field 5     priority ${priority1}
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--**--
+//
+// show the configuration
+//
+// per device
+do show pip info-global device ${dev}
+// per port - all the ports
+do show pip info-port ethernet all
+//
+// show the counters
+//
+// per device
+do show pip drop-global device ${dev}
+// per port - all the ports
+do show pip drop-port ethernet all

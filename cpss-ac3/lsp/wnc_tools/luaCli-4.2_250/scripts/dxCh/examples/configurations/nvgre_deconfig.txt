@@ -1,0 +1,25 @@
+// TAG:               nvgre, uni, nno;
+// Short Description: set nvgre deconfiguration
+// Description:       de-configure ports 1,2,3,4
+
+end
+configure
+
+no mac address
+
+interface ethernet ${dev}/${port[1]}
+no uni vid 201 src-mac 00:00:00:24:00:11
+exit
+
+interface ethernet ${dev}/${port[2]}
+no uni vid 202 src-mac 00:00:00:24:00:12
+exit
+
+interface ethernet ${dev}/${port[3]}
+no nni nvgre vsi 1000001 local-ip-addr 192.176.20.10  remote-ip-addr 192.176.20.11
+exit
+
+interface ethernet ${dev}/${port[4]}
+no nni nvgre vsi 1000001 local-ip-addr 192.176.20.10  remote-ip-addr 192.176.20.12
+exit
+do clear bridge interface ${dev} all

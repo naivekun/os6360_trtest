@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -e
+
+VER=`cat diagver  | grep Version | awk '{print $NF}'`
+
+RELS_DIR=wnc-diag #release folder in local
+INST_DIR=$RELS_DIR/usr/bin/wnc_diag #install folder
+VER_DIR=$RELS_DIR/usr/local
+FUNCS="../../funcs"
+CMDD="../../cmdd"
+PRJ_FUNCS="../funcs"
+DIAGS=`ls ../ | sed 's/funcs//' | sed 's/release//'`
+
+#clean previous release
+rm -rf $RELS_DIR
+rm -f wnc-diag*.install
+
+#make release folder and copy files
+mkdir -p $INST_DIR
+
+#copy cmdd
+cp -rf $PRJ_FUNCS/proj* $CMDD
+cp -r $CMDD $INST_DIR
+
+#copy common funcs
+cp -r $FUNCS $INST_DIR
+
+#overwrite common funcs
+#cp -rf $PRJ_FUNCS/funcs_ovr/* $INST_DIR/funcs
+
+#copy folders under project
+for folder in $DIAGS
+do
+    cp -r "../$folder" $INST_DIR
+done
+
+mkdir -p $VER_DIR
+cp -f diagver $VER_DIR
+
+#clean .git
+find $RELS_DIR -name ".git" | xargs rm -rf
+
+#clean un-release files
+rm -f $INST_DIR/cmds/Makefile
+rm -rf $INST_DIR/cmds/py_funcs
+rm -rf $INST_DIR/cmds/sh_funcs
+
+#make self-exeacting tar
+TARBALL=wnc-diag.tar.gz
+REL_INSTALL_FILE=wnc-diag-v$VER.install
+tar -C $RELS_DIR -zcf $TARBALL usr
+#rm -rf $RELS_DIR
+INSTALL_SCRIPT=install_script
+SKIPLC=`cat $INSTALL_SCRIPT | wc -l`
+SKIPLC=$(($SKIPLC+4))
+echo "#!/bin/bash" > $REL_INSTALL_FILE
+echo "TARBALL=$TARBALL" >> $REL_INSTALL_FILE
+echo 'SKIPWC=`head -'"$SKIPLC"' $0 | wc -c`' >> $REL_INSTALL_FILE
+echo 'dd bs=1 skip=$SKIPWC if=$0 > $TARBALL' >> $REL_INSTALL_FILE
+cat $INSTALL_SCRIPT >> $REL_INSTALL_FILE
+cat $TARBALL >> $REL_INSTALL_FILE
+chmod a+x $REL_INSTALL_FILE
+rm $TARBALL

@@ -1,0 +1,114 @@
+// TAG:               PX devices(PIPE); hash calculation;
+// Short Description: PIPE device : hash calculation configuration.
+// Description:       PIPE device : hash calculation configuration.
+//
+end
+
+// ingress LAG index-mode
+configure
+interface ethernet ${dev}/${port[1]}
+ingress lag index-mode hash
+exit
+interface ethernet ${dev}/${port[2]}
+ingress lag index-mode prng
+exit
+interface ethernet ${dev}/${port[3]}
+ingress lag index-mode hash
+exit
+interface ethernet ${dev}/${port[4]}
+ingress lag index-mode prng
+end
+
+// show ingress LAG index-mode
+show ingress lag index-mode device ${dev}
+show ingress lag index-mode device all
+
+// ingress LAG index-mode (return defaults)
+configure
+interface ethernet ${dev}/${port[2]}
+ingress lag index-mode hash
+exit
+interface ethernet ${dev}/${port[4]}
+ingress lag index-mode hash
+exit
+end
+
+//ingress hash designated
+configure
+ingress lag designated device all indexes 0-2,4-6 entry 0x00001
+ingress lag designated device ${dev} indexes 127 entry 0x1FFFF
+end
+
+//show ingress LAG designated-table
+show ingress lag designated-table device ${dev} indexes 0-10
+show ingress lag designated-table device all indexes 127
+show ingress lag designated-table device ${dev}
+
+//no ingress LAG designated (return defaults)
+configure
+no ingress lag designated device all indexes 0-127
+no ingress lag designated device ${dev} indexes 0-127
+end
+show ingress lag designated-table device ${dev}
+end
+configure
+ingress lag designated device ${dev} indexes 0-127 entry 0x11FFF
+end
+//ingress LAG mode
+configure
+ingress hash mode crc32 device ${dev}
+ingress hash mode crc32 device all
+ingress hash mode selected-bits device all bit0 1 bit1 2 bit2 3 bit3 4 bit4 5 bit5 6 bit6 7
+ingress hash mode crc32 device ${dev} hash-packet-type mpls
+ingress hash mode selected-bits device all hash-packet-type ude1 bit0 11 bit1 12 bit2 13 bit3 14 bit4 15 bit5 9 bit6 10
+end
+
+//show ingress LAG mode
+show ingress hash mode device ${dev} hash-packet-type mpls
+show ingress hash mode device all
+
+//ingress hash mode (return defaults)
+configure
+ingress hash mode crc32 device all
+end
+
+//ingress hash key-config
+configure
+ingress hash key-config device ${dev} udbp-index 0 anchor L2 offset 0 mask 0000 source-port
+ingress hash key-config device ${dev} udbp-index 1 anchor L3 offset 1 mask 0001
+ingress hash key-config device ${dev} udbp-index 2 anchor L4 offset 2 mask 0010 source-port
+ingress hash key-config device ${dev} udbp-index 3 anchor L2 offset 3 mask 0100
+ingress hash key-config device ${dev} udbp-index 4 anchor L3 offset 4 mask 1001 source-port
+ingress hash key-config device ${dev} udbp-index 5 anchor L4 offset 5 mask 1010
+ingress hash key-config device ${dev} packet-type mpls udbp-index 0 anchor L4 offset 10 mask 1110
+ingress hash key-config device ${dev} udbp-index 20 anchor L3 offset 8 mask 1111 source-port
+end
+
+//show ingress hash key-config
+show ingress hash key-config device all
+show ingress hash key-config device ${dev} packet-type mpls
+
+//no ingress hash key-config
+configure
+no ingress hash key-config device all
+end
+show ingress hash key-config device all
+
+//ingress hash ude
+configure
+ingress hash ude1 device ${dev} ethertype 0x1234
+ingress hash ude2 device all ethertype 0x4321
+end
+
+//show ingress hash ude
+show ingress hash ude device ${dev}
+
+//no ingress hash ude (return defaults)
+configure
+no ingress hash ude1 device ${dev}
+end
+show ingress hash ude device all
+configure
+no ingress hash ude2 device all
+end
+show ingress hash ude device ${dev}

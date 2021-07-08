@@ -1,0 +1,7 @@
+if { [ UT_suite_enabled types ] } {
+    UT_suite_start types
+
+    source [ file join $UT_root_dir types bool.exp ]
+
+    UT_suite_end
+}

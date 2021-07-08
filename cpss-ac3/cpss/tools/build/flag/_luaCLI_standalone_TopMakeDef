@@ -1,0 +1,37 @@
+
+############################################
+##                                        ##
+##    Top Make file for luaCLI_standalone ##
+##                                        ##
+############################################
+
+$(PROJ_NAME)_PROJECT_PATH:=               \
+        $(PROJ_NAME)/src/FS               \
+        cpssEnabler/mainCmd/h/cmdShell/FS \
+        $(PATH_EXT_UTILS)                 \
+        $(PATH_MAINCMD)                   \
+        $(PATH_COMMON)                    \
+        $(PATH_LUA)                       \
+        $(PATH_PP_DRV)                    \
+        $(PATH_MAINOS)
+
+
+
+ifeq (1.yes,$(SHARED_MEMORY).$(LUACLI_STANDALONE))
+
+    ifeq (yes,$(LUACLI_STANDALONE_NIXFS))
+      CMDFS_NIX=yes
+      export CMDFS_NIX
+    endif
+
+    $(PROJ_NAME)_AD_CFLAGS += -DCLI_STANDALONE
+    $(PROJ_NAME)_AD_CFLAGS += -DCMDFS_RAM_EMBEDDED_DATA_EXT
+    $(PROJ_NAME)_AD_CFLAGS += -DCMDFS_RAM_EMBEDDED_DATA_EXT_XML
+    $(PROJ_NAME)_AD_CFLAGS += -DENV_POSIX
+
+    ifneq (yes, $(NO_LUACLI_EXAMPLES))
+	$(PROJ_NAME)_AD_CFLAGS += -DCMDFS_RAM_EMBEDDED_DATA_EXT_EXAMPLES
+    endif
+
+endif
+

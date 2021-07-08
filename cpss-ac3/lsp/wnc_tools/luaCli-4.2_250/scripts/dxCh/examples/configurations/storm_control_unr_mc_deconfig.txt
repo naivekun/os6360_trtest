@@ -1,0 +1,35 @@
+// TAG:               wirespeed; storm-control; traffic_generator_emulated
+// Short Description: De-configures storm-control and generate wirespeed traffic
+// Description:       De-configure first ingress port with storm-control command , stop generate 
+//                    unregistered multicast wirespeed traffic from first port 
+end
+configure
+//
+interface ethernet ${dev}/${port[2]}
+no storm-control
+exit
+//
+end
+//
+traffic
+//
+// stop the generate continuous wirespeed from XG port 2
+//
+no traffic-generator emulate port ${dev}/${port[2]} 
+//
+exit
+end
+configure
+do clear bridge type ${dev} all
+end
+//
+// show which ports are generating wirespeed
+//
+show traffic traffic-generator emulate all
+//
+// show rates on the ports 
+//
+//show traffic rates all
+show traffic rates ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]},${port[5]},${port[6]}
+//
+

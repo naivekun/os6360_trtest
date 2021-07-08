@@ -1,0 +1,32 @@
+###########################################
+##                                       ##
+##    Top Make file for MCD drivers      ##
+##                                       ##
+###########################################
+
+PROJ_NAME = mcd
+
+include $(USER_BASE)/gtDefsTopMake.mk 
+
+
+PROJECT_PATH =  $(BASE_PATH)
+
+PROJECT_PATH += \
+	$(FIS)$(SW_ROOT)/mcd/samples$(FIE) \
+	$(FIS)$(SW_ROOT)/mcd/src$(FIE) \
+	$(FIS)$(SW_ROOT)/mcd/src/serdes/include$(FIE) \
+	$(FIS)$(SW_ROOT)/mcd/src/serdes/marvell$(FIE) \
+	$(FIS)$(SW_ROOT)/mcd/src/serdes/marvell/sd28firmware$(FIE)
+
+
+PROJECT_DEFS += 
+
+############
+## CFLAGS ##
+############
+CFLAGS += $(CFLAGS1) $(CFLAGS2) $(CFLAGS_OPT) $(OS_DEFINE) $(CPU_FLAGS) $(LFLAGS) $(AD_CFLAGS) $(CDEBUG)
+
+include $(USER_BASE)/gtTargetsTopMake.mk 
+
+full: onelib
+

@@ -1,0 +1,24 @@
+// TAG:               acl; pcl-ID; redirect; access-list; tpid
+// Short Description: Configures acl redirect feature
+// Description:       Configures for pcl-ID 11 with rule-id 18 an action that
+//                    will redirect packet to port 18.
+//		      in addition, binding port 36 to pcl-ID 11
+end
+configure
+tpid device ${dev} direction ingress index 2 etherType 0x8115
+tpid device ${dev} direction ingress index 6 etherType 0x9114
+access-list device ${dev} pcl-ID 11
+rule-id 18 action  permit mac-source 00:AA:BB:CC:DD:EE FF:FF:FF:FF:FF:FF redirect-ethernet ${dev}/${port[2]} tpid-index 2 tpid1-index 6
+exit
+
+//xcat3x ports need explicit bind for non 0x8100 recognition
+// bind profile 5 with single tpid index : 2
+tpid ingress profile 5 device ${dev} ether_type_index 0 tpid-range 2
+//bind ingress port etherType0 with profile 5 
+interface ethernet ${dev}/${port[3]}
+tpid ingress profile 5 ether_type_index 0 is_default true 
+exit
+
+interface ethernet ${dev}/${port[3]}
+service-acl pcl-ID 11 lookup 0
+end

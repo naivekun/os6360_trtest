@@ -1,0 +1,57 @@
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+SUBDIRS := \
+ IpLpmEngine \
+ bridge \
+ cnc \
+ config \
+ cos \
+ cpssHwInit \
+ cscd \
+ cutThrough \
+ diag \
+ exactMatch \
+ fabric \
+ hsu \
+ ip \
+ ipCtrl \
+ ipfix \
+ l2Mll \
+ latencyMonitoring \
+ logicalTarget \
+ lpm \
+ mirror \
+ multiPortGroup \
+ networkIf \
+ nst \
+ oam \
+ pcl \
+ pha \
+ phy \
+ policer \
+ port \
+ protection \
+ ptp \
+ resourceManager \
+ tcam \
+ trunk \
+ tti \
+ tunnel \
+ version \
+ virtualTcam \
+ vnt
+
+ifeq (YES, $(SUBDIRS))
+    MODULES +=  tmGlue
+endif
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

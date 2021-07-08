@@ -1,0 +1,141 @@
+#
+# cpss board config data
+#
+
+set board_name $board_type
+switch $board_type {
+    PM {
+        set board_name "Puma"
+        set board_inifile "puma_pss_gm_wm.ini"
+        set board_logfile "logfile_pm.txt"
+        set board_initparams "25,1,0,0"
+    }
+    PM_C001 {
+        set board_name "Puma extension C001"
+        set board_inifile "puma_pss_gm_wm.ini"
+        set board_logfile "logfile_pm_c001.txt"
+        set board_initparams "25,1,0,0"
+        set board_preinitsystem "cpssEnablerBoardsEnhanced_C001"
+    }
+    PM_C002 {
+        set board_name "Puma extension C002"
+        set board_inifile "puma_pss_gm_wm.ini"
+        set board_logfile "logfile_pm_c002.txt"
+        set board_initparams "25,1,0,0"
+        set board_preinitsystem "cpssEnablerBoardsEnhanced_C002"
+    }
+    XCAT_A3 {
+        set board_inifile "xCat_A3_pss_wm.ini"
+        set board_logfile "logfile_xcat_A3.txt"
+        set board_initparams "19,2,0,0"
+    }
+    XCAT_A2 {
+        set board_inifile "xCat_A2_pss_wm.ini"
+        set board_logfile "logfile_xcat_A2.txt"
+        set board_initparams "19,1,0,0"
+    }
+    XCAT_A1 {
+        set board_inifile "xCat_pss_wm.ini"
+        set board_logfile "logfile_xcat_A1.txt"
+        set board_initparams "19,1,0,0"
+    }
+    XCAT_A0 {
+        set board_inifile "xCat_pss_wm.ini"
+        set board_logfile "logfile_xcat_A0.txt"
+        set board_initparams "19,1,0,0"
+    }
+    XCAT_A1_C001 {
+        set board_inifile "xCat_pss_wm.ini"
+        set board_logfile "logfile_xcat_A1_c001.txt"
+        set board_initparams "19,1,0,0"
+        set board_preinitsystem "cpssEnablerBoardsEnhanced_C001"
+    }
+    XCAT_A1_C002 {
+        set board_inifile "xCat_pss_wm.ini"
+        set board_logfile "logfile_xcat_A1_c002.txt"
+        set board_initparams "19,1,0,0"
+        set board_preinitsystem "cpssEnablerBoardsEnhanced_C002"
+    }
+    LION {
+        set board_name "LION_A0"
+        set board_inifile "lion_pss_wm.ini"
+        set board_logfile "logfile_lion.txt"
+        set board_initparams "20,1,0,0"
+    }
+    LION_G003 {
+        set board_name "LION_A0_G003"
+        set board_inifile "lion_pss_wm.ini"
+        set board_logfile "logfile_lion_g003.txt"
+        set board_initparams "20,22,0,0"
+        set board_preinitsystem "cpssEnablerBoardsEnhanced_G003"
+    }
+    LION_B0 {
+        set board_inifile "lion_B0_pss_wm.ini"
+        set board_logfile "logfile_lion_b0.txt"
+        set board_initparams "20,1,0,0"
+    }
+    LION_GM {
+        set board_inifile "lion_B0_pss_gm_wm.ini"
+        set board_logfile "logfile_lion_gm.txt"
+        set board_initparams "20,1,0,0"
+    }
+    LION_B0_G003 {
+        set board_inifile "lion_B0_pss_wm.ini"
+        set board_logfile "logfile_lion_b0_g003.txt"
+        set board_initparams "20,22,0,0"
+        set board_preinitsystem "cpssEnablerBoardsEnhanced_G003"
+    }
+    CH2 {
+        set board_inifile "cheetah2_pss_wm.ini"
+        set board_logfile "logfile_ch2.txt"
+        set board_initparams "14,1,0,0"
+    }
+    CH3 {
+        set board_inifile "DB-DX3-GP-24-4XG.ini"
+        set board_logfile "logfile_ch3.txt"
+        set board_initparams "18,1,0,0"
+    }
+    CH3_C001 {
+        set board_inifile "DB-DX3-GP-24-4XG.ini"
+        set board_logfile "logfile_ch3_c001.txt"
+        set board_initparams "18,1,0,0"
+        set board_preinitsystem "cpssEnablerBoardsEnhanced_C001"
+    }
+    PMFX {
+        set board_inifile "puma_dune_pss_gm_wm.ini"
+        set board_logfile "logfile_pmfx.txt"
+        set board_initparams "5,1,0,0"
+    }
+    PMDX {
+        set board_inifile "vbEx240_3Dx246_gm_wm.ini"
+        set board_logfile "logfile_pmdx.txt"
+        set board_initparams "26,1,0,0"
+    }
+    XCAT2 {
+        set board_name "XCAT2"
+        set board_inifile "xCat2_pss_wm.ini"
+        set board_logfile "logfile_xcat2.txt"
+        set board_initparams "19,4,0,0"
+    }
+    XCAT_A3_19_9 {
+        set board_name "XCAT_A3_19_9"
+        set board_inifile "xCat_A3_pss_wm.ini"
+        set board_logfile "logfile_xcat_A3_19_9.txt"
+        set board_initparams "19,9,0,0"
+    }
+    LION2 {
+        set board_inifile "lion2_pss_wm.ini"
+        set board_logfile "logfile_lion2.txt"
+        set board_initparams "27,1,0,0"
+    }
+    LION2_B0 {
+        set board_inifile "lion2_B0_pss_wm.ini"
+        set board_logfile "logfile_lion2_b0.txt"
+        set board_initparams "27,1,0,0"
+    }
+    default {
+        send_user "Wrong board type: $board_type\n"
+        exit
+    }
+}
+

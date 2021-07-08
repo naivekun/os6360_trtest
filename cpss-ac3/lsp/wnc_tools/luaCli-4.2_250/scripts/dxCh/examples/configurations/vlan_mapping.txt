@@ -1,0 +1,35 @@
+// TAG:               vlan mapping; vlan translation; service-id;
+// Short Description: configure vlan mapping
+// Description:       - create vlans 5,6 with ports 0,18,36 tagged in this vlans
+//                    - configure ingress vlan mapping 5->6
+//                    - configure egress vlan mapping 6->7
+//                    - enable ingress vlan mapping on the port 0
+//                    - enable egress vlan mapping on the port 18
+//                    - set service-id value for vlan 6
+//                    - set two FDB entries to send the packet
+//                      -- in vlan 6 to port 1
+//                      -- in vlan 5 to port 2
+
+end
+configure
+interface range vlan device ${dev} vid 5,6
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]}
+switchport allowed vlan add 5,6 tagged
+
+exit
+vlan mapping ingress device ${dev} from 5 to 6
+vlan mapping egress device ${dev} from 6 to 7
+vlan service-id device ${dev} vid 6 sid 0x008009
+
+interface ethernet ${dev}/${port[1]}
+switchport vlan mapping enable ingress
+exit
+interface ethernet ${dev}/${port[2]}
+switchport vlan mapping enable egress
+
+end
+configure
+mac address-table static 00:00:00:00:34:02 device ${dev} vlan 6 ethernet ${dev}/${port[2]}
+mac address-table static 00:00:00:00:34:02 device ${dev} vlan 5 ethernet ${dev}/${port[3]}
+end

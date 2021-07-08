@@ -1,0 +1,31 @@
+# $(warning "Started")
+LIB_NAME = cpssDxChPort.lib
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ prvCpssDxChPortPizzaArbiter.c \
+ prvCpssDxChPortPizzaArbiterActiverPortGroupList.c \
+ prvCpssDxChPortPizzaArbiterDevInfo.c \
+ prvCpssDxChPortPizzaArbiterProfileStorage.c \
+ prvCpssDxChPortPizzaArbiterTables.c \
+ prvCpssDxChPortPizzaArbiterTablesLionB0_210MHz_7x10G.c \
+ prvCpssDxChPortPizzaArbiterTablesLionB0_240MHz_8x10G.c \
+ prvCpssDxChPortPizzaArbiterTablesLionB0_270MHz_9x10G.c \
+ prvCpssDxChPortTablePizzaArbiter.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINPPDRV_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

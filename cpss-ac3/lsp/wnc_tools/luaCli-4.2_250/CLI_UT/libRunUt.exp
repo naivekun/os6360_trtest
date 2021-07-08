@@ -1,0 +1,335 @@
+#
+# cpss mainCmd and mainUT common procedures
+#
+
+proc done { msg retcode } {
+    send_log "\n\n"
+    send_log "**********************************************\n"
+    send_log "** $msg\n"
+    send_log "**********************************************\n"
+    send_log "$retcode\n"
+    exit $retcode
+}
+
+proc die { msg } {
+    done "scenario failed: $msg" 1
+}
+
+#
+# cpss_cmd
+#
+# DESCRIPTION:
+#       Execute cpss command without Galtis wrapper
+#       (like cpssInitSystem)
+#
+# INPUTS:
+#       cmd         - command to execute
+#       tmo         - command timeout
+#       ignoreErr   - Don't stop scenario on error
+#                     if this flag is set
+#
+# OUTPUTS:
+#       the global "retcode" is set to return code
+#
+# RETURNS:
+#       none
+#
+proc cpss_cmd { cmd {tmo 20} {ignoreErr 0} } {
+    send "$cmd\n"
+    set timeout $tmo
+    expect {
+        timeout {
+            if { $ignoreErr == 0 } {
+                die "Timeout waiting \"$cmd\" complete"
+            }
+            return
+        }
+        -re "return code is (\[0-9\]*)" {
+            set retcode $expect_out(1,string)
+            if { $retcode != 0 } {
+                if { $ignoreErr == 0 } {
+                    die "command \"$cmd\" returned failure: $retcode"
+                }
+            }
+        }
+    }
+    set timeout 5
+    expect {
+        timeout { die "Failed waiting prompt" }
+        -- "->"
+    }
+}
+
+#
+# wrapper_cmd
+#
+# DESCRIPTION:
+#       Execute Galtis wrapper command
+#
+# INPUTS:
+#       cmd         - command to execute
+#       tmo         - command timeout
+#       ignoreErr   - Don't stop scenario on error
+#                     if this flag is set
+#
+# OUTPUTS:
+#       the global "retcode" is set to return code
+#
+# RETURNS:
+#       none
+#
+proc wrapper_cmd { cmd {tmo 20} {ignoreErr 0} } {
+    send "$cmd\n"
+    set timeout $tmo
+    expect {
+        -re "@@@(\[0-9\]*)!!!###->" {
+            set retcode $expect_out(1,string)
+            if { $retcode != 0 } {
+                if { $ignoreErr == 0 } {
+                    die "$cmd returned failure: $retcode"
+                }
+            }
+        }
+        timeout {
+            if { $ignoreErr == 0 } {
+                die "Timeout waiting \"$cmd\" retcode"
+            }
+        }
+    }
+}
+
+#
+# execute_shell_cmd
+#
+# DESCRIPTION:
+#       Execute shell command
+#
+# INPUTS:
+#       cmd         - command to execute
+#       tmo         - command timeout
+#       ignoreErr   - Don't stop scenario on error
+#                     if this flag is set
+#
+# OUTPUTS:
+#       the global "retcode" is set to return code
+#
+# RETURNS:
+#       none
+#
+proc execute_shell_cmd { cmd {tmo 20} {ignoreErr 0} } {
+    send "$cmd\n"
+    set timeout $tmo
+    expect {
+        -re "@@@(\[0-9\]*)!!!###->" {
+            set retcode $expect_out(1,string)
+            if { $retcode != 0 } {
+                if { $ignoreErr == 0 } {
+                    die "$cmd returned failure: $retcode"
+                }
+            }
+        }
+        -re "return code is (\[0-9\]*)" {
+            set retcode $expect_out(1,string)
+            if { $retcode != 0 } {
+                if { $ignoreErr == 0 } {
+                    die "command \"$cmd\" returned failure: $retcode"
+                }
+            }
+            set timeout 5
+            expect {
+                timeout { die "Failed waiting prompt" }
+                -- "->"
+            }
+        }
+        timeout {
+            if { $ignoreErr == 0 } {
+                die "Timeout waiting \"$cmd\" retcode"
+            }
+        }
+    }
+}
+
+#
+# cpss_wait_cmd_ready
+#
+# DESCRIPTION:
+#       Wait till command shell is ready
+#
+# INPUTS:
+#       none
+#
+# OUTPUTS:
+#       none
+#
+# RETURNS:
+#       none
+#
+proc cpss_wait_cmd_ready {} {
+    set GM_mode ""
+    set timeout 60
+    expect {
+        timeout { die "Failed to wait for commander shell server ready" }
+        "GM API version" {
+            set GM_mode "GM"
+            exp_continue
+        }
+        "Initializing Golden Model" {
+            set GM_mode "GM_initializing"
+            exp_continue
+        }
+        "GM init completed" {
+            set GM_mode "GM_ready"
+            exp_continue
+        }
+        eof { die "application finished/crashed while waiting for shell ready" }
+        "commander shell server ready"
+    }
+    set timeout 20
+    expect {
+        "GM API version" {
+            set GM_mode "GM"
+            exp_continue
+        }
+        "Initializing Golden Model" {
+            set GM_mode "GM_initializing"
+            exp_continue
+        }
+        "GM init completed" {
+            set GM_mode "GM_ready"
+            exp_continue
+        }
+        timeout { die "Failed waiting prompt" }
+        eof { die "application finished/crashed while waiting for shell ready" }
+        -- "->"
+    }
+    if { $GM_mode == "" } {
+        set timeout 3
+        expect {
+            eof { die "application finished/crashed while waiting for shell ready" }
+            "GM API version" {
+                set GM_mode "GM"
+            }
+        }
+    }
+    if { $GM_mode == "GM" || $GM_mode == "GM_initializing" } {
+        send_log "** wait GM init complete\n"
+        set timeout 120
+        expect {
+            "GM API version" {
+                set GM_mode "GM"
+                exp_continue
+            }
+            "Initializing Golden Model" {
+                set GM_mode "GM_initializing"
+                exp_continue
+            }
+            timeout { die "Failed waiting GM init complete" }
+            eof { die "application finished/crashed while waiting for GM init complete" }
+            "GM init completed" {
+                set GM_mode "GM_ready"
+            }
+        }
+    }
+    sleep 1
+}
+
+# load testTimings.exp from scripts directory
+if [ file exists [ file join [ file dirname $argv0 ] testTimings.exp ] ] {
+    source [ file join [ file dirname $argv0 ] testTimings.exp ]
+}
+
+#
+# run_test_cmd
+#
+# DESCRIPTION:
+#       Execute test suite
+#
+# INPUTS:
+#       cmd         - command to execute
+#       testTmo     - timeout for entire suite
+#       tmo         - timeout for single test
+#
+# OUTPUTS:
+#       none
+#
+# RETURNS:
+#       none
+#
+proc run_test_cmd { cmd {testTmo 500} {tmo 10} } {
+    send "$cmd\n"
+    set timeout $tmo
+    set current_test ""
+    set current_suit ""
+    global testTimings
+    global suitTimings
+    array set testTimings {}
+    array set suitTimings {}
+    expect {
+        -re "@@@(\[0-9\]*)!!!###->" {
+            set retcode $expect_out(1,string)
+            if { $retcode != 0 } {
+                die "$cmd returned failure: $retcode"
+            }
+        }
+        -re "return code is (\[0-9\]*)" {
+            set retcode $expect_out(1,string)
+            if { $retcode != 0 } {
+                die "command \"$cmd\" returned failure: $retcode"
+            }
+        }
+        -re " +SUIT +(\[^ \]+) +STARTED" {
+            set current_suit $expect_out(1,string)
+            set timeout $tmo
+            exp_continue
+        }
+        -re " +SUIT +(\[^ \]+) +SUCCEEDED" {
+            set current_suit ""
+            set timeout $tmo
+            exp_continue
+        }
+        -re " +SUIT +(\[^ \]+) +FAILED" {
+            set current_suit ""
+            set timeout $tmo
+            exp_continue
+        }
+        -re " +TEST +(\[^ \]+) +STARTED" {
+            set current_test $expect_out(1,string)
+            set timeout $testTmo
+            # apply timeout exceptions
+            set currTmo [lindex [array get suitTimings $current_suit] 1]
+            if { $currTmo != "" } {
+                set timeout $currTmo
+            }
+            set currTmo [lindex [array get testTimings $current_test] 1]
+            if { $currTmo != "" } {
+                set timeout $currTmo
+            }
+            exp_continue
+        }
+        -re " +TEST +(\[^ \]+) +SUCCEEDED" {
+            set current_test ""
+            set timeout $tmo
+            exp_continue
+        }
+        -re " +TEST +(\[^ \]+) +FAILED" {
+            set current_test ""
+            set timeout $tmo
+            exp_continue
+        }
+        timeout {
+            if { $current_test != "" } {
+                die "Timeout while executing $current_suit.$current_test $timeout second"
+            } else {
+                die "Timeout waiting \"$cmd\" retcode $timeout second"
+            }
+        }
+        eof {
+            if { $current_test != "" } {
+                die "application finished/crashed while executing $current_suit.$current_test"
+            } else {
+                die "unexpected eof(crash)"
+            }
+        }
+    }
+    return $retcode
+}

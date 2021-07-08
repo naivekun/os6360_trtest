@@ -1,0 +1,58 @@
+# $(warning "Started")
+
+
+#List of subfolders to include in build
+ifeq (yes,$(MV_KERNEL_EXT_BUILD))
+    MODULES := driver
+else
+    MODULES :=
+endif
+
+
+#List of files to include in list
+FILES := \
+ ke_lkernelLib.c \
+ ke_lsemLib.c \
+ ke_ltaskLib.c \
+ ke_ltest.c \
+ ke_ltimerLib.c \
+ lmsgqLib.c 
+
+
+cpssEnabler_AD_CFLAGS += -DOS_USERSPACE_MUTEXES=512
+
+ifeq (yes,$(KERNEL_SYSCALL_TABLE_EXPORTED))
+    cpssEnabler_CFLAGS_CL += -DMVKERNELEXT_SYSCALLS
+endif
+
+ifeq (yes,$(KERNEL_TASK_STRUCT_EXTENDED))
+    cpssEnabler_CFLAGS_CL += -DMVKERNELEXT_TASK_STRUCT
+endif
+
+#$(warning "LINUX_SIM=$(LINUX_SIM)")
+#$(warning "KPATCHLEVEL=$(KPATCHLEVEL)")
+#$(warning "KERNELSUBDIRS=$(KERNELSUBDIRS)")
+#$(warning "INCLUDE_PATH=$(INCLUDE_PATH)")
+#$(warning "CPU=$(CPU)")
+#$(warning "ARM_CPU=$(ARM_CPU)")
+#$(warning "CPU_TARGETS_WITH_LSP_MODULE=$(CPU_TARGETS_WITH_LSP_MODULE)")
+#$(warning "MODULES=$(MODULES)")
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := gtOs.lib
+    cpssEnabler_gtOs_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

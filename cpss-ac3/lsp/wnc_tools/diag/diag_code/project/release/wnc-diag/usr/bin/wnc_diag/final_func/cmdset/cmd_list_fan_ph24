@@ -1,0 +1,48 @@
+#run groups in parallel, run each commands of group in serial
+#Each command -> command;command description;SFCS
+#
+#PLEASE REMEMBER TO MOTIY ENV VARIABLE IN U-BOOT, OTHERWISE LOGLEVE NEVER APPLY!!!!
+#
+[group1]
+007_cpu_id_info+-g;Check CPU Info;CPU_info
+011_mem_size+-g;Check Memory size;DRAM_size
+014_nand_os_info+-i d3-98;Check Flash ID;Flash_ID
+014_nand_os_info+-c 1024;Check Flash size;Flash_size
+032_cpld_id_info+-b 0x78;Check CPLD ID;CPLD_ID
+version+-o 1.1.0;Check OS version;OS_VER
+version+-k 4.4.120-armada-18.09.2;Check Kernel version;Kernel_ver
+version+-p 1.2.0;Check DIAG version;DIAG_ver
+version+-c 0xc,0xa916;Check CPLD version;CPLD_ver
+[group2]
+i2ctransfer+-y 8 w15@0x28 0x01 0x02 0x2D 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x03 0x3C && usleep 100000 && i2ctransfer -y 8 r15@0x28;Disable OCB group 1;Disable_OCB_g1
+poe+-i 1;PoE Init Port 1 to 12;PoE_Init_p1_p12
+i2ctransfer+-y 8 w15@0x28 0x00 0x00 0x05 0xC0 0x80 0x02 0xFF 0xFF 0xFF 0x4E 0x4E 0x4E 0x4E 0x05 0x7C && usleep 30000 && i2ctransfer -y 8 r15@0x28;Disable OCB group 2;Disable_OCB_g2
+sed+-i 's/poe\ -e/#poe\ -e/g' "/usr/bin/wnc_diag/cmds/030_poe_load";Sed PoE Diag;Sed_PoE_Diag
+sleep+16;
+030_poe_load+-t 25.5,31.5 -p 1-12;PoE Test Power Port 1 to 12;PoE_Loader_p1_p12
+poe+-i 2;PoE Init Port 13 to 24;PoE_Init_p13_p24
+sleep+16;
+030_poe_load+-t 25.5,31.5 -p 13-24;PoE Test Power Port 13 to 24;PoE_Loader_p13_p24
+i2ctransfer+-y 8 w15@0x28 0x01 0x02 0x2D 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x4E 0x03 0x3C && usleep 100000 && i2ctransfer -y 8 r15@0x28;Restore PoE to default setting;PoE_restore
+poe+-i;PoE Init all;PoE_Init_all
+[group3]
+034_fan_pwm+-t 4;FAN PWM 100%;PWM_100
+sleep+5;
+035_fan_speed+-t 15840,21120;Test FAN speed for PWM 100%;FAN_speed_100
+034_fan_pwm+-u 50;FAN PWM 50%;PWM_50
+sleep+5;
+035_fan_speed+-t 7744,10560;Test FAN speed for PWM 50%;FAN_speed_50
+056_thermal_i2c_bus+-t 20,60;Test TMP1075 thermal sensor;Thermal_test
+055_usb+-w -s 20m;USB Test;USB_test
+010_mem_long_run+-m 500K -l 3;Memory Test;DRAM_test
+021_sfp_i2c_bus+-g;SFP I2C bus test;SFP_I2C_bus
+043_sfp_tx_disable+-t 0;SFP TX_Disable low;SFP_TX_disable_low
+043_sfp_tx_disable+-t 1;SFP TX_Disable high;SFP_TX_disable_high
+047_interrupt_for_rx-los_tx-fault+-a;SFP interrupt test;SFP_interrupt
+[group4]
+wait_port_linkup;Wait all port link up;Wait_port_link_up
+sleep+2;
+027_line_rate_traffic+-g 1 -d 5 -p CNT;All front ports except fiber ports of 10G combo PHY;Traffic_front
+027_line_rate_traffic+-g 2 -d 5 -p CNT;10G combo fiber ports and internal ports;Traffic_fiber
+version+-s 4.2.380;Check CPSS version;CPSS_ver
+version+-d;Check switch revision;Switch_revision

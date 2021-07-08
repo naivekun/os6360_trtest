@@ -1,0 +1,19 @@
+// TAG:               DSA; hash; cascade; Device Map Table
+// Short Description: enable "read hash from DSA FORWARD" 
+// Description:       enable a hash reading from DSA FORWARD tag of incoming packets.
+//                    Use simple hash mode (mac_da[5:0] xor mac_sa[5:0])
+//                    configure Device Map Table
+
+end
+config
+port-channel load-balance src-dst-mac
+interface ethernet ${dev}/${port[1]}
+cascade dsa 4_words
+cascade dsa-format hash rx
+exit
+
+interface ethernet ${dev}/${port[2]}
+cascade dsa 4_words
+cascade dsa-format hash tx
+cascade device ${dev} target_device ${@@test_env.trgHwDev} interface ethernet ${port[2]}
+exit

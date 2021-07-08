@@ -1,0 +1,39 @@
+# $(warning "Started")
+#SUBDIRS = wrapCpss wrapSimulation wrapUtil
+
+#ifeq (DUNE, $(XBAR_VENDOR))
+#ifeq (DUNE, $(BSP_VENDOR))
+#    SUBDIRS += wrapFe
+#else
+#    SUBDIRS += wrapFx950
+#endif
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ wrapCpss \
+ wrapSimulation \
+ wrapUtil 
+
+ifeq (EXISTS, $(CHX_FAMILY))
+ MODULES += \
+    wrapPhy
+endif
+
+
+#List of files to include in list
+FILES := \
+ cmdBaseInit.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINGALTISWRAPPER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

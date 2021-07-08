@@ -1,0 +1,87 @@
+// TAG:               SPBM; IEEE802.1ad; IEEE802.1ah;
+// Short Description: reset configuration PE-device in Backbone System
+// Description:       The generic sample.
+// PE-device contains both Provider Edge ports and Customer Edge
+// Configuration separated to two parts:
+// - P-device configuration (basic)
+// - PE-device configuration (additional)
+//
+//Restore from additional configuration of PE-device
+end
+configure
+interface eport 0/0x210
+no spbm provider-flood-eport i-sid 0x101
+no spbm provider-flood-eport i-sid 0x102
+no spbm provider-flood-eport i-sid 0x103
+exit
+interface eport 0/0x211
+no spbm provider-flood-eport i-sid 0x101
+no spbm provider-flood-eport i-sid 0x103
+exit
+no spbm service-vlan i-sid 0x101
+no spbm service-vlan i-sid 0x102
+no spbm service-vlan i-sid 0x103
+interface range ethernet 0/0,18
+switchport allowed vlan remove 11
+switchport allowed vlan remove 12
+exit
+interface ethernet 0/18
+switchport allowed vlan remove 13
+exit
+no interface vlan device 0 vid 11
+no interface vlan device 0 vid 12
+no interface vlan device 0 vid 13
+interface ethernet 0/36
+no spbm provider-flood-port flood-eport 0x210
+exit
+interface ethernet 0/54
+no spbm provider-flood-port flood-eport 0x211
+exit
+interface ethernet 0/36
+no spbm pe-node uc-eport 0x20A
+no spbm pe-node uc-eport 0x20B
+exit
+interface ethernet 0/54
+no spbm pe-node uc-eport 0x20C
+exit
+//Restore from basic configuration of P-device using ports 36 and 56 vlan 5
+end
+configure
+interface eport 0/0x20A
+tpid tunnel-start bind 0
+exit
+interface eport 0/0x20B
+tpid tunnel-start bind 0
+exit
+interface eport 0/0x20C
+tpid tunnel-start bind 0
+exit
+interface eport 0/0x210
+tpid tunnel-start bind 0
+exit
+interface eport 0/0x211
+tpid tunnel-start bind 0
+exit
+interface vlan device 0 vid 5
+no bridge multicast mac address group A1:00:00:00:01:01
+no bridge multicast mac address group A1:00:00:00:01:02
+no bridge multicast mac address group A1:00:00:00:01:03
+exit
+no mac address-table static A0:10:20:30:40:50 device 0 vlan 5 ethernet 0/36
+no mac address-table static B0:10:20:30:40:50 device 0 vlan 5 ethernet 0/36
+no mac address-table static C0:10:20:30:40:50 device 0 vlan 5 ethernet 0/54
+interface range ethernet 0/36,54
+no bridge multicast unregistered
+exit
+interface range ethernet 0/36,54
+tpid egress bind 0 ether_type_index 0
+exit
+interface range ethernet 0/36,54
+switchport allowed vlan remove 5
+exit
+no interface vlan device 0 vid 5
+tpid device 0 direction ingress index 7 etherType 0x8100
+tpid device 0 direction egress index 7 etherType 0x8100
+no mac address
+
+

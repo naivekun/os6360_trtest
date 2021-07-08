@@ -1,0 +1,51 @@
+# $(warning "Started") 
+#SUBDIRS = NONE
+MODULES :=
+FILES :=
+
+ifneq (yes,$(LUACLI_STANDALONE_BUILD))
+	ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+		LIB_NAME = luaCLI.lib
+	endif
+endif
+ifeq (yes, $(CMD_LUA))
+  INCLUDE_PATH += $(LUA_SRC_PATH)
+  ifneq (yes,$(LUACLI_STANDALONE_BUILD))
+
+    #List of files to include in list
+    FILES := \
+     cmdLuaConfigFile.c 
+
+  endif
+
+  ifeq (yes, $(CMD_LUA_CLI))
+
+  	#List of files to include in list
+  	FILES += \
+  	 cmdLuaCLI.c
+  endif
+else
+	#C_EXCLUDE_FILE_LIST = ALL
+	FILES :=
+endif
+
+#$(warning "FILES=$(FILES)")
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := luaCLI.lib
+    cpssEnabler_luaCLI_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

@@ -1,0 +1,18 @@
+// TAG:               rmon; counters; histogram;
+// Short Description: Configures rmon histogram counters
+// Description:       Configures dev#0 port#18 rmon histogram counters
+//                    to count both ingress and egress traffic
+//                    Configures dev#0 port#0 rmon histogram counters
+//                    to count only ingress traffic
+end
+configure
+interface ethernet ${dev}/${port[2]}
+rmon histogram rx-tx
+exit
+exit
+configure
+interface ethernet ${dev}/${port[1]}
+rmon histogram rx
+exit
+exit
+end

@@ -1,0 +1,31 @@
+// TAG:               tpid; switchport; ingress; egress
+// Short Description: Change  tpid (tag protocol identifier) in the vlan packet
+// Description:       Change  tpid while sending from port 0 to port 18
+
+end
+configure
+tpid device ${dev} direction ingress index 0 etherType 0x88A8
+tpid device ${dev} direction ingress index 1 etherType 0x8100
+tpid device ${dev} direction egress  index 0 etherType 0x88A8
+tpid device ${dev} direction egress  index 1 etherType 0x8100
+tpid ingress profile 0 device ${dev} ether_type_index 0 tpid-range 0
+tpid ingress profile 0 device ${dev} ether_type_index 1 tpid-range 1
+interface vlan device ${dev} vid 20
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]}
+switchport pvid 20 up 0
+tpid ingress profile 0 ether_type_index 0 is_default true
+tpid ingress profile 0 ether_type_index 1 is_default true
+tpid egress  bind 0 ether_type_index 0
+tpid egress  bind 0 ether_type_index 1
+exit
+interface range ethernet ${dev}/${port[1]}
+switchport allowed vlan add 20 untagged
+switchport pvid 20
+exit
+interface range ethernet ${dev}/${port[2]}
+switchport allowed vlan add 20 tagged
+end
+configure
+running-config
+end

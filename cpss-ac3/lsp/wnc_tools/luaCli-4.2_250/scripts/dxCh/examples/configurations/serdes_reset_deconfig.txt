@@ -1,0 +1,9 @@
+// TAG:               serdes; unreset;
+// Short Description: unreset serdes of specific port
+// Description:       unreset serdes of specific port
+//                    
+end 
+configure 
+interface ethernet ${@@serdes_env.devNum}/${@@serdes_env.PortNum}  
+no serdes reset
+end    

@@ -1,0 +1,7 @@
+end 
+configure
+interface vlan device 0 vid 1
+no management interface
+exit
+exit
+CLIexit

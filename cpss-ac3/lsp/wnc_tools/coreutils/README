@@ -1,0 +1,13 @@
+# Unzip the tarball file
+tar zxf coreutils-8.32.tar.gz
+cd coreutils-8.32
+
+# Generate the Makefile with the designated toolchain
+CC=/opt/mrvl_arm7/bin/arm-marvell-linux-gnueabi-gcc \
+./configure --host=arm-marvell-linux-gnueabi --target=arm-marvell-linux-gnueabi
+
+# Make the package 
+make clean;make
+
+# Copy the "paste" utility to ROOTFS
+cp src/paste ../../rootfs/bin/

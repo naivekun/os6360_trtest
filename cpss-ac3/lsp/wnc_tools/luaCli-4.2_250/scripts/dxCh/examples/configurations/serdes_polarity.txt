@@ -1,0 +1,12 @@
+// TAG:               serdes; polarity; lane; invert; tx; rx;
+// Short Description: Configure Serdes polarity parameters on a specified lane of a port
+// Description:       Configure Serdes polarity parameters on a specified lane of a port
+//                    
+//		      
+end 
+configure 
+interface ethernet ${@@serdes_env.devNum}/${@@serdes_env.PortNum}  
+serdes polarity lane_num ${@@serdes_env.LaneNum} invert_tx ${@@serdes_env.Invert_Tx} invert_rx ${@@serdes_env.Invert_Rx} 
+//end 
+//show interfaces serdes polarity lane_num ${@@serdes_env.LaneNum} ethernet ${@@serdes_env.devNum}/${@@serdes_env.PortNum}
+end    

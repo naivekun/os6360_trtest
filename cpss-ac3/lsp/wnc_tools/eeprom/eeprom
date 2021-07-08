@@ -1,0 +1,624 @@
+#!/bin/bash
+
+# ## Default Consts ## #
+
+set -e
+
+PASS=0
+FAIL=1
+
+# ## Functions ## #
+
+NAME=`echo ${0} | awk -F / '{print $NF}'`
+function usage() {
+echo "
+Usage:
+NAME
+        ${NAME} - write data to the EEPROM
+
+SYNOPSIS
+        ${NAME} [-r] [--eeprom_format_number value] [--module_id value]
+               [--pcba_part_number value] [--pcba_revision_number value]
+               [--serial_number value] [--manufacturing_date value]
+               [--base_mac_range_1 value] [--mac_count_range_1 value]
+               [--base_mac_range_2 value] [--mac_count_range_2 value]
+               [--base_mac_range_3 value] [--mac_count_range_3 value]
+               [--base_mac_range_4 value] [--mac_count_range_4 value]
+               [--module_description value] [--fru_part_number value]
+               [--fru_revision_number value] [--power_consumption value]
+               [--variant value]
+		
+DESCRIPTION
+        ${NAME} is a command-line utility for writing specified information
+        to the EEPROM. Rushmore Serial EEPROM Format Specification rev.2.0
+        which this utility is based on defines the standard data format of 
+        the EEPROM. This utility can use long option to write data to the
+        specified field or erase the specified field. In addition, Parameter 
+        \"-r\" is to erase the EEPROM (0-255 bytes).
+
+MANDATORY OPTIONS
+        At least one optional option is needed.
+
+OPTIONAL OPTIONS
+        -r    Erase the EEPROM (0-255 bytes)
+		
+        -h    Help message
+		
+        --eeprom_format_number 
+		
+        --module_id
+		
+        --pcba_part_number
+		
+        --pcba_revision_number
+		
+        --serial_number
+		
+        --manufacturing_date
+		
+        --base_mac_range_1
+		
+        --mac_count_range_1
+		
+        --base_mac_range_2
+		
+        --mac_count_range_2
+		
+        --base_mac_range_3
+		
+        --mac_count_range_3
+		
+        --base_mac_range_4
+		
+        --mac_count_range_4
+		
+        --module_description
+		
+        --fru_part_number
+		
+        --fru_revision_number
+		
+        --power_consumption
+		
+        --variant
+
+PASS CRITERIA
+        - Wrong options :
+            ERROR: Inserted option is none or not matching OPTIONAL OPTIONS
+                Display: Usage
+                Return code: 1
+		
+        - Write EEPROM:
+            SUCCESS: Data have been written to the EEPROM
+                Display: PASS
+                Return code: 0
+		
+            ERROR: Data can't be written to the EEPROM
+                Display: FAIL
+                Return code: 5
+
+Example:
+        Write data to specified field:
+            ${NAME} --module_id 0c0e2201
+		
+        Write multiple data to multiple field:
+            ${NAME} --fru_part_number 904173-90 --fru_revision_number 0
+			
+        Erase specified field:
+            ${NAME} --pcba_part_number erase
+		
+        Erase multiple field:
+            ${NAME} --serial_number erase --manufacturing_date erase
+		
+        Erase the EEPROM (0-255 bytes)
+            ${NAME} -r
+" >&2
+}
+
+function quit() {
+	local rc=''
+
+	if [ "$1" = "" ]; then
+		rc=$FAIL
+		echo -e "\nquit(): miss input argument\n" >&2
+	else
+		rc=$1
+	fi
+
+	if [ "$rc" = "$PASS" ]; then
+		echo -e "\nResult: PASS\n"
+	else
+		echo -e "\nResult: FAIL\n" >&2
+	fi
+
+	exit $rc
+}
+
+function quit_ok() {
+    exit 0
+}
+
+function error_msg() {
+
+    local error_code=${1}
+    local message=${2}
+    
+    case ${error_code} in
+        1)  # Option error
+            ;;
+        2)  # Input  error
+            echo -e  "\n[Input error] Invalid argument">&2
+            ;;
+        3)  # System error
+            echo -e  "\n[System error] ${message}">&2
+            ;;
+        4)  # Read   error
+            echo -e  "\n[Read error] ${message}">&2
+            ;;
+        5)  # Write  error
+            echo -e  "\n[Write error]\n${message}">&2
+            ;;
+        6)  # Test   error
+            echo -e  "\n[Test error] ${message}">&2
+            ;;
+        *)  # Unkown error
+            echo -e  "\n[Unkown error] ${message}">&2
+            ;;
+    esac
+    quit ${error_code}
+}
+
+function padding() {
+
+    local mode=${1} # 1: front, 2: behind
+    local hex_value=${2}
+    local length=${3}
+
+    local hex_value_len=${#hex_value}
+    local expected_len=$((${length}*2))
+
+    if [ ${hex_value_len} -lt ${expected_len} ]; then
+        local pad=`head -c $((${expected_len}-${hex_value_len})) < /dev/zero | tr '\0' '0'`
+        if [ ${mode} -eq 1 ]; then
+            hex_value=${pad}${hex_value}
+        else
+            hex_value=${hex_value}${pad}
+        fi
+    fi
+    echo ${hex_value}
+}
+
+function check_valid_int() {
+
+    local integer=${1}
+
+    if [[ ! ${integer} =~ ^[0-9]+$ ]]; then
+        ERR_MSG+="Value '${integer}' isn't a integer\n"
+        return 1
+    fi
+    return 0
+}
+
+function check_valid_hex() {
+
+    local hexadecimal=${1}
+
+    if [[ ! ${hexadecimal} =~ ^[0-9a-fA-F]+$ ]] && [[ ! ${1} =~ ^0[xX][0-9a-fA-F]+$ ]]; then
+        ERR_MSG+="Value '${hexadecimal}' isn't a hexadecimal\n"
+        return 1
+    fi
+    return 0
+}
+
+function check_valid_date() {
+
+    local dt="${1}"
+
+    if [[ ! ${dt} =~ ^[0-9]+\.[0-9]+\.[0-9]+\-[0-9]+\:[0-9]+\:[0-9]+$ ]]; then
+        ERR_MSG+="Date format is 'year.month.day-hour:minute:seconds', like '2009.10.19-14:21:29'\n"
+        return 1
+    fi
+    return 0
+}
+
+function check_hex_len() {
+
+    local hex_value=${1}
+    local length=${2}
+    local field_name=${3}
+
+    local hex_list=(`echo ${hex_value} | sed 's/../& /g'`)
+
+    if [ ${#hex_list[@]} -gt ${length} ]; then
+        ERR_MSG+="The Field Length is ${length}, ${field_name}: '0x${hex_value}' length(${#hex_list[@]}) exceeds the upper limit\n"
+        return 1
+    elif [ ${#hex_list[@]} -lt ${length} ]; then
+        ERR_MSG+="The Field Length is ${length}, ${field_name}: '0x${hex_value}' length(${#hex_list[@]}) is less than the lower limit\n"
+        return 1
+    fi
+    return 0
+}
+
+function regular_hex() {
+
+    local hexadecimal=${1}
+    if [[ ${hexadecimal} =~ ^0[xX][0-9a-fA-F]+$ ]]; then
+        printf "%x" "${hexadecimal}"
+    else
+        echo "${hexadecimal}"
+    fi
+}
+
+function calculate_checksum() {
+
+    # 1: hex sequence (like: 0103ff4e002c), 2: checksum
+    
+    local sum_array=(`echo -n ${1} | sed 's/../ &/g'`)
+    local total
+    
+    for ((i = 0 ; i < ${#sum_array[@]} ; i+=2)); do
+        if [ $((i + 1)) -ge ${#sum_array[@]} ]; then
+            total=$((${total} + 0x${sum_array[i]}))
+        else
+            total=$((${total} + 0x${sum_array[i]}${sum_array[i+1]}))
+        fi
+    done
+    if  [ $((${total}>>16)) -gt 0 ]; then
+        total=$((${total}&0xFFFF))
+    fi
+
+    printf '%04x\n' "${total}"
+}
+
+function date2dec() {
+
+    local dt="${1}"
+    date -d "${dt}" +%s
+}
+
+function dec2hex() {
+	local dec=$1
+	echo -n $dec | xargs printf '0x%x'
+}
+
+function dec2hex_without0x() {  
+    # output type like: ff
+    local dec=${1}
+    printf '%.2x' ${dec}
+}
+
+function str2hex() {
+
+    local str=${1:-""}
+    local format="%x"
+    local char
+    local -i i
+    for ((i = 0 ; i <= $((${#str}-1)); i++)); do
+        char=${str:i:1}
+        printf "${format}" "'${char}"
+    done
+}
+
+function write_field() {
+
+    local start_byte=${1}
+    local length=${2}
+    local end_byte=$((${start_byte}+${length}))
+    local blob=${3}
+
+    local i; local j
+
+    j=0
+    for ((i = ${start_byte} ; i < ${end_byte} ; i++)); do
+        write_byte=${blob:${j}:2}  # length = 2
+        i2cset -f -y ${BUS_ID} ${ADDR} `dec2hex ${i}` 0x${write_byte}
+        [ $? -eq 0 ] && sync || error_msg 3 "Can't write binary data to EEPROM"
+        j=$((j+2))
+    done
+}
+
+function erase_field() {
+
+    local start_byte=${1}
+    local length=${2}
+    local end_byte=$((${start_byte}+${length}))
+
+    local i
+
+    for ((i = ${start_byte} ; i < ${end_byte} ; i++)); do
+        i2cset -f -y ${BUS_ID} ${ADDR} `dec2hex ${i}` 0xff
+        [ $? -eq 0 ] && sync || error_msg 3 "Can't write binary data to EEPROM"
+    done
+}
+
+# ## Initial Variables ## #
+
+BUS_ID=5
+ADDR=0x50
+
+ERR_MSG=""
+write_command=""
+
+byte_val=""
+sum=""
+
+# ## Main ## #
+
+if [ $# -lt 1 ]; then
+    usage
+    error_msg 1  # At least one optional option is needed
+fi
+
+while getopts ":-:rh" arg; do
+    case ${arg} in
+        -)
+            case "${OPTARG}" in
+
+                # EEPROM format number (Hex String, 1 byte)
+                eeprom_format_number)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=1
+                    [ "${val}" = "erase" ] && write_command+="erase_field 0 ${field_len};" && continue
+                    if ! check_valid_hex "${val}"; then continue; fi
+                    val=`regular_hex "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 0 ${field_len} "${val}";"
+                    ;;
+                
+                # Module ID (Hex String, 4 byte)
+                module_id)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=4
+                    [ "${val}" = "erase" ] && write_command+="erase_field 1 ${field_len};" && continue
+                    if ! check_valid_hex "${val}"; then continue; fi
+                    val=`regular_hex "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 1 ${field_len} "${val}";"
+                    ;;
+                
+                # PCBA Part Number (String, 25 byte)
+                pcba_part_number)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=25
+                    [ "${val}" = "erase" ] && write_command+="erase_field 5 ${field_len};" && continue
+                    val=`str2hex "${val}"`
+                    val=`padding 2 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 5 ${field_len} "${val}";"
+                    ;;
+                
+                # PCBA Revision number (String, 3 byte)
+                pcba_revision_number)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=3
+                    [ "${val}" = "erase" ] && write_command+="erase_field 30 ${field_len};" && continue
+                    val=`str2hex "${val}"`
+                    val=`padding 2 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 30 ${field_len} "${val}";"
+                    ;;
+                
+                # Serial Number (String, 25 byte)
+                serial_number)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=25
+                    [ "${val}" = "erase" ] && write_command+="erase_field 33 ${field_len};" && continue
+                    val=`str2hex "${val}"`
+                    val=`padding 2 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 33 ${field_len} "${val}";"
+                    ;;
+                
+                # Manufacturing Date (Time, 4 byte, format like "2009-10-19 14:21:29")
+                manufacturing_date)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=4
+                    [ "${val}" = "erase" ] && write_command+="erase_field 58 ${field_len};" && continue
+                    if ! check_valid_date "${val}"; then continue; fi
+                    val=`date2dec "${val}"`
+                    if ! check_valid_int "${val}"; then continue; fi
+                    val=`dec2hex_without0x "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 58 ${field_len} "${val}";"
+                    ;;
+                
+                # Base MAC Range 1 (Hex String, 6 byte)
+                base_mac_range_1)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=6
+                    [ "${val}" = "erase" ] && write_command+="erase_field 62 ${field_len};" && continue
+                    val=`echo "${val}" | sed 's/://g'`
+                    if ! check_valid_hex "${val}"; then continue; fi
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 62 ${field_len} "${val}";"
+                    ;;
+                
+                # MAC Count Range 1 (Decimal, 2 byte)
+                mac_count_range_1)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=2
+                    [ "${val}" = "erase" ] && write_command+="erase_field 68 ${field_len};" && continue
+                    if ! check_valid_int "${val}"; then continue; fi
+                    val=`dec2hex_without0x "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 68 ${field_len} "${val}";"
+                    ;;
+
+                # Base MAC Range 2 (Hex String, 6 byte)
+                base_mac_range_2)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=6
+                    [ "${val}" = "erase" ] && write_command+="erase_field 70 ${field_len};" && continue
+                    val=`echo "${val}" | sed 's/://g'`
+                    if ! check_valid_hex "${val}"; then continue; fi
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 70 ${field_len} "${val}";"
+                    ;;
+                
+                # MAC Count Range 2 (Decimal, 2 byte)
+                mac_count_range_2)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=2
+                    [ "${val}" = "erase" ] && write_command+="erase_field 76 ${field_len};" && continue
+                    if ! check_valid_int "${val}"; then continue; fi
+                    val=`dec2hex_without0x "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 76 ${field_len} "${val}";"
+                    ;;
+                
+                # Base MAC Range 3 (Hex String, 6 byte)
+                base_mac_range_3)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=6
+                    [ "${val}" = "erase" ] && write_command+="erase_field 78 ${field_len};" && continue
+                    val=`echo "${val}" | sed 's/://g'`
+                    if ! check_valid_hex "${val}"; then continue; fi
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 78 ${field_len} "${val}";"
+                    ;;
+                
+                # MAC Count Range 3 (Decimal, 2 byte)
+                mac_count_range_3)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=2
+                    [ "${val}" = "erase" ] && write_command+="erase_field 84 ${field_len};" && continue
+                    if ! check_valid_int "${val}"; then continue; fi
+                    val=`dec2hex_without0x "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 84 ${field_len} "${val}";"
+                    ;;
+                
+                # Base MAC Range 4 (Hex String, 6 byte)
+                base_mac_range_4)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=6
+                    [ "${val}" = "erase" ] && write_command+="erase_field 86 ${field_len};" && continue
+                    val=`echo "${val}" | sed 's/://g'`
+                    if ! check_valid_hex "${val}"; then continue; fi
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 86 ${field_len} "${val}";"
+                    ;;
+                
+                # MAC Count Range 4 (Decimal, 2 byte)
+                mac_count_range_4)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=2
+                    [ "${val}" = "erase" ] && write_command+="erase_field 92 ${field_len};" && continue
+                    if ! check_valid_int "${val}"; then continue; fi
+                    val=`dec2hex_without0x "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 92 ${field_len} "${val}";"
+                    ;;
+                
+                # Module Description (String, 32 byte)
+                module_description)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=32
+                    [ "${val}" = "erase" ] && write_command+="erase_field 94 ${field_len};" && continue
+                    val=`str2hex "${val}"`
+                    val=`padding 2 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 94 ${field_len} "${val}";"
+                    ;;
+                
+                # FRU (String, 25 byte)
+                fru_part_number)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=25
+                    [ "${val}" = "erase" ] && write_command+="erase_field 126 ${field_len};" && continue
+                    val=`str2hex "${val}"`
+                    val=`padding 2 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 126 ${field_len} "${val}";"
+                    ;;
+                
+                # FRU Revision Number (String, 3 byte)
+                fru_revision_number)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=3
+                    [ "${val}" = "erase" ] && write_command+="erase_field 151 ${field_len};" && continue
+                    val=`str2hex "${val}"`
+                    val=`padding 2 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 151 ${field_len} "${val}";"
+                    ;;
+                
+                # Power Consumption (Decimal, 2 byte)
+                power_consumption)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=2
+                    [ "${val}" = "erase" ] && write_command+="erase_field 154 ${field_len};" && continue
+                    if ! check_valid_int "${val}"; then continue; fi
+                    val=`dec2hex_without0x "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 154 ${field_len} "${val}";"
+                    ;;
+
+                # Variant (Hex String, 8 byte)
+                variant)
+                    val="${!OPTIND}"; OPTIND=$(($OPTIND + 1))
+                    field_len=8
+                    [ "${val}" = "erase" ] && write_command+="erase_field 156 ${field_len};" && continue
+                    if ! check_valid_hex "${val}"; then continue; fi
+                    val=`regular_hex "${val}"`
+                    val=`padding 1 "${val}" ${field_len}`
+                    if ! check_hex_len "${val}" ${field_len} ${OPTARG}; then continue; fi
+                    write_command+="write_field 156 ${field_len} "${val}";"
+                    ;;
+                *)
+                    usage
+                    error_msg 1
+                    ;;
+            esac ;;
+        r)
+            erase_field 0 256
+            echo -e "\nErase the EEPROM (0-255 bytes)\n"
+            i2cdump -f -y ${BUS_ID} ${ADDR}
+            quit_ok
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        :)
+            usage
+            error_msg 1  # Option "-${OPTARG}" requires an argument
+            ;;
+        ?)
+            usage
+            error_msg 1  # Unknown option "-${OPTARG}"
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    error_msg 1  # No options were passed
+fi
+
+if [ -z "${ERR_MSG}" ]; then
+
+    eval ${write_command}
+
+    checksum_container=$(echo -n `i2cdump -f -y -r 0-205 ${BUS_ID} ${ADDR} b | sed -n '2,$p' | awk -F: '{print $2}' | \
+                         awk -F"    " '{print $1}' | tr -d " "` | tr -d " " 2> /dev/null)
+    [ ! -z {checksum_container} ] && sum=`calculate_checksum "${checksum_container}"` || error_msg 5 "Can't calculate checksum"
+    write_field 206 2 "${sum}"
+    echo
+    i2cdump -f -y ${BUS_ID} ${ADDR}
+    quit ${PASS}
+else
+    error_msg 5 "${ERR_MSG}"
+fi

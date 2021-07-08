@@ -1,0 +1,10 @@
+// TAG:               port; ports; isolation;
+// Short Description: Configure port isolation for ports pair #0,#18
+// Description:       Configure port isolation for ports pair #0,#18
+end
+configure
+interface range ethernet ${dev}/${port[1]}
+switchport isolate ${dev}/${port[2]},${port[3]} cmd L3
+no switchport isolate
+switchport isolate ${dev}/${port[2]} cmd L2L3
+end

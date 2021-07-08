@@ -1,0 +1,12 @@
+// one of two secondary config files for test "ipv4_mc_routing_by_vlan".
+// here the mc routing by vlan feature is enabled, by setting VlanEntry.BrgEn = 0, VlanEntry.BrgMode = 1
+
+end
+
+configure
+
+interface vlan device ${dev} vid 100
+bridge multicast ipv4 mode ip-group
+bridge multicast ipv4 mode mac-group
+
+end

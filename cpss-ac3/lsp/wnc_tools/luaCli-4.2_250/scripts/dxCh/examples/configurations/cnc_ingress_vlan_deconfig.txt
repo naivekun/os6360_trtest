@@ -1,0 +1,16 @@
+// TAG:               cnc; ingress-vlan; count-drop; vlan; switchport;
+// Short Description: Disables ingress-vlan cnc counters
+// Description:       Disables cnc counters for ingress-vlan client
+//		      for dev#0.
+//		      Also deletes ports 0,18,36,54 from vlan#20 and delete this vlan
+end
+configure
+no counters ingress-vlan device ${dev}
+
+
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan remove 20
+exit
+
+no interface vlan device ${dev} vid 20
+end

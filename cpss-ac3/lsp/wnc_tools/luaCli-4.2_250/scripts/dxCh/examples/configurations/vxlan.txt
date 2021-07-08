@@ -1,0 +1,25 @@
+// TAG:               vxlan, uni, nno;
+// Short Description: set vxlan config
+// Description:       configure ports 1,2 as uni and 3,4 as nni. All interfaces with vsi 1000000
+
+end
+configure
+
+mac address 00:00:00:10:20:30
+
+interface ethernet ${dev}/${port[1]}
+uni vsi 1000000 assign-eport 0x301 vid 101 src-mac 00:00:00:24:00:01 tag-state tagged
+exit
+
+interface ethernet ${dev}/${port[2]}
+uni vsi 1000000 assign-eport 0x302 vid 102 src-mac 00:00:00:24:00:02
+exit
+
+
+interface ethernet ${dev}/${port[3]}
+nni vxlan vsi 1000000 assign-eport 0x311 local-ip-addr 192.176.10.10  remote-ip-addr 192.176.10.11 nexthop-mac-addr 00:00:00:B0:1A:11 tag-state tagged
+exit
+
+interface ethernet ${dev}/${port[4]}
+nni vxlan vsi 1000000 assign-eport 0x312 local-ip-addr 192.176.10.10  remote-ip-addr 192.176.10.12 nexthop-mac-addr 00:00:00:B0:1A:12
+exit

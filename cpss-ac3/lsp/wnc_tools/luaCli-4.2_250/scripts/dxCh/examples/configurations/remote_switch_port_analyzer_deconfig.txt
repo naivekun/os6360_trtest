@@ -1,0 +1,23 @@
+// TAG:               Port monitoring, RSPAN
+// Short Description: configure port interface for Rx/Tx mirroring.
+// Description:       Unknown UC packet sent to Rx mirroring port and egress 
+//                    through all ports in VLAN.
+//                    Tx and Rx analyzer ports will get one multiple packet in egress.
+end
+configure
+
+//configure port[1] to be Rx mirrored with port[3] analyzer port
+interface ethernet ${dev}/${port[1]}
+no port monitor ${dev}/${port[3]}
+exit
+
+//configure port[2] to be Tx mirrored with port[4] analyzer port
+interface ethernet ${dev}/${port[2]}
+no port monitor ${dev}/${port[4]}
+end
+
+//clean up MAC table
+clear mac address-table all device all ethernet ${dev}/${port[1]}
+clear mac address-table all device all ethernet ${dev}/${port[2]}
+
+end

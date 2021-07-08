@@ -1,0 +1,59 @@
+# $(warning "Started")
+#LIB_NAME = cpssDxChPort.lib
+
+
+
+#List of subfolders to include in build
+MODULES := \
+ PizzaArbiter \
+ PortMapping \
+ SliceManipulation \
+ macCtrl \
+ private
+
+#List of files to include in list
+FILES := \
+ cpssDxChPortTxDba.c \
+ cpssDxChPortAp.c \
+ cpssDxChPortAutoDtct.c \
+ cpssDxChPortBufMg.c \
+ cpssDxChPortCn.c \
+ cpssDxChPortCombo.c \
+ cpssDxChPortCtrl.c \
+ cpssDxChPortDiag.c \
+ cpssDxChPortEcn.c \
+ cpssDxChPortEee.c \
+ cpssDxChPortFastInit.c \
+ cpssDxChPortIfModeCfg.c \
+ cpssDxChPortManager.c \
+ cpssDxChPortInterlaken.c \
+ cpssDxChPortMapping.c \
+ cpssDxChPortPcsCfg.c \
+ cpssDxChPortPfc.c \
+ cpssDxChPortPip.c \
+ cpssDxChPortSerdesCfg.c \
+ cpssDxChPortSpeed.c \
+ cpssDxChPortStat.c \
+ cpssDxChPortSyncEther.c \
+ cpssDxChPortTx.c \
+ cpssDxChPortLoopback.c \
+ cpssDxChPortPacketBuffer.c
+
+
+# prvCpssDxChPortLog.c \
+# prvCpssDxChPortManualLog.c
+
+ifeq (L_ON,$(LOG_ENABLE))
+        FILES += prvCpssDxChPortLog.c prvCpssDxChPortManualLog.c
+endif
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINPPDRV_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))

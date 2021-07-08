@@ -1,0 +1,64 @@
+#!/bin/bash
+
+#Identify SKU
+if [ -f /sys/bus/i2c/devices/0-007f/product_id ]; then
+  SKU=`cat /sys/bus/i2c/devices/0-007f/product_id`
+  case $SKU in
+    0x70) echo OS6360-10   > /usr/local/sku; echo 0x0C062201 > /usr/local/module_id;
+      #if [ -f /flash/Rj45LoopbackStub ]; then
+      #  cp /etc/config_10_rj45_loopback.txt /etc/config.txt
+      #else
+      #  cp /etc/config_10.txt /etc/config.txt
+      #fi
+    ;;
+    0x71) echo OS6360-P10  > /usr/local/sku; echo 0x0C0E2201 > /usr/local/module_id;
+      #if [ -f /flash/Rj45LoopbackStub ]; then
+      #  cp /etc/config_10_rj45_loopback.txt /etc/config.txt
+      #else
+      #  cp /etc/config_10.txt /etc/config.txt
+      #fi
+    ;;
+    0x74) echo OS6360-P24X > /usr/local/sku; echo 0x0C0E2204 > /usr/local/module_id;
+      #if [ -f /flash/Rj45LoopbackStub ]; then
+      #  cp /etc/config_24_rj45_loopback.txt /etc/config.txt
+      #else
+      #  cp /etc/config_24.txt /etc/config.txt
+      #fi
+    ;;
+    0x77) echo OS6360-P48X > /usr/local/sku; echo 0x0C0E2206 > /usr/local/module_id;
+      # Write PCIe registers (offset 0x4000c to 0x40018) to solve MAC 2 can't trap packets to CPU.
+      devmem 0xf104000c 32 0x00000000
+      devmem 0xf1040010 32 0xf100000c
+      devmem 0xf1040014 32 0x00000000
+      devmem 0xf1040018 32 0x0000000c
+      #if [ -f /flash/Rj45LoopbackStub ]; then
+      #  cp /etc/config_48_rj45_loopback.txt /etc/config.txt
+      #else
+      #  cp /etc/config_48.txt /etc/config.txt
+      #fi
+    ;;
+    0x78) echo OS6360-PH24 > /usr/local/sku; echo 0x0C0E2203 > /usr/local/module_id;
+      #if [ -f /flash/Rj45LoopbackStub ]; then
+      #  cp /etc/config_24_rj45_loopback.txt /etc/config.txt
+      #else
+      #  cp /etc/config_24.txt /etc/config.txt
+      #fi
+    ;;
+    *) echo OS6360-P10  > /usr/local/sku; echo 0x0C062201 > /usr/local/module_id;
+      #if [ -f /flash/Rj45LoopbackStub ]; then
+      #  cp /etc/config_10_rj45_loopback.txt /etc/config.txt
+      #else
+      #  cp /etc/config_10.txt /etc/config.txt
+      #fi
+    ;;
+  esac
+else
+  echo OS6360-P10 > /usr/local/sku; echo 0x0C062201 > /usr/local/module_id;
+  #if [ -f /flash/Rj45LoopbackStub ]; then
+  #  cp /etc/config_10_rj45_loopback.txt /etc/config.txt
+  #else
+  #  cp /etc/config_10.txt /etc/config.txt
+  #fi
+fi
+
+echo The SKU is `cat /usr/local/sku`, the module ID is `cat /usr/local/module_id`

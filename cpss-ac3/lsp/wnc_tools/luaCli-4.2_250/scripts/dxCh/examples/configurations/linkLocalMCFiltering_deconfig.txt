@@ -1,0 +1,49 @@
+// TAG:               link-local; multicast; ip; mc filtering;
+// Short Description: Remove vlan#1 for dev#0
+// Description:       Remove vlan#1 for dev#0
+
+end
+debug-mode
+
+// set per eVLAN IPv4 unregistered multicast command as FORWARD
+cpss-api call cpssDxChBrgVlanUnkUnregFilterSet  devNum ${dev}  vlanId 1 packetType CPSS_DXCH_BRG_VLAN_PACKET_UNREG_IPV4_MCAST_E cmd CPSS_PACKET_CMD_FORWARD_E
+// enable IP control traffic trapping/mirroring to CPU
+cpss-api call cpssDxChBrgVlanIpCntlToCpuSet devNum ${dev} vlanId 1 ipCntrlType CPSS_DXCH_BRG_IP_CTRL_NONE_E
+// Disable mirroring to CPU IPv4 packets with link-local Multicast addresses in range 224.0.0.0/24
+cpss-api call cpssDxChBrgGenIpLinkLocalMirrorToCpuEnable devNum ${dev} protocolStack CPSS_IP_PROTOCOL_IPV4_E enable false
+
+end
+configure
+
+interface range ethernet ${dev}/${port[1]},${port[3]}
+switchport allowed vlan remove 5
+exit
+
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan remove 6
+exit
+
+no interface vlan device ${dev} vid 5
+no interface vlan device ${dev} vid 6
+
+no ip mc-route 224.0.0.13/32 vrf-id 1
+no ip mc-next-hop 101
+
+no ip vrf-id 1
+
+//disable routing
+interface range ethernet ${dev}/${port[1]},${port[2]}
+no ip routing
+no ip mc-routing
+exit
+
+interface range vlan device ${dev} vid 5,6
+no ip routing
+no ip mc-routing
+exit
+
+no mac address
+do clear bridge interface ${dev} all
+
+end
+

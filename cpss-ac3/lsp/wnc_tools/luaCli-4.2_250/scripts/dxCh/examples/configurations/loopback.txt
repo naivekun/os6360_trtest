@@ -1,0 +1,8 @@
+// TAG:               loopback; mode; internal;
+// Short Description: Set internal loopback mode
+// Description:       Set internal loopback mode for dev#0 port#0
+end
+configure
+interface ethernet ${dev}/${port[1]}
+loopback mode internal
+end

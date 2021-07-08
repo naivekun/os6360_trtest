@@ -1,0 +1,46 @@
+// TAG:               PX devices(PIPE); egress-processing;
+// Short Description: PIPE device : egress-processing deconfiguration.
+// Description:       PIPE device : egress-processing deconfiguration.
+//                    done in 'DX system' but only as sanity since actual commands
+//                    currently only manipulate 'DB' (in the LUA)
+//
+end
+//
+// enter the config context
+configure
+// enter the ethernet context
+interface ethernet ${dev}/${port[1]}
+no egress ha packetType 1
+no egress ha packetType 3
+no egress ha packetType 5
+no egress ha packetType 6
+no egress ha packetType 7
+no egress ha packetType 8
+no egress ha packetType 9
+no egress ha packetType 10
+no egress ha packetType 14
+no egress ha packetType 19
+no egress ha packetType 20
+no egress ha packetType 25
+no egress ha packetType 30
+
+no egress source-port
+no egress target-port
+exit
+//
+// --> config context
+//
+// enter the ethernet context
+interface ethernet ${dev}/${port[4]}
+egress ha do-not-modify packetType 2
+egress ha do-not-modify packetType 4
+egress ha do-not-modify packetType 6
+egress ha do-not-modify packetType 10
+egress ha do-not-modify packetType 11
+egress ha do-not-modify packetType 27
+egress ha do-not-modify packetType 30
+
+no egress source-port
+no egress target-port
+
+end

@@ -1,0 +1,22 @@
+#!/bin/bash
+GPIO_DIR=/sys/class/gpio
+RESET_PIN=$GPIO_DIR/gpio9
+
+if [ ! -d $RESET_PIN ];
+then
+    echo 9 > $GPIO_DIR/export
+fi
+
+if [ ! -d $RESET_PIN ];
+then
+    echo "Error: RESET Pin can't be set."
+    exit 1
+fi
+
+
+#set gpio9 for output  
+echo out > $RESET_PIN/direction
+echo 0 > $RESET_PIN/value
+
+exit 0
+

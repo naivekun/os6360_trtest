@@ -1,0 +1,23 @@
+// TAG:               capwap; restore; default;
+// Short Description: Restore default capwap 
+// Description:       Disable (restore default) capwap
+
+end
+configure
+no mac address-table static 00:01:02:03:34:02 device ${dev} vlan 10 ethernet ${dev}/636
+end
+
+configure
+no interface vlan device ${dev} vid 10 
+end
+
+configure
+interface ethernet ${dev}/${port[2]}
+no capwap assign-eport 618
+end
+
+configure
+interface ethernet ${dev}/${port[3]}
+no capwap assign-eport 636
+end
+

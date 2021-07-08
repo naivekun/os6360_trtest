@@ -1,0 +1,171 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+BUS_ID=6
+TMP1075_ADDR=48
+HWMON_ID=0
+TEMPERATURE_SYSFS="/sys/bus/i2c/devices/$BUS_ID-00$TMP1075_ADDR/hwmon/hwmon$HWMON_ID/temp1_input"
+MAX_THRESHOLD_SYSFS="/sys/bus/i2c/devices/$BUS_ID-00$TMP1075_ADDR/hwmon/hwmon$HWMON_ID/temp1_max"
+MPP_10_LEVEL="/sys/class/gpio/gpio10/value"
+CPLD_SYSFS="/sys/bus/i2c/devices/0-007f/thm_int_en"
+MAX_THRESHOLD=0
+RESULT_LIST="low"
+RELEASE_LIST="high"
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - Verify interrupt from thermal sensor
+
+SYNOPSIS
+       $prog_name [-t] [-h]
+
+DESCRIPTION
+       The command is to verify thermal sensor's interrupt can be delivered
+       to CPU via CPLD.
+
+       Set a threshold which is under the temperature read out from sensor.
+       It will cause thermal sensor to generator an interrupt.
+
+       The threshold will be restored to default after the test.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -t    Generate an interrupt signal from thermal sensor and confirm it
+             can be delivered to CPU via CPLD.
+
+       -h    Help message
+
+PASS CRITERIA
+       - Confirm interrupt signal (-t):
+           SUCCESS: The interrupt can be delivered to CPU via CPLD.
+             Display: PASS
+             Return code : 0
+
+           ERROR: The interrupt cannot be delivered to CPU via CPLD.
+             Display: FAIL
+             Return code : 1
+
+EXAMPLE
+       $prog_name -t
+">&2
+}
+
+if [ $# -lt 1 ]; then
+	usage
+	res=$FAIL
+	quit $res
+  echo "">&2
+fi
+
+generate_interrupt() {
+  local config=0xff00
+  local temperature=0
+  local result=1
+
+  echo Generate interrupt for thermal sensor
+
+  # enable CPLD thermal sensor interrupt
+  echo 1 > $CPLD_SYSFS
+
+  # endable thermal sensor interrupt
+  config=`i2cget -f -y $BUS_ID 0x$TMP1075_ADDR 0x1 w > /dev/null 2>&1`
+  while [ $result -eq 1 ]; do 
+    i2cset -f -y $BUS_ID 0x$TMP1075_ADDR 0x1 $((config | 0x0020)) w > /dev/null 2>&1
+    result=$?
+  done
+
+  # get temperature
+  temperature=`cat $TEMPERATURE_SYSFS`
+
+  # store max threshold
+  MAX_THRESHOLD=`cat $MAX_THRESHOLD_SYSFS`
+
+  # generate interrupt by setting max threshold to be less than temperature
+  echo $((temperature - 20000)) > $MAX_THRESHOLD_SYSFS
+
+  # should be low due to low active
+  if check_gpio_level; then
+    RESULT_LIST='low'
+  else
+    RESULT_LIST='high'
+  fi
+}
+
+release_interrupt() {
+  local config=0xff00
+  local result=1
+
+  echo Release interrupt for thermal sensor
+
+  # disable thermal sensor interrupt
+  while [ $result -eq 1 ]; do
+    i2cset -f -y $BUS_ID 0x$TMP1075_ADDR 0x1 $config w > /dev/null 2>&1
+    result=$?
+  done
+
+  # restore max threshold
+  echo $MAX_THRESHOLD > $MAX_THRESHOLD_SYSFS
+
+  # disable CPLD thermal sensor interrupt
+  echo 0 > $CPLD_SYSFS
+
+  # should be high due to low active
+  if check_gpio_level; then
+    RELEASE_LIST='low'
+  else
+    RELEASE_LIST='high'
+  fi
+}
+
+check_gpio_level() {
+  local level=`cat $MPP_10_LEVEL`
+
+  if [  $level -eq 0 ]; then
+    #echo MPP_10_LEVEL $level
+    return 0
+  else
+    #echo MPP_10_LEVEL $level
+    return 1
+  fi
+}
+
+confirm_all_result() {
+  local res=$PASS
+
+  # $RELEASE_LIST should be 'high'
+  if [ $RELEASE_LIST != high ]; then
+    echo "FAIL: Thermal sensor interrupt cannot release"
+    res=2
+    quit $res
+  fi
+
+  # $RESULT_LIST should be 'low'
+  if [ $RESULT_LIST != low ]; then
+    res=1
+    quit $res
+  fi
+
+  quit $res
+}
+
+while getopts "ht" arg; do
+  case $arg in
+    t)
+      generate_interrupt
+      sleep 3
+      release_interrupt
+      confirm_all_result
+      ;;
+    h | *) # display usage.
+      usage
+      quit_ok
+      ;;
+  esac
+done

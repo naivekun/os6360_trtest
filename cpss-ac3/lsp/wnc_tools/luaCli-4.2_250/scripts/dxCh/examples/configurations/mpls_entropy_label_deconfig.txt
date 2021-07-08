@@ -1,0 +1,25 @@
+// TAG:               tunnel; restore;
+// Short Description: Restore configurations
+// Description:       deconfigure MPLS
+
+end
+clear bridge type ${dev} all
+
+configure
+interface ethernet ${dev}/${port[2]}
+no mpls assign-eport 0x201 
+exit
+
+interface ethernet ${dev}/${port[3]}
+no mpls assign-eport 0x202
+exit
+
+interface ethernet ${dev}/${port[4]}
+no mpls assign-eport 0x203
+exit
+
+do show mpls
+
+no mac address
+
+end

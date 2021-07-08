@@ -1,0 +1,83 @@
+// TAG:               VSS; virtual-sub-system;bc2-ac3-system;lc5-on-vss3
+// Short Description: Configuration for device 'lc5-on-vss3' in the connection of 2 VSSs.
+// Description:       Configuration for device 'lc5-on-vss3' in the connection of 2 VSSs.
+//--------------------- the system  --------------------------
+//    -----------                             -----------
+//    |cc7(vss4)|                             |cc5(vss3)|
+//    -----------                             -----------
+//         |                                   |     |
+//        36                                  36     54
+//         |                              |----|     |----|
+//         |                              |               |
+//         23                             23              23
+//         |                              |               |
+//    ------------                    ------------    ------------
+//    |lc1       |                    |lc1       |    |lc5       |
+//    ------------                    ------------    ------------
+//    |    |  |  |                    |    |          |    |   |  
+//    20  18  8  0                    18   8          0    8   18
+//    |    |  |  |                    |    |          |    |   |  
+//    |    |  |  |                    |    |          |    |   | 
+//    |    |  |  |--------------------|    |          |    |   |  
+//    |    |  |       vss-trunk            |          |    |   |  
+//    |    |  |----------------------------+----------|    |   |  
+//    |    |                               |               |   |  
+//    |    |                               |               |   |
+//    |    ---------------|   |-------------               |   |
+//    |           network |   |                            |   |
+//    |            trunk  |   |                            |   |
+//
+//  ------------------------------------------------------------------
+//      our device in the system is : lc5 'under' vss3
+//      the actual device is 'AC3' (xCat3) silicon.
+//
+end
+//
+// enter the config context
+config
+//
+//set 'my info' as device "lc5" in vss 3
+vss my-info role lc name "lc5" vss-id 3
+//
+//state info about the neighbor vss-4
+vss neighbor-vss-info vss-name "vss_4" vss-id 4
+//
+// set the inter-connection ports , as trunk 100
+//      single member (wait for another member , if additional cc device needed in vss3)
+interface ethernet ${dev}/${port[4]}
+channel-group 100
+exit
+//
+// state that trunk 100 connected to 'cc2' device
+interface port-channel 100
+vss neighbor-info role cc name "cc2"
+exit
+//
+//
+// state the eports that each physical port will use
+//  (dev*1000 + port)
+//
+interface ethernet ${dev}/${port[2]}
+vss my-eport-on-cc ${ePort5008}
+exit
+interface ethernet ${dev}/${port[3]}   
+vss my-eport-on-cc ${ePort5018}
+exit
+//
+//
+// state that the 'vss trunk' that connected to 'vss_4' ,
+// hold 2 members : 
+//      port 18 in "lc1" 
+//      port 0 in "lc5" (local device)
+//
+vss neighbor-vss-connection add-port vss-name "vss_4" dev-name-in-local-vss "lc5" port ${port[1]}
+vss neighbor-vss-connection add-port vss-name "vss_4" dev-name-in-local-vss "lc1" port ${port[3]}
+//
+// state that the 'network trunk' (global eport = 4500)
+// hold 2 members : 
+//      port 8  in "lc1" (local vss)
+//      port 18 in "lc1" of 'vss_4'
+//
+vss eport-aggregator eport ${ePort4500} action add lc-name "lc1" lc-port ${port[2]}
+vss eport-aggregator eport ${ePort4500} action add lc-name "lc1" lc-port ${port[3]} vss-name "vss_4"
+

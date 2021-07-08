@@ -1,0 +1,9 @@
+// TAG:               cnc; egress-queue;
+// Short Description: Disables egress-queue cnc counters
+// Description:       Disables cnc counters for egress-queue client
+//		      for dev#0.
+end
+configure
+no counters egress-queue device ${dev}
+
+end

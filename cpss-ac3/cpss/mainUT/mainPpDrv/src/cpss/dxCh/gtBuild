@@ -1,0 +1,27 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+### the base is the cheetah-x directory ###
+SUBDIRS = dxChxGen
+
+### check if compilation need cheetah-3 directory ###
+ifeq (EXISTS, $(CH3_FAMILY))
+SUBDIRS += dxCh3
+endif
+
+### check if compilation need cheetah-3plus directory ###
+ifeq (EXISTS, $(CH3P_FAMILY))
+SUBDIRS += dxCh3p
+endif
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

@@ -1,0 +1,13 @@
+// TAG:               policer; flow; restore; default;
+// Short Description: Restore default policer configuration
+// Description:       Restore default policer configuration
+end
+configure
+interface range ethernet ${dev}/${port[1]}
+switchport allowed vlan remove 20
+exit
+interface vlan device ${dev} vid 20
+no policy 1
+exit
+no interface vlan device ${dev} vid 20
+end

@@ -1,0 +1,10 @@
+// TAG:               auto-tune; show;
+// Short Description: show auto tune parameters on specified port
+// Description:       show auto tune parameters on specified port
+//                    
+//		      
+end 
+configure 
+interface ethernet ${@@serdes_env.devNum}/${@@serdes_env.PortNum}  
+auto-tune show
+end    

@@ -1,0 +1,142 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=`echo $0 | awk -F/ '{print $NF}'`
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - display wnc diag version
+
+SYNOPSIS
+       $prog_name [-g] [-l] [-t version string] [-h]
+       
+DESCRIPTION
+       $prog_name is a command to display wnc diag version installed in
+       this device. Test if input version is same as the wnc diag ver-
+       sion installed in the device for checking wnc diag version when
+       manufacturing. And it can list brief description of all wnc diag
+       commands.
+       
+MANDATORY OPTIONS
+       At least one optional option is needed.           
+       
+OPTIONAL OPTIONS
+       -g    Get wnc diag version.
+
+       -l    List all wnc diag commands.
+       
+       -t    Test input string if same as current wnc diag version.
+             Version format is [0-9].[0-9].[0-9].
+       
+       -h    Display this usage.
+ 
+PASS CRITERIA
+       - Wrong options :
+           ERROR  : Input option is none or not matching OPTIONAL OPTIONS
+             Display : FAIL
+             Return code of $prog_name : 1
+
+       - Get wnc diag version (-g) : N/A
+
+       - List all wnc diag commands (-l) : N/A
+        
+       - Test wnc diag version (-t) :
+           SUCCESS: Input string is matching current wnc diag version
+             Display: PASS
+             Return code of $prog_name : 0
+
+           ERROR  : Input string is NOT matching current wnc diag version
+             Display : FAIL
+             Return code of $prog_name : 2
+ 
+EXAMPLE
+       $prog_name -g
+       $prog_name -l
+       $prog_name -t 0.0.0
+">&2
+}
+
+list_commands(){
+
+cmds_folder=$(dirname $0)
+cmds_cnt=0
+
+for cmd_name in `ls $cmds_folder`; do
+    if [[ $cmd_name =~ ^[0-9]{3}_ ]] && [[ -x "$cmds_folder/$cmd_name" ]]; then
+        $cmd_name -h 2>&1 | awk '/NAME/{getline;$1=$1;print}'
+        cmds_cnt=$((cmds_cnt+1))
+    fi
+done
+
+echo ""
+echo $diag_ver" has "$cmds_cnt" commands"
+echo ""
+
+}
+
+#ERROR CODE
+ERR_TEST_FAIL=2
+
+res=$PASS
+
+if [ $# -ne 1 ] && [ $# -ne 2 ]; then
+	usage
+	res=$FAIL
+	quit $res
+fi
+
+if [ "$1" == "-h" ]; then
+  usage
+  quit_ok
+fi
+
+diag_ver=`cat /usr/local/diagver`
+ver_num=`echo $diag_ver | awk '{print $NF}'`
+
+
+if [ "$1" == "-g" ]; then
+    if [ $# -ne 1 ]; then
+        usage
+	res=$FAIL
+	quit $res
+    else    
+        res=$PASS
+	echo $diag_ver>&2
+        quit_ok
+    fi    
+elif [ "$1" == "-l" ]; then
+    if [ $# -ne 1 ]; then
+        usage
+        res=$FAIL
+        quit $res
+    else
+        res=$PASS
+        list_commands
+        quit_ok
+    fi
+elif 	[ "$1" == "-t" ]; then
+    if [ $# -ne 2 ]; then
+        usage
+	res=$FAIL
+	quit $res
+    else    
+        res=$PASS
+        
+        if [ "$2" != "$ver_num" ]; then
+	   print_fail "$2"
+	   print_exact "$ver_num"
+	   res=$ERR_TEST_FAIL
+	#else
+	#   print_pass "$2"
+	fi 
+	quit $res
+    fi    
+else	    
+    usage
+    res=$FAIL
+    quit $res
+fi
+

@@ -1,0 +1,118 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+
+
+######################
+## CPSS FAMILY TYPE ##
+######################
+ifeq (EXISTS, $(CHX_FAMILY))
+  DX_FAMILY = EXIST
+endif
+ifeq (RHODES, $(FPGA_TYPE))
+  FPGA_FAMILY = EXIST
+endif
+
+### ----- CPSS (place new boards here):
+
+DX_BOARDS =                      \
+    dxFamilyBoards.c             \
+    gtRd_xCat_24GE_4HGS.c        \
+    gtDbDxLion_ForMultiCoreFdbLookup.c \
+    gtDbDxLion2_ForMultiCoreFdbLookup.c \
+    gtDbDxLion2_96XG.c           \
+    gtLion2PortPizzaArbiterProfile_360MHz_4x10G_3x40G_30slices.c \
+    appDemoLion2TrunkWa.c        \
+    gtDbDxBobcat2_X6.c           \
+    gtDbDxBobcat2.c              \
+    gtDbDxBobcat2Ap.c            \
+    gtDbDxBobcat2PhyConfig.c     \
+    gtDbDxBobcat2Mappings.c      \
+    gtDbDxBobcat2UtilsSimClock.c \
+    gtDbDxBobcat2GenUtils.c      \
+    gtDbDxBobcat2Utils.c         \
+    gtDbDxBobkUtils.c            \
+    gtDbDxAldrinUtils.c          \
+    gtDbDxFalcon.c               \
+    gtDbDxHexRaven.c             \
+    gtDbDxBobcat3Utils.c          \
+    gtDbDxBobcat2LedIfConfig.c   \
+    gtDbDxBobkQsgmiiAutoNegTask.c\
+    gtDbDxBc3_TxQDynamicThresholdingTask.c   \
+    gtDbDxBc3_TxQDynamicThresholdingTaskIf.c \
+    gtDbDxBc3_TxQDynamicThresholdingTaskApp.c\
+    gtDbDxAc3x.c                 \
+    gtDbDxAc3x_trunk_phy1690_WA_B.c \
+    gtDbDxAc3x_trunk_phy1690_WA_C.c \
+    gtDbDxLion2_X2_Bobcat2.c \
+        appDemoPortInit.c 
+
+PX_BOARDS =                      \
+    pxFamilyBoards.c             \
+    gtDbPxPipe.c                 \
+    appDemoPortInit.c 
+
+
+FPGA_BOARDS  =                   \
+    noPpBoards.c
+
+ifeq (EXIST, $(DX_FAMILY))
+    C_FILE_LIST = $(DX_BOARDS)
+endif
+
+ifeq (EXIST, $(PX_FAMILY))
+    C_FILE_LIST += $(PX_BOARDS)
+endif
+
+
+ifeq (YES, $(INCLUDE_UTF))
+  C_FILE_LIST += appDemoBoardConfig.c appDemoCfgMisc.c
+else
+  C_FILE_LIST += appDemoBoardConfig.c appDemoCfgMisc.c
+endif
+
+ifeq (EXIST, $(FPGA_FAMILY))
+ C_FILE_LIST += $(FPGA_BOARDS)
+endif
+
+ifeq (yes,$(CMD_LUA_CLI))
+    AD_CFLAGS += $(FD)CMD_LUA_CLI
+endif
+
+ifeq (YES, $(USEFUL_START))
+    AD_CFLAGS += $(FD)USEFUL_START
+    C_FILE_LIST += gtDbDxLion2_usefulStart.c       \
+                   gtDbDxBobcat2_usefulStart.c     \
+                   gtDbDxBobkCetus_usefulStart.c   \
+                   gtDbDxAldrin_usefulStart.c      \
+                   gtDbDxBobcat3_usefulStart.c
+endif
+
+ifeq (YES, $(TEST_GOP_CONFIG_REG))
+    AD_CFLAGS += $(FD)TEST_GOP_CONFIG_REG
+    ifeq (YES, $(TEST_GOP_CONFIG_REG_CETUS))    
+        C_FILE_LIST +=  gtDbDxBobKCetus_testGopConfigRegisters.c       \
+                        gtDbDxBobKCetus_testGopConfigRegistersTables.c 
+    endif
+    ifeq (YES, $(TEST_GOP_CONFIG_REG_ALDRIN))
+        C_FILE_LIST +=  gtDbDxAldrin_testGopConfigRegisters.c          \
+                        gtDbDxAldrin_testGopConfigRegistersTables.c
+    endif
+    ifeq (YES, $(TEST_GOP_CONFIG_REG_BC3))
+        C_FILE_LIST +=  gtDbDxBc3_testGopConfigRegisters.c             \
+                        gtDbDxBc3_testGopConfigRegistersTables.c
+    endif
+endif
+
+
+LIB_NAME = mainSysConfig.lib
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

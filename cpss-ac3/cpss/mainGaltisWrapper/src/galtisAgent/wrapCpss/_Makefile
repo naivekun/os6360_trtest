@@ -1,0 +1,80 @@
+# $(warning "Started")
+#SUBDIRS      =
+
+#ifeq (YES, $(INCLUDE_UTF))
+# SUBDIRS      += utfTool
+#endif
+#ifeq (EXISTS, $(TG_FAMILY))
+#      SUBDIRS      += exMxTg
+#endif
+#ifeq (EXISTS, $(EX_FAMILY))
+#      SUBDIRS      += exMx
+#endif
+#ifeq (EXISTS, $(CHX_FAMILY))
+#      SUBDIRS      += dxCh
+#endif
+#ifeq (EXISTS, $(CH3_FAMILY))
+#      SUBDIRS      += dxCh3
+#endif
+#ifeq (EXISTS, $(SAL_FAMILY))
+#      SUBDIRS      += dxSal
+#endif
+#ifeq (EXISTS, $(PM_FAMILY))
+#      SUBDIRS      += exMxPm
+#endif
+#ifeq (EXISTS, $(PX_FAMILY))
+#      SUBDIRS      += px
+#endif
+#ifneq (, $(SUBDIRS))
+#  SUBDIRS      += cpssDriver cpssGen systemLab
+#endif
+#ifeq (RHODES, $(FPGA_TYPE))
+#SUBDIRS      += rhodes
+#else
+#  ifeq (NOT_USED, $(NO_PP_USED))
+#      SUBDIRS = NONE
+#      C_EXCLUDE_FILE_LIST = ALL
+#  endif
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ cpssDriver \
+ cpssGen
+
+ifeq (EXISTS, $(CHX_FAMILY))
+MODULES += \
+ dxCh \
+ systemLab
+endif
+ifeq (EXISTS, $(CH3_FAMILY))
+MODULES += \
+ dxCh3
+endif
+ifeq (EXISTS, $(PX_FAMILY))
+MODULES += \
+ px \
+ systemLab
+endif
+ifeq (YES, $(INCLUDE_UTF))
+MODULES += \
+ utfTool
+endif
+#$(warning $(MODULES))
+
+#List of files to include in list
+FILES := \
+ cmdCpss.c
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINGALTISWRAPPER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

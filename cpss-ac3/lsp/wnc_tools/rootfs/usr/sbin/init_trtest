@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Variable
+diag_path="/usr/bin/wnc_diag"
+trtest_path="$diag_path/funcs/utils/trtest"
+
+# Run the script - prod_init to link product related files
+if [ -d "$trtest_path" ];then
+    pushd $trtest_path > /dev/null;./prod_init;popd > /dev/null
+else
+    echo "Lack of the traffic tester utility!"
+fi
+
+exit 0
+

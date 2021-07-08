@@ -1,0 +1,269 @@
+<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+<xs:element name="IDebug">
+	<xs:complexType>
+		<xs:sequence>
+			<xs:element name="DFXServerRoot">
+				<xs:complexType>
+					<xs:attribute name="baseAddress" type="hex" use="required"/>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="CPU">
+				<xs:complexType mixed="true">
+					<xs:sequence>
+						<xs:choice minOccurs="0" maxOccurs="unbounded">
+							<xs:element name="Memory" type="CPU_Memory"/>
+							<xs:element name="Register" type="CPU_Register"/>
+						</xs:choice>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="InterfacesList">
+				<xs:complexType>
+					<xs:sequence minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="InterfaceDesc" type="interface_Desc"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Instances">
+				<xs:complexType>
+					<xs:sequence minOccurs="0" maxOccurs="unbounded">
+						<xs:element name="Instance" type="Instance_Desc"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+</xs:element>
+
+<xs:simpleType name="hex">
+	<xs:restriction base="xs:string">
+		<xs:pattern value="0x[0-9a-fA-F]+"/>
+	</xs:restriction>
+</xs:simpleType>
+<xs:simpleType name="hex_noprefix">
+	<xs:restriction base="xs:string">
+		<xs:pattern value="[0-9a-fA-F]+"/>
+	</xs:restriction>
+</xs:simpleType>
+<xs:simpleType name="item_name">
+	<xs:restriction base="xs:string">
+		<xs:pattern value="\w\S*"/>
+	</xs:restriction>
+</xs:simpleType>
+<xs:simpleType name="bool">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="True"/>
+		<xs:enumeration value="False"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:complexType name="item_base">
+	<xs:sequence>
+		<xs:element name="Name" minOccurs="0" maxOccurs="1" type="xs:string"/>
+		<xs:element name="description" minOccurs="0" maxOccurs="1" type="xs:string"/>
+		<xs:element name="internalDescription" minOccurs="0" maxOccurs="1" type="xs:string"/>
+	</xs:sequence>
+	<xs:attribute name="internalName" type="item_name" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="CPU_item">
+	<xs:complexContent>
+		<xs:extension base="item_base">
+			<xs:attribute name="relOffset" type="hex" use="required"/>
+			<xs:attribute name="size" type="xs:integer" use="required"/>
+    	    <xs:attribute name="visible" type="bool" use="required"/>
+		</xs:extension>
+	</xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="CPU_Memory">
+	<xs:complexContent>
+		<xs:extension base="CPU_item">
+			<xs:attribute name="byteSize" type="xs:integer"/>
+			<xs:attribute name="lineAlignment" type="xs:integer"/>
+			<xs:attribute name="rowsNo" type="xs:integer"/>
+		</xs:extension>
+	</xs:complexContent>
+</xs:complexType>
+
+
+<xs:complexType name="enumValue">
+	<xs:complexContent>
+		<xs:extension base="item_base">
+			<xs:attribute name="name" type="item_name" use="required"/>
+			<xs:attribute name="value" type="xs:integer"/>
+		</xs:extension>
+	</xs:complexContent>
+</xs:complexType>
+
+<xs:simpleType name="yes_no">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="yes"/>
+		<xs:enumeration value="no"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="polarity">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="AL"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="fieldType">
+	<xs:restriction base="xs:string">
+		<xs:enumeration value="number"/>
+		<xs:enumeration value="enum"/>
+		<xs:enumeration value="struct"/>
+		<xs:enumeration value="raw"/>
+	</xs:restriction>
+</xs:simpleType>
+
+<xs:simpleType name="field_name">
+	<xs:restriction base="xs:string">
+		<xs:pattern value="[A-Za-z_][A-Za-z0-9_]*"/>
+		<xs:pattern value="[A-Za-z_][A-Za-z0-9_]*\[[0-9]+\]"/>
+		<xs:pattern value="[A-Za-z_][A-Za-z0-9_]*\[[0-9]+:[0-9]+\]"/>
+	</xs:restriction>
+</xs:simpleType>
+<xs:complexType name="bit_fields">
+	<xs:sequence minOccurs="0" maxOccurs="unbounded">
+		<xs:element name="Field">
+			<xs:complexType>
+				<xs:complexContent>
+					<xs:extension base="item_base">
+						<xs:sequence minOccurs="0" maxOccurs="1">
+							<xs:element name="subElements" type="bit_fields" minOccurs="0" maxOccurs="1"/>
+							<xs:element name="EnumeratedValue" type="enumValue" minOccurs="0" maxOccurs="unbounded"/>
+							<xs:element name="initValue" type="xs:string" minOccurs="0" maxOccurs="1"/>
+						</xs:sequence>
+						<xs:attribute name="bitStart" type="xs:integer"/>
+						<xs:attribute name="bitStop" type="xs:integer"/>
+						<!-- <xs:attribute name="type" type="fieldType"/> -->
+    	    			<xs:attribute name="visible" type="bool" use="required"/>
+					</xs:extension>
+				</xs:complexContent>
+			</xs:complexType>
+		</xs:element>
+	</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="CPU_Register_multiplicity">
+	<xs:sequence>
+		<xs:element name="base" type="xs:string"/>
+		<xs:element name="baseAddress" type="xs:string"/>
+		<xs:element name="offsetFormula">
+			<xs:complexType>
+				<xs:sequence>
+					<xs:element name="params">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element name="param" minOccurs="1" maxOccurs="unbounded">
+									<xs:complexType>
+										<xs:attribute name="name" type="xs:token" use="required"/>
+										<xs:attribute name="label" type="item_name" use="required"/>
+										<xs:attribute name="start" type="xs:integer" use="required"/>
+										<xs:attribute name="end" type="xs:integer" use="required"/>
+										<xs:attribute name="inc" type="xs:integer"/>
+										<xs:attribute name="ordinal" type="xs:integer"/>
+									</xs:complexType>
+								</xs:element>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:element name="formula" type="xs:string"/>
+					<xs:element name="formulaDisplayStr" type="xs:string"/>
+				</xs:sequence>
+			</xs:complexType>
+		</xs:element>
+	</xs:sequence>
+	<xs:attribute name="version" type="xs:integer" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="CPU_Register">
+	<xs:complexContent>
+		<xs:extension base="CPU_item">
+			<xs:sequence>
+				<xs:element name="subElements" type="bit_fields" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="multiplicity" type="CPU_Register_multiplicity" minOccurs="0" maxOccurs="1"/>
+			</xs:sequence>
+		</xs:extension>
+	</xs:complexContent>
+</xs:complexType>
+
+<xs:complexType name="field_enums">
+	<xs:sequence>
+		<xs:element name="Value" minOccurs="0" maxOccurs="unbounded">
+			<xs:complexType>
+				<xs:attribute name="internalName" type="item_name" use="required"/>
+				<xs:attribute name="value" type="hex_noprefix" use="required"/>
+			</xs:complexType>
+		</xs:element>
+	</xs:sequence>
+</xs:complexType>
+
+<xs:complexType name="bit_fields_iface">
+	<xs:sequence minOccurs="0" maxOccurs="unbounded">
+		<xs:element name="Field">
+			<xs:complexType>
+				<xs:complexContent>
+					<xs:extension base="item_base">
+						<xs:sequence minOccurs="0" maxOccurs="1">
+							<xs:element name="Enums" type="field_enums" minOccurs="0" maxOccurs="1"/>
+						</xs:sequence>
+						<xs:attribute name="bitStart" type="xs:integer"/>
+						<xs:attribute name="bitStop" type="xs:integer"/>
+						<xs:attribute name="type" type="fieldType"/>
+    	    			<xs:attribute name="visible" type="bool" use="required"/>
+					</xs:extension>
+				</xs:complexContent>
+			</xs:complexType>
+		</xs:element>
+	</xs:sequence>
+</xs:complexType>
+<xs:complexType name="interface_Desc">
+	<xs:sequence minOccurs="0" maxOccurs="unbounded">
+		<xs:element name="Name" minOccurs="0" maxOccurs="1" type="xs:string"/>
+		<xs:element name="subElements" type="bit_fields_iface"/>
+	</xs:sequence>
+	<xs:attribute name="internalName" type="xs:string"/>
+	<xs:attribute name="ControlPolarity" type="polarity"/>
+	<xs:attribute name="disableDoubleMatch" type="yes_no"/>
+	<xs:attribute name="id" type="xs:integer" use="required"/>
+	<xs:attribute name="size" type="xs:integer" use="required"/>
+	<xs:attribute name="version" type="xs:integer" use="required"/>
+	<xs:attribute name="visible" type="bool" use="required"/>
+</xs:complexType>
+
+<xs:complexType name="Instance_Desc">
+	<xs:sequence minOccurs="1" maxOccurs="1">
+		<xs:element name="Interfaces">
+			<xs:complexType>
+				<xs:sequence minOccurs="1" maxOccurs="unbounded">
+					<xs:element name="Interface">
+						<xs:complexType>
+							<xs:sequence minOccurs="0" maxOccurs="1">
+								<xs:element name="uniqueName" type="xs:string"/>
+							</xs:sequence>
+							<xs:attribute name="id" type="xs:integer" use="required"/>
+							<xs:attribute name="index" type="xs:integer" use="required"/>
+							<xs:attribute name="internalName" type="item_name" use="required"/>
+							<xs:attribute name="version" type="xs:integer"/>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:complexType>
+		</xs:element>
+	</xs:sequence>
+	<xs:attribute name="baseAddress" type="hex" use="required"/>
+	<xs:attribute name="dfxPipe" type="xs:integer" use="required"/>
+	<xs:attribute name="name" type="item_name" use="required"/>
+	<xs:attribute name="masterName" type="item_name" use="required"/>
+	<xs:attribute name="visible" type="bool" use="required"/>
+	<xs:attribute name="portGroup" type="xs:string"/>
+</xs:complexType>
+
+
+
+</xs:schema>

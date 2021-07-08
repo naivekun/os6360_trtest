@@ -1,0 +1,94 @@
+# $(warning "Started")
+
+#CPU_TARGETS_WITH_LSP_MODULE = \
+
+
+
+#build_dir: $(SCRAP_DIR) $(LIB_DIR) $(COPY_MODULES)
+#	rm -rf $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+#	-mkdir $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+#	cp -R kerneldrv/* $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)
+#	cp ../../../h/gtExtDrv/drivers/prvExtDrvLinuxMapping.h $(SCRAP_DIR)/$(KERNEL_MODULE_SUBDIR)/include
+
+
+#List of subfolders to include in build
+MODULES := i2cDrv sharedDrv
+
+
+#RAWSOCK_IMPL = genDrvRawSocketXCat.c genDrvRawSocketStub.c genDrvRawSocketMvMux.c
+#C_EXCLUDE_FILE_LIST = $(filter-out $(RAWSOCK_USE), $(RAWSOCK_IMPL))
+
+#	genDrvRawSocketXCat.c
+#	genDrvRawSocketMvMux.c
+#	genDrvRawSocketStub.c ???
+
+#List of files to include in list
+FILES := \
+	genDrvCacheMng.c\
+	genDrvDmaDrv.c	\
+	genDrvDragoniteDrv.c\
+	genDrvEthPortCtrl.c\
+	genDrvGen.c	\
+	genDrvGppIsr.c	\
+	genDrvHsuDrv.c	\
+	genDrvHwIfDrv.c	\
+	genDrvI2cDrv.c	\
+	genDrvIntDrv.c	\
+	genDrvPciDrv.c	\
+	genDrvResetDrv.c	\
+	genDrvSmiHwCtrl.c\
+	genDrvTwsiHwCtrl.c\
+	genDrvUartDrv.c
+
+ifeq (yes,$(KERNEL_SYSCALL_TABLE_EXPORTED))
+	cpssEnabler_CFLAGS_CL += -DPRESTERA_SYSCALLS
+endif
+
+
+#
+# don't build kernel module for MSYS, ARMADAXP_3_4, it is included into LSP
+CPU_TARGETS_WITH_LSP_MODULE = \
+    ARMARCH7_ARMv7 \
+    ARMARCH7_MSYS \
+    ARMARCH7_MSYS_2_6_32 \
+    ARMARCH7_ARMADA_385 \
+    ARMARCH7_ARMADA_390 \
+    ARMARCH7_ARMADAXP_3_4_69 \
+    ARMARCH7_ARMADAXP_3.4.69
+
+ifeq (,$(filter $(CPU_TARGETS_WITH_LSP_MODULE),$(CPU)_$(ARM_CPU)))
+ifneq (YES,$(APP_DEMO_ONLY))
+	MODULES += kerneldrv
+endif
+endif
+
+ifeq (EXISTS,$(XCAT_DRV))
+    RAWSOCK_USE = genDrvRawSocketXCat.c
+endif
+ifneq (,$(filter $(CPU_TARGETS_WITH_LSP_MODULE),$(CPU)_$(ARM_CPU)))
+    RAWSOCK_USE = genDrvRawSocketMvMux.c
+    cpssEnabler_CFLAGS_CL += -DRAW_SOCKET_MV_MUX
+endif
+
+ifeq (,$(RAWSOCK_USE))
+    RAWSOCK_USE = genDrvRawSocketStub.c
+endif
+FILES += $(RAWSOCK_USE)
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainExtDrv.lib
+    cpssEnabler_mainExtDrv_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

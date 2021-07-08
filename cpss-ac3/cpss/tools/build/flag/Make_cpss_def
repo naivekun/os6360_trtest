@@ -1,0 +1,149 @@
+# Common definitions for all builds
+
+USER_BASE_REAL=$(CURDIR)
+
+MK_DBG ?= N
+CPU_PRODUCT ?= *****
+
+$USER_BASE ?= .
+
+include $(USER_BASE)/gtDefsTopMake.mk
+
+include $(USER_BASE)/tools/build/flag/Make_cpss_include
+
+
+ifeq (D_ON,$(DEBUG_INFO))
+   CFLAGS += $(FD)DEBUG
+endif
+
+ifeq (P_ON,$(API_LOCK_PROTECTION))
+    CFLAGS += $(FD)CPSS_API_LOCK_PROTECTION
+endif
+
+
+
+
+ifeq (L_ON,$(LOG_ENABLE))
+    CFLAGS += $(FD)CPSS_LOG_ENABLE
+endif
+
+
+AD_CFLAGS += $(addprefix $(FD),$(sort $(PROJECT_DEFS)))
+OS_DEFINE += $(addprefix $(FD),$(sort $(OS_DEFS)))
+
+
+ARFLAGS =  crus
+
+common_W_OPT                     = /W4
+cpssEnabler_W_OPT                = /W3
+cpssEnabler_mainPhy_W_OPT        = /W3
+cpssEnabler_mainSysConfig_W_OPT  = /W3
+mainExtUtils_W_OPT               = /W3
+mainGaltisWrapper_W_OPT          = /W3
+mainLuaWrapper_W_OPT             = /W3
+mainPpDrv_W_OPT                  = /W4
+mainPxDrv_W_OPT                  = /W4
+mainTmDrv_W_OPT                  = /W3
+mainUT_W_OPT                     = /W4
+simulation_W_OPT                 = /W4
+
+
+ifeq (EXISTS, $(FORCE_GM_USE))
+  AD_CFLAGS += $(FD)GM_USED
+endif
+
+ifeq (EXISTS, $(PX_FAMILY))
+
+        PX_FAMILY=EXISTS
+        GT_PEX=EXISTS
+        GT_PCI=EXISTS
+        GT_SMI=EXISTS
+
+        AD_CFLAGS += $(FD)PX_FAMILY
+        AD_CFLAGS += $(FD)DGT_PEX
+        AD_CFLAGS += $(FD)DGT_PCI
+        AD_CFLAGS += $(FD)DGT_SMI
+
+        ifeq (win32, $(OS_RUN))
+                OS_DEFINE += $(FD)ASIC_SIMULATION
+                OS_DEFINE += $(FD)IMPL_PP
+        endif
+endif
+
+#$(warning "CMD_LUA_CLI=$(CMD_LUA_CLI)")
+ifeq (yes,$(CMD_LUA_CLI))
+    CMD_LUA := yes
+    AD_CFLAGS += $(FD)CMD_LUA_CLI
+
+    ifneq (yes, $(NO_LUACLI_EXAMPLES))
+
+        AD_CFLAGS += $(FD)CMD_LUA_GENWRAPPER
+        AD_CFLAGS += $(FD)CMD_LUA_GLOBAL
+        AD_CFLAGS += $(FD)CMD_LUA_NET
+        AD_CFLAGS += $(FD)CMDFS_RAM_EMBEDDED_DATA_EXT_EXAMPLES
+
+    endif
+
+    ifneq (VXWORKS, $(OS_RUN))
+        ifneq (win32, $(OS_RUN))
+          AD_CFLAGS += $(FD)LUA_USE_MKSTEMP
+        endif
+    endif
+
+    AD_CFLAGS+=  $(FD)CMD_FS
+    AD_CFLAGS+=  $(FD)CMDFS_RAM_EMBEDDED_DATA_EXT
+    AD_CFLAGS+=  $(FD)CMDFS_RAM_EMBEDDED_DATA_EXT_XML
+    AD_CFLAGS+=  $(FD)RAM_DATA=mainLuaWrapper/data
+    AD_CFLAGS+=  $(FD)RAM_DATA_SUBDIR=dxCh
+    AD_CFLAGS+=  $(FD)XML_RAM_DATA_SUBDIR=dxCh_xml
+
+endif
+
+ifeq (YES, $(INCLUDE_TM))
+    AD_CFLAGS+=  $(FD)INCLUDE_TM
+endif
+
+
+
+
+
+
+###################################################
+##### Tools                                    ####
+###################################################
+
+uppercase_TABLE:=a,A b,B c,C d,D e,E f,F g,G h,H i,I j,J \
+    k,K l,L m,M n,N o,O p,P q,Q r,R s,S t,T u,U v,V w,W x,X y,Y z,Z
+
+define uppercase_internal
+$(if $1,$$(subst $(firstword $1),$(call uppercase_internal,$(wordlist 2,$(words $1),$1),$2)),$2)
+endef
+
+define uppercase
+$(eval uppercase_RESULT:=$(call uppercase_internal,$(uppercase_TABLE),$1))$(uppercase_RESULT)
+endef
+
+BASE_DIR  ?= $(USER_BASE)
+
+#WORKING_DIRECTORY ?= .
+#BUILD_MODE ?= DEBUG
+BUILD_DIR  ?= $(COMPILATION_ROOT)
+
+#CPSS_ARCH ?= $(TOOLKIT)
+CPSS_ARCH ?= $(CPU_DIR)
+
+OUT_DIR = $(COMPILATION_ROOT)
+
+# Name of makefile to include in each sub-module
+MAKEFILE := _Makefile
+
+MODULES :=
+CPSS_SUBDIRS_LIST :=
+
+.PHONY: cmpl link clean
+
+ifeq ($(OS_RUN),linux)
+include $(USER_BASE)/tools/build/flag/Make_cpss_linux_def
+else
+include $(USER_BASE)/tools/build/flag/Make_cpss_win_def
+endif

@@ -1,0 +1,26 @@
+# !!! NOTE: New info please add above port info table, due to port parsing in file-portmap !!!
+
+# Total MAC units
+UNIT_CNT=1
+
+# Inter-port combination for segment
+IPORTLINK_SET=
+
+# CPU Port number
+CPU_PORT=28
+
+# Port info table
+LPort PPort   PhyType   PortType PortSpeed
+----- ------  -------   -------- ---------
+1     0:8     RTL8218D  COPPER   1G
+2     0:9     RTL8218D  COPPER   1G
+3     0:10    RTL8218D  COPPER   1G
+4     0:11    RTL8218D  COPPER   1G
+5     0:12    RTL8218D  COPPER   1G
+6     0:13    RTL8218D  COPPER   1G
+7     0:14    RTL8218D  COPPER   1G
+8     0:15    RTL8218D  COPPER   1G
+9     0:24    IntPHY    FIBER    10G
+10    0:25    IntPHY    FIBER    10G
+11    0:26    IntPHY    FIBER    10G
+12    0:27    IntPHY    FIBER    10G

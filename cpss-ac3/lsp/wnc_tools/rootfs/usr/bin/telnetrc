@@ -1,0 +1,28 @@
+#!/bin/sh
+
+TPS="/tmp/tmpps"
+ps > $TPS
+
+CPSSPID=""
+CPSSPID=`grep appDemo $TPS | awk '{ print $1 }'`
+
+#echo $CPSSPID
+
+if [ -n "$CPSSPID" ];
+then
+   kill -9 $CPSSPID
+fi
+
+rm $TPS
+
+if test -e /usr/bin/appDemo
+then
+  /usr/bin/appDemo -tty
+else
+  echo /usr/bin/appDemo not found
+fi
+
+cd /
+
+/bin/sh
+

@@ -1,0 +1,119 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+
+# include files
+source ${DIR}/const
+source ${DIR}/conf
+source ${DIR}/funcs
+source ${DIR}/proj_funcs
+source ${DIR}/app_funcs
+
+# get serial number
+BROAD_SN=$(Get_Serial)
+
+# mount persistent media
+MNT_MOUNTED_STAT=$(Preserve_mount)
+
+# mount tmpfs for tmp log
+Tmpfs_mount
+
+# set log name
+if [ -z "$1" ]; then	
+	LOG_FILE=${CFG_PERSISTENT_MNT}${CFG_LOG_PREFIX}_${BROAD_SN}_`date +%F_%H_%M`.log
+else
+	LOG_FILE=${CFG_PERSISTENT_MNT}$1_${BROAD_SN}_`date +%F_%H_%M`.log
+fi
+MSG_FILE=$LOG_FILE.tmp
+RET_FILE=`echo $LOG_FILE | cut -d '.' -f 1`.ret
+CMDSET_DIR=$CFG_PARCMD_TMPFS_MNT
+PAR_CMDSET=`ls ${CMDSET_DIR}/par_cmd* 2>/dev/null`
+if [ -n "${CMD_FILTER}" ]; then
+	CMD_FILTER=`echo ${CMD_FILTER} | sed 's/ /\n/g' | sed "s|^\(.*\)|${CMDSET_DIR}/\1|g"`
+fi
+if [ -n "${PAR_CMDSET}" ] && [ -n "${CMD_FILTER}" ]; then
+	PAR_CMDSET=`echo ${PAR_CMDSET} ${CMD_FILTER} | \
+		sed 's/ /\n/g' | sort | uniq -d`
+fi
+
+# set CPU affinity of burn-in body
+CPU_AFFINITY=$CFG_BURN_IN_CPU_AFFINITY
+
+# check configurations
+Check_config $MSG_FILE $LOG_FILE
+
+# check project function
+Check_project_funcs $MSG_FILE $LOG_FILE
+
+# process force termination by CTRL+C
+trap " rm -f ${CFG_PARCMD_TMPFS_MNT}/$RUN_STAMP_FILE" SIGINT
+
+# init process
+Init $MSG_FILE $LOG_FILE
+
+# if user press CTRL+C during init, ignore burn-in cmdset
+if [ -z "`ls ${CFG_PARCMD_TMPFS_MNT}/$RUN_STAMP_FILE 2>/dev/null`" ]; then
+	Post $MSG_FILE $LOG_FILE
+	exit 0
+fi
+
+# apply background stress load
+${DIR}/bg_stress start
+
+# setup diag msg debug level
+if [ "${DEBUG_FLAG}" == "true" ]; then
+	db_val="${DEBUG_FLAG}-${DEBUG_LV}"
+
+	if [ ! -f "${DEBUG_FLAG_FILE}" ]; then
+		db_path=$(dirname "${DEBUG_FLAG_FILE}")
+		mkdir -p "${db_path}"
+	fi
+
+	echo ${db_val} > "${DEBUG_FLAG_FILE}"
+fi
+
+# run parallel flows
+# each command is described in an individual file with prefix par_cmd under cmdset folder
+for cmd in $PAR_CMDSET; do
+	taskset $CPU_AFFINITY ${DIR}/container $cmd $LOG_FILE $RET_FILE &
+	sleep 0.2 # prevent burst launch process
+done
+
+# wait for termination of all command set
+while [ -n "`ls ${CFG_PARCMD_TMPFS_MNT}/$RUN_STAMP_FILE 2>/dev/null`" ]; do
+	case $CFG_RUN_MODE in
+	# wait for all background command set termination
+	$RUN_PERMANENT|$RUN_UNTIL_TIMEOUT|$RUN_BY_ROUND)
+		jobs &>/dev/null
+		if [ -n "`jobs`" ]; then
+			sleep 1
+		else
+			break
+		fi
+		;;
+	esac
+done
+
+# stop background stress load
+${DIR}/bg_stress stop
+
+# post process
+CMD_IDX_FILD=${CMDSET_DIR}/${CFG_CMD_IDX_FILE}
+Post $MSG_FILE $LOG_FILE $CMD_IDX_FILD $RET_FILE
+
+# remote scp
+if [ $CFG_LOG_SCP_ENABLE -eq 1 ]; then
+    echo "copy log to remote"
+	sshpass -p "${CFG_LOG_SCP_PWD}" scp ${LOG_FILE} ${CFG_LOG_SCP_USR}@${CFG_LOG_SCP_IP}:${CFG_LOG_SCP_REMOTE_PATH}
+fi
+
+# Remove result file
+if [ $CFG_DEBUG_MODE -ne 1 ]; then
+    rm -f $RET_FILE
+fi
+
+# Unmount tmpfs
+Tmpfs_unmount
+
+# Unmount persistent media
+Preserve_unmount $MNT_MOUNTED_STAT

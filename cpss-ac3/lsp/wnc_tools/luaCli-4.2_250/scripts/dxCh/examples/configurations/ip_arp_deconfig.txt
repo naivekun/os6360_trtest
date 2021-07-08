@@ -1,0 +1,12 @@
+// TAG:               ip; arp;
+// Short Description: remove ARP entries.
+// Description:       delete ARP entries using 'no ip arp' command.
+
+end
+configure
+
+no ip arp device ${dev} index 123
+no ip arp device ${dev} index 12
+no ip arp device ${dev} index 1
+
+end

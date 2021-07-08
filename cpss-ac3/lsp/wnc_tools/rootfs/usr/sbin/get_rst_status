@@ -1,0 +1,14 @@
+#!/bin/bash
+
+ST=`aikido_tool -r 0x00 -b 3`
+BIT3=`echo $ST | awk '{print $7}'` 
+
+if [ $BIT3 -eq 1 ];
+then
+  echo Restore button is released.	
+else
+  echo Restore button is pressed.
+fi
+
+exit 0
+

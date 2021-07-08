@@ -1,0 +1,47 @@
+# Make file to make standalone luaCLI application
+# which can work in parallel with CPSS (shared lib only)
+
+ifneq (1.yes,$(SHARED_MEMORY).$(LUACLI_STANDALONE))
+link:
+
+pre_build:
+
+else
+
+#-------------------------------------------------------
+include $(USER_BASE)/tools/build/flag/Make_cpss_def
+OUT_DIR := $(OUT_DIR)/luaCLI_standalone
+LUACLI_STANDALONE_BUILD = yes
+AD_CFLAGS += -DCLI_STANDALONE
+
+###############################################################################
+# Modules
+###############################################################################
+PROJ_NAME := mainLuaWrapper
+include $(ADD_MODULE_MK)
+PROJ_NAME := luaCLI_standalone
+include $(ADD_MODULE_MK)
+
+
+#-------------------------------------------------------
+DEP :=
+
+OBJ := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRC))
+ifneq (DEP_NO, $(DEPENDENCY))
+    DEP += $(patsubst %.o,%.d,$(OBJ))
+	-include $(DEP)
+endif
+
+
+###############################################################################
+
+LUACLI_STANDALONELIB_A=$(OUT_DIR)/libs/$(CPSS_ARCH)/luaCLI_standalone.a
+
+$(LUACLI_STANDALONELIB_A): $(LUACLI_STANDALONE_OBJ) $(MAINLUAWRAPPER_OBJ)
+	@ $(shell [ -d $(dir $@) ] || $(MKDIR_P) $(dir $@))
+	@ $(AR) $(ARFLAGS) $@   $^
+
+link: pre_build_objdir $(LUACLI_STANDALONELIB_A)
+
+
+endif

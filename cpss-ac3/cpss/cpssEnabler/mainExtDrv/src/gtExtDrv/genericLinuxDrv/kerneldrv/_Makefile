@@ -1,0 +1,4 @@
+# -*-makefile-*-
+
+DRIVER_LIST += prestera
+DRIVER_DIR_prestera := $(dir $(lastword $(MAKEFILE_LIST)))

@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Must assign SDK vendor(xxx) to link  prod_xxx files in prod_init
+SDK_VENDOR=bcm
+
+# CPLD sysfs path FIXME
+# folder=$(find /sys/devices -name XXXX)
+# CPLD_SYSFS_PATH=$(dirname $folder)
+function get_prod_name() {
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	echo "PROD_NA"
+}
+
+function get_prod_sn() {
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	echo "SN_NA"
+}
+
+function get_os_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	cat -E /etc/*-release
+}
+
+function get_kernel_info() {
+	uname -a
+}
+
+function get_sensor_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# various data from "sensors" command, that requires lm-sensors
+	# package installed, plus extra sensor points in switch chip or
+	# somewhere else
+	#sensors > tmp.log
+	#cat -E tmp.log; rm -f tmp.log
+	
+	echo "CPU temperature:" > tmp.log
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	cat -E tmp.log; rm -f tmp.log
+}
+
+function get_fan_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return present status, RPM
+	echo "FAN Info:" > tmp.log
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	cat -E tmp.log; rm -f tmp.log
+}
+
+
+function get_psu_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# return present status, power good, etc
+	echo "PSU Info:" > tmp.log
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	cat -E tmp.log; rm -f tmp.log
+}
+
+
+function get_port_info() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return MAC+PHY status from switch driver, plus transceiver EEPROM
+	# and DMI data
+	echo "Port status:" > tmp.log
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	cat -E tmp.log; rm -f tmp.log
+}
+
+function get_counters() {
+	# it is known that $(...) will trim newline character
+	# the workaround is to add '$' character (cat -E option) to tail of
+	# each line and the caller uses sed 's/\$/\n/g' to replace '$' with
+	# newline character
+	# return all counters from switch driver
+
+	echo "All counters:" > tmp.log
+	echo "${FUNCNAME[0]}() to be construct.." >&2
+	cat -E tmp.log; rm -f tmp.log
+}
+
+function get_prod_lb_modes() {
+	# return all available loopbck modes of the product
+	echo "phy"
+}
+

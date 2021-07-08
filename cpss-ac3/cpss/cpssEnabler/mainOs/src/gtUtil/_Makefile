@@ -1,0 +1,37 @@
+# $(warning "Started") 
+#LIB_NAME = gtUtil
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ gtBmPool.c \
+ gtMemoryUsageTrace.c \
+ gtMutexProfiler.c \
+ gtStringUtil.c \
+ gtTimeMeasure.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := gtUtil.lib
+    cpssEnabler_gtUtil_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+ifeq (MP_ON,$(CPSS_USE_MUTEX_PROFILER))
+AD_CFLAGS += -DV2L_PTHREADS
+endif
+
+

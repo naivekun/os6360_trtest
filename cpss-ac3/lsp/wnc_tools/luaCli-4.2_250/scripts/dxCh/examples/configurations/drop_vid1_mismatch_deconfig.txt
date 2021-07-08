@@ -1,0 +1,9 @@
+// TAG:               egress filtering; drop VID1 mismatch;
+// Short Description: disable "drop VID1 mismatch" feature
+// Description:       disable "drop VID1 mismatch" feature on the port 0/18
+
+end
+configure
+interface ethernet ${dev}/${port[2]}
+no switchport egress-filtering vid1
+end

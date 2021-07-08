@@ -1,0 +1,25 @@
+// TAG:               mac; qos map; policer; pcl-ID
+// Short Description: Configures remarking DSCP by policer feature
+// Description:       Configures for pcl-ID 11 with rule-id 18 an action that
+//                    will enabler policer 7, which will remark DSCP of packets
+//                    exeeding the cir(0) and cbs(0).
+end
+configure
+interface vlan device ${dev} vid 101
+exit
+
+interface range ethernet ${dev}/${port[1]},${port[3]}
+switchport allowed vlan add 101 untagged
+exit
+
+mac address-table static 00:11:22:33:44:55 device ${dev} vlan 101 ethernet ${dev}/${port[1]}
+qos map policed-dscp device ${dev} dscp-list 15 to 21
+policy-id 7 device ${dev} police 0 burst 0 exceed-action policed-dscp-transmit
+
+access-list device ${dev} pcl-ID 11
+rule-id 18 action permit mac-source 00:AA:BB:CC:DD:EE FF:FF:FF:FF:FF:FF policy 7
+exit
+
+interface ethernet ${dev}/${port[3]}
+service-acl pcl-ID 11 lookup 0
+end

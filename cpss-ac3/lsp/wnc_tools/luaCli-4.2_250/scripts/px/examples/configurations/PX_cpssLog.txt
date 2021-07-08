@@ -1,0 +1,84 @@
+Enter: cpssDrvPpHwRegisterRead
+devNum = 0
+portGroupId = 1
+regAddr = 0x00000050
+Exit: cpssDrvPpHwRegisterRead
+data = 0x000011ab
+rc = GT_OK
+Enter: cpssPxCncEgressQueueClientModeGet
+devNum = 0
+Exit: cpssPxCncEgressQueueClientModeGet
+modePtr = CPSS_PX_CNC_EGRESS_QUEUE_CLIENT_MODE_TAIL_DROP_REDUCED_E
+rc = GT_OK
+Enter: cpssPxCfgDevEnableGet
+devNum = 0
+Exit: cpssPxCfgDevEnableGet
+enablePtr = GT_TRUE
+rc = GT_OK
+Enter: cpssPxCosPortAttributesGet
+devNum = 0
+portNum = 0
+Exit: cpssPxCosPortAttributesGet
+cosAttributesPtr {
+	trafficClass = 0
+	dropPrecedence = CPSS_DP_GREEN_E
+	userPriority = 0
+	dropEligibilityIndication = 0
+}
+rc = GT_OK
+Enter: cpssPxHwPpSoftResetSkipParamGet
+devNum = 0
+skipType = CPSS_HW_PP_RESET_SKIP_TYPE_ALL_E
+Exit: cpssPxHwPpSoftResetSkipParamGet
+skipEnablePtr = GT_FALSE
+rc = GT_BAD_PARAM
+Enter: cpssPxCutThroughUpEnableGet
+devNum = 0
+up = 1
+Exit: cpssPxCutThroughUpEnableGet
+enablePtr = GT_FALSE
+rc = GT_OK
+Enter: cpssPxDiagPrbsSerdesCounterClearOnReadEnableGet
+devNum = 0
+portNum = 0
+laneNum = 1
+Exit: cpssPxDiagPrbsSerdesCounterClearOnReadEnableGet
+enablePtr = GT_TRUE
+rc = GT_OK
+Enter: cpssPxIngressEtherTypeGet
+devNum = 0
+configType = CPSS_PX_INGRESS_ETHERTYPE_MPLS1_E
+Exit: cpssPxIngressEtherTypeGet
+etherTypePtr = 0x8847
+validPtr = GT_TRUE
+rc = GT_OK
+Enter: cpssPxEgressBypassModeGet
+devNum = 0
+Exit: cpssPxEgressBypassModeGet
+phaBypassEnablePtr = GT_FALSE
+ppaClockEnablePtr = GT_TRUE
+rc = GT_OK
+Enter: cpssPxNetIfSdmaRxCountersGet
+devNum = 0
+rxQueue = 7
+Exit: cpssPxNetIfSdmaRxCountersGet
+rxCountersPtr {
+	rxInPkts = 0
+	rxInOctets = 0
+}
+rc = GT_OK
+Enter: cpssPxPortPfcEnableGet
+devNum = 0
+Exit: cpssPxPortPfcEnableGet
+pfcEnablePtr = CPSS_PX_PORT_PFC_ENABLE_TRIGGERING_ONLY_E
+rc = GT_OK
+Enter: cpssXsmiPortGroupRegisterWrite
+devNum = 0
+portGroupsBmp = 0x0000
+xsmiInterface = 0x00000006
+xsmiAddr = 37
+regAddr = 44
+phyDev = 37
+data = 0x0003
+Exit: cpssXsmiPortGroupRegisterWrite
+rc = GT_BAD_PARAM

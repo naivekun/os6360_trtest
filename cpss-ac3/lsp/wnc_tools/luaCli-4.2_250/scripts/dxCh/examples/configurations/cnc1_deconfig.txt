@@ -1,0 +1,23 @@
+// TAG:               cnc; restore; default;
+// Short Description: Restore cnc configuration
+// Description:       Restore cnc configuration. Remove vlans
+end
+configure
+access-list device ${dev} pcl-ID 1
+delete rule-id 6
+exit
+delete access-list device ${dev} pcl-id 1
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan remove 20
+no service-acl pcl-ID 1
+exit
+interface ethernet ${dev}/${port[3]}
+switchport allowed vlan remove 10
+exit
+interface ethernet ${dev}/${port[1]}
+switchport allowed vlan remove 10
+switchport allowed vlan remove 20
+exit
+no interface vlan device ${dev} vid 20
+no interface vlan device ${dev} vid 10
+end

@@ -1,0 +1,7 @@
+Information: in function prvDxChFdbToAuConvert, file cpssdxchbrgfdb.c, line[1371]. Update address message type 0
+ERROR GT_BAD_PARAM in function: prvDxChFdbToAuConvert, file cpssdxchbrgfdb.c, line[1519]. macEntryKeyPtr->entryType = 5
+API history log entry 0.
+Enter: cpssDxChBrgFdbMacEntrySet
+Enter: cpssDxChBrgFdbPortGroupMacEntrySet
+ERROR GT_BAD_PARAM in function: prvDxChFdbToAuConvert, file cpssdxchbrgfdb.c, line[1519]. macEntryKeyPtr->entryType = 5
+Exit: cpssDxChBrgFdbPortGroupMacEntrySet

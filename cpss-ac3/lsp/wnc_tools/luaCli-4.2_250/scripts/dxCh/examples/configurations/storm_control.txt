@@ -1,0 +1,38 @@
+// TAG:               wirespeed; storm-control; traffic_generator_emulated
+// Short Description: Configures storm-control and generate wirespeed traffic
+// Description:       Configure forth ingress port with storm-control command , generate 
+//                    broadcast wirespeed traffic from forth port 
+end
+// disable flow control and enable tail drop
+configure
+interface range ethernet all
+no flow-control
+end
+configure
+
+// set port with 20% rate 20000
+interface ethernet ${dev}/${port[4]}
+storm-control kbps 20000 broadcast ${rateLimitUc} unregistered registered tcp-syn
+exit
+end
+//
+// show storm-control rates on port 4
+//
+show storm-control ethernet ${dev}/${port[4]}
+//
+traffic
+//
+// generate continuous wirespeed from XG port 58 FFFFFFFFFFFF00000000000108004500001d000000002800a6d4E001010101010A0A000102030405060708 
+//
+traffic-generator emulate port ${dev}/${port[4]} data FFFFFFFFFFFF00000000000108004500001d000000002800a6d4E001010101010A0A000102030405060708 count continuous-wire-speed
+//
+exit
+//
+// show which ports are generating wirespeed
+//
+show traffic traffic-generator emulate all
+//
+// show rates on the ports 
+//
+//show traffic rates all
+show traffic rates ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]},${port[5]},${port[6]}

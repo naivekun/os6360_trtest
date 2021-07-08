@@ -1,0 +1,10 @@
+// TAG:               prbs; enable; show; lane; ; mode;  
+// Short Description: run prbs on all lanes of specific port
+// Description:       run prbs on all lanes of specific port
+//                    
+end 
+configure 
+interface ethernet ${@@serdes_env.devNum}/${@@serdes_env.PortNum}  
+prbs enable lane all mode ${@@serdes_env.Transmit_Mode}
+//prbs show lane all
+end    

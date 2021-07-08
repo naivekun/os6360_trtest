@@ -1,0 +1,8 @@
+// TAG:               PX devices(PIPE); pizza arbiter show;
+// Short Description: PIPE device : pizza arbiter configuration show.
+// Description:       PIPE device : pizza arbiter configuration show.
+//
+//
+do show pizza-arbiter-dump device ${dev}
+
+

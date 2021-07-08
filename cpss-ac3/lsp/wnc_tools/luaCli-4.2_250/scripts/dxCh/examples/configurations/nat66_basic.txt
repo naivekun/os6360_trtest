@@ -1,0 +1,44 @@
+// TAG:               NAT66; vlan
+// Short Description: Basic NAT: Modifying IP addresses
+// Description:       creates vlans 5,6,7 ports 0,18,36 configures NAT66
+
+end
+clear bridge type ${dev} all
+
+configure
+interface vlan device ${dev} vid 5
+exit
+interface vlan device ${dev} vid 6
+exit
+interface vlan device ${dev} vid 7
+exit
+
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan add 5 tagged
+exit
+interface ethernet ${dev}/${port[3]}
+switchport allowed vlan add 6 tagged
+exit
+interface  ethernet ${dev}/${port[1]}
+switchport allowed vlan add 7 tagged
+exit
+
+mac address 00:01:02:03:34:02
+
+interface range ethernet ${dev}/${port[1]},${port[2]}
+ip routing
+exit
+interface range vlan device ${dev} vid 5,6,7
+ip routing
+ip vrf-id 1
+exit
+
+ip vrf-id 1
+
+nat66 nat-name NAT66:1 local-ethernet-interface ${dev}/${port[2]} outer-ethernet-interface ${dev}/${port[3]} local-eport ${localEPort1} outer-eport ${outerEPort} local-mac-addr 00:04:05:06:07:11 outer-mac-addr 00:04:05:06:07:13 local-vid 5 outer-vid 6 private-ip-addr FD01::1234 public-ip-addr 2001::5678 server-ip-addr 6545::5678
+nat66 nat-name NAT66:2 local-ethernet-interface ${dev}/${port[1]} outer-ethernet-interface ${dev}/${port[3]} local-eport ${localEPort2} outer-eport ${outerEPort} local-mac-addr 00:04:05:06:07:12 outer-mac-addr 00:04:05:06:07:14 local-vid 7 outer-vid 6 private-ip-addr FD01::3456 public-ip-addr 2001::5679 server-ip-addr 6545::5679
+
+do show nat66
+
+end
+

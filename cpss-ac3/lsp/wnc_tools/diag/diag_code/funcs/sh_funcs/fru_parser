@@ -1,0 +1,461 @@
+#!/bin/bash
+
+set -e
+
+# ## Include ## #
+
+dir_path=$(dirname ${0})
+source ${dir_path}/defines
+source ${dir_path}/print
+source ${dir_path}/decxfer
+
+# ## Functions ## #
+
+function quit() {
+
+	local rc=${1}
+
+	if [ "${rc}" = "${PASS}" ]; then
+		echo -e "\nResult: PASS\n"
+	else
+		echo -e "\nResult: FAIL\n" >&2
+	fi
+
+	exit ${rc}
+}
+
+function error_msg() {
+
+    local error_code=${1}
+    local message=${2}
+    
+    case ${error_code} in
+        1)  # Input error
+            message="\n[Input error] "${message} 
+            ;;
+        2)  # Read   error
+            message="\n[Read error] "${message} 
+            ;;
+        3)  # Write  error
+            message="\n[Write error] "${message} 
+            ;;
+        6)  # Test   error
+            print_fail $'\n'${message}
+            ;;
+        *)  # Unkown error
+            print_fail $'\n'${message}
+            ;;
+    esac
+    echo -e ${message} >&2
+    quit ${error_code}
+}
+
+function dec2hex_without0x() {  
+    local dec=${1}
+    echo -n ${dec} | xargs -0 printf '%.2x'
+}
+
+function hex2dec_without0x() {
+    local hex=${1}
+    echo $((0x${hex}))
+}
+
+function hex2str() {
+    local hex=`echo ${1} | sed 's/../\\\x&/g'`
+    echo -e "${hex}" | tr -d '\0'
+}
+
+function calculate_zero_checksum() {
+
+    local hex_sequence=${1}  # like: 0103ff4e002c
+    local sum_format=`echo -n ${1} | sed 's/../ 0x&/g'`
+    
+    local total=${2}
+    for i in ${sum_format}; do
+        total=$((${total} + ${i}))
+    done
+
+    echo -n `dec2hex_without0x $(( (0 - ${total}) & 0xff ))`
+}
+
+function get_field_hex() {
+
+    local container=${1}
+    local start=$((${2}*2))
+    local end
+    [ -z ${3} ] && end=${2} || end=${3}
+    local char_num=$(( $((${end}+1))*2 - ${start} ))
+    echo ${container:start:char_num}
+}
+
+D2B=({0..1}{0..1}{0..1}{0..1}{0..1}{0..1}{0..1}{0..1})
+function hex2bin() {
+    local hex=${1}
+    local num=$((${hex}))
+    echo ${D2B[${num}]}
+}
+
+function get_type() {
+
+    local type_len=${1}
+    local type_len_bin=`hex2bin 0x${type_len}`
+    local section_type=${type_len_bin:0:2}
+
+    if   [ ${section_type} == "00" ]; then
+        echo 0  # Binary
+    elif [ ${section_type} == "01" ]; then
+        echo 1  # BCD plus
+    elif [ ${section_type} == "10" ]; then
+        echo 2  # 6-bit ASCII
+    elif [ ${section_type} == "11" ]; then
+        echo 3  # 8-bit ASCII
+    else
+        error_msg 2 "Unkown Section type"
+    fi
+}
+
+function section_decode() {
+
+    local ptr=${1}
+    local -n section_list=${2}
+    local section_hex
+    local type_len="`get_field_hex "${binfile_container}" ${ptr}`"
+
+    ptr=$((${ptr}+1))  # Outside should be plus 1
+
+    local section_type=`get_type ${type_len}`
+    local section_len=$((0x${type_len} & 0x3f))
+    section_hex=`get_field_hex "${binfile_container}" ${ptr} $((${ptr}+${section_len}-1))`
+
+    if   [ ${section_type} -eq 0 ]; then
+        section_list=("${section_len}" "`hex2bin ${section_hex}`")
+    elif [ ${section_type} -eq 3 ]; then
+        section_list=("${section_len}" "`hex2str ${section_hex}`")
+    else
+        error_msg 2 "Section type only support 'binary' or '8-bit ASCII'"
+    fi
+}
+
+function min2date() {
+
+    local reference_sec=820425600
+    local dt_min_hex=0x${1}
+    local dt_min=`hex2dec ${dt_min_hex}`
+    local dt_sec=$((${dt_min}*60 + ${reference_sec}))
+    
+    LANG=en_us_88591
+    echo "`date -d @${dt_sec} +"%a %b %d %H:%M %Y"`"
+}
+
+# ## Check sys argvs ## #
+
+[ $# -ne 2 ]  && error_msg 1 "${NAME} binfile <chassis | board | product | all>"
+[ ! -f "${1}" ] && error_msg 1 "'${1}' file not found" || eeprom_file_path="${1}"
+
+[ ! -s "${eeprom_file_path}" ] && error_msg 1 "'${eeprom_file_path}' file is empty"
+
+# 0: internal, 1: chassis, 2: board, 3: product
+areas_condition=(0 0 0 0)
+
+if   [ ${2} == "chassis" ]; then
+    areas_condition[1]=1
+elif [ ${2} == "board" ]; then
+    areas_condition[2]=1
+elif [ ${2} == "product" ]; then
+    areas_condition[3]=1
+elif [ ${2} == "all" ]; then
+    areas_condition=(1 1 1 1)
+else
+    error_msg 1 "${NAME} binfile <chassis | board | product | all>"
+fi
+
+declare -a output_list
+
+# binfile_length=$((${binfile_size}*2))
+binfile_container=`hexdump -ve '16/1 "%02X" ""' ${eeprom_file_path}`
+# binfile_container=`echo ${binfile_container:0:binfile_length}`
+binfile_size=$((${#binfile_container}/2))
+
+# ## Common header section ## #
+
+checksum=`get_field_hex "${binfile_container}" 7`
+check_contents=`get_field_hex "${binfile_container}" 0 6`
+[[ 0x"`calculate_zero_checksum ${check_contents} 0x${checksum}`" -ne 0 ]] && error_msg 2 "Binfile is incorrect"
+
+# version (Decimal)
+
+common_version=$(hex2dec_without0x `get_field_hex "${binfile_container}" 0`)
+
+# offset (Decimal)
+
+internal_offset=$(( $(hex2dec_without0x `get_field_hex "${binfile_container}" 1`)*8 ))
+chassis_offset=$((  $(hex2dec_without0x `get_field_hex "${binfile_container}" 2`)*8 ))
+board_offset=$((    $(hex2dec_without0x `get_field_hex "${binfile_container}" 3`)*8 ))
+product_offset=$((  $(hex2dec_without0x `get_field_hex "${binfile_container}" 4`)*8 ))
+
+# ## Internal section ## #
+
+if [ ${areas_condition[0]} -eq 1 ] && [ ${internal_offset} -ne 0 ]; then
+
+    internal_ptr=${internal_offset}
+
+    # version (Decimal)
+
+    inertnal_format_version=$(hex2dec_without0x `get_field_hex "${binfile_container}" ${internal_ptr}`)
+    internal_ptr=$((${internal_ptr}+1))
+
+    # data (String)
+
+    end_index=`echo "${chassis_offset} ${board_offset} ${product_offset}" | sed 's/ /\n/g' | grep [1-9] | sort -n | head -n 1`
+    [ -z ${end_index} ] && end_index=${binfile_size}
+
+    inertnal_data=$( hex2str "`get_field_hex "${binfile_container}" ${internal_ptr} $((${end_index}-1))`" )
+    inertnal_data=$( echo ${inertnal_data} | tr -cd '\000-\177' )  # remove non-ascii chars
+fi
+
+# ## Chassis section ## #
+
+if [ ${areas_condition[1]} -eq 1 ] && [ ${chassis_offset} -ne 0 ]; then
+
+    chassis_ptr=${chassis_offset}
+
+    # version (Decimal)
+
+    chassis_format_version=$(hex2dec_without0x `get_field_hex "${binfile_container}" ${chassis_ptr}`)
+    chassis_ptr=$((${chassis_ptr}+1))
+
+    # length
+
+    chassis_length=$((  $(hex2dec_without0x `get_field_hex "${binfile_container}" ${chassis_ptr}`)*8 ))
+    chassis_ptr=$((${chassis_ptr}+1))
+
+    # checksum
+
+    checksum_index=$((${chassis_offset}+${chassis_length}-1))
+    checksum=`get_field_hex "${binfile_container}" ${checksum_index}`
+    check_contents=`get_field_hex "${binfile_container}" ${chassis_offset} $((${checksum_index} - 1))`
+    [[ 0x"`calculate_zero_checksum ${check_contents} 0x${checksum}`" -ne 0 ]] && error_msg 2 "Binfile is incorrect"
+
+    # type (Hexadecimal)
+
+    chassis_type=`get_field_hex "${binfile_container}" ${chassis_ptr}`
+    chassis_ptr=$((${chassis_ptr}+1))
+
+    # part (String)
+    section_decode ${chassis_ptr} output_list
+    chassis_part_len=${output_list[0]}
+    chassis_part=${output_list[1]}
+    chassis_ptr=$((${chassis_ptr}+${chassis_part_len}+1))
+
+    # serial (String)
+    section_decode ${chassis_ptr} output_list
+    chassis_serial_len=${output_list[0]}
+    chassis_serial=${output_list[1]}
+    chassis_ptr=$((${chassis_ptr}+${chassis_serial_len}+1))
+fi
+
+# ## Board section ## #
+
+if [ ${areas_condition[2]} -eq 1 ] && [ ${board_offset} -ne 0 ]; then
+
+    board_ptr=${board_offset}
+
+    # version (Decimal)
+
+    board_format_version=$(hex2dec_without0x `get_field_hex "${binfile_container}" ${board_ptr}`)
+    board_ptr=$((${board_ptr}+1))
+
+    # length
+
+    board_length=$((  $(hex2dec_without0x `get_field_hex "${binfile_container}" ${board_ptr}`)*8 ))
+    board_ptr=$((${board_ptr}+1))
+    
+    # checksum
+
+    checksum_index=$((${board_offset}+${board_length}-1))
+    checksum=`get_field_hex "${binfile_container}" ${checksum_index}`
+    check_contents=`get_field_hex "${binfile_container}" ${board_offset} $((${checksum_index} - 1))`
+    [[ 0x"`calculate_zero_checksum ${check_contents} 0x${checksum}`" -ne 0 ]] && error_msg 2 "Binfile is incorrect"
+
+    # language (Decimal)
+
+    board_language=$(hex2dec_without0x `get_field_hex "${binfile_container}" ${board_ptr}`)
+    board_ptr=$((${board_ptr}+1))
+    
+    # date
+
+    date1="`get_field_hex "${binfile_container}" ${board_ptr}`"
+    board_ptr=$((${board_ptr}+1))
+    date2="`get_field_hex "${binfile_container}" ${board_ptr}`"
+    board_ptr=$((${board_ptr}+1))
+    date3="`get_field_hex "${binfile_container}" ${board_ptr}`"
+    board_ptr=$((${board_ptr}+1))
+    board_date=`min2date "${date3}${date2}${date1}"`
+
+    # manufacturer (String)
+
+    section_decode ${board_ptr} output_list
+    board_manufacturer_len=${output_list[0]}
+    board_manufacturer=${output_list[1]}
+    board_ptr=$((${board_ptr}+${board_manufacturer_len}+1))
+
+    # product (String)
+
+    section_decode ${board_ptr} output_list
+    board_product_len=${output_list[0]}
+    board_product=${output_list[1]}
+    board_ptr=$((${board_ptr}+${board_product_len}+1))
+    
+    # serial (String)
+
+    section_decode ${board_ptr} output_list
+    board_serial_len=${output_list[0]}
+    board_serial=${output_list[1]}
+    board_ptr=$((${board_ptr}+${board_serial_len}+1))
+
+    # part (String)
+
+    section_decode ${board_ptr} output_list
+    board_part_len=${output_list[0]}
+    board_part=${output_list[1]}
+    board_ptr=$((${board_ptr}+${board_part_len}+1))
+
+    # fileid (Hexadecimal)
+
+    section_decode ${board_ptr} output_list
+    board_fileid_len=${output_list[0]}
+    board_fileid=${output_list[1]}
+    board_ptr=$((${board_ptr}+${board_fileid_len}+1))
+
+    # pcb (String)
+
+    section_decode ${board_ptr} output_list
+    board_pcb_len=${output_list[0]}
+    board_pcb=${output_list[1]}
+    board_ptr=$((${board_ptr}+${board_pcb_len}+1))
+fi
+
+# ## Product section ## #
+
+if [ ${areas_condition[3]} -eq 1 ] && [ ${product_offset} -ne 0 ]; then
+    
+    product_ptr=${product_offset}
+
+    # version (Decimal)
+
+    product_format_version=$(hex2dec_without0x `get_field_hex "${binfile_container}" ${product_ptr}`)
+    product_ptr=$((${product_ptr}+1))
+
+    # length
+
+    product_length=$((  $(hex2dec_without0x `get_field_hex "${binfile_container}" ${product_ptr}`)*8 ))
+    product_ptr=$((${product_ptr}+1))
+    
+    # checksum
+
+    checksum_index=$((${product_offset}+${product_length}-1))
+    checksum=`get_field_hex "${binfile_container}" ${checksum_index}`
+    check_contents=`get_field_hex "${binfile_container}" ${product_offset} $((${checksum_index} - 1))`
+    [[ 0x"`calculate_zero_checksum ${check_contents} 0x${checksum}`" -ne 0 ]] && error_msg 2 "Binfile is incorrect"
+
+    # language (Decimal)
+
+    product_language=$(hex2dec_without0x `get_field_hex "${binfile_container}" ${product_ptr}`)
+    product_ptr=$((${product_ptr}+1))
+
+    # manufacturer (String)
+
+    section_decode ${product_ptr} output_list
+    product_manufacturer_len=${output_list[0]}
+    product_manufacturer=${output_list[1]}
+    product_ptr=$((${product_ptr}+${product_manufacturer_len}+1))
+
+    # name (String)
+
+    section_decode ${product_ptr} output_list
+    product_name_len=${output_list[0]}
+    product_name=${output_list[1]}
+    product_ptr=$((${product_ptr}+${product_name_len}+1))
+
+    # part (String)
+
+    section_decode ${product_ptr} output_list
+    product_part_len=${output_list[0]}
+    product_part=${output_list[1]}
+    product_ptr=$((${product_ptr}+${product_part_len}+1))
+
+    # version (String)
+
+    section_decode ${product_ptr} output_list
+    product_version_len=${output_list[0]}
+    product_version=${output_list[1]}
+    product_ptr=$((${product_ptr}+${product_version_len}+1))
+
+    # serial (String)
+
+    section_decode ${product_ptr} output_list
+    product_serial_len=${output_list[0]}
+    product_serial=${output_list[1]}
+    product_ptr=$((${product_ptr}+${product_serial_len}+1))
+
+    # asset (String)
+
+    section_decode ${product_ptr} output_list
+    product_asset_len=${output_list[0]}
+    product_asset=${output_list[1]}
+    product_ptr=$((${product_ptr}+${product_asset_len}+1))
+
+    # fileid (String)
+
+    section_decode ${product_ptr} output_list
+    product_fileid_len=${output_list[0]}
+    product_fileid=${output_list[1]}
+    product_ptr=$((${product_ptr}+${product_fileid_len}+1))
+fi
+
+# ## Output ## #
+
+echo "----------------------------------------------------------------------"
+printf "%-30s%+40s\n" "IPMI FRU Area Format Version:" "${common_version}"
+echo "----------------------------------------------------------------------"
+
+if [ ${areas_condition[0]} -eq 1 ]; then
+    echo -e "Internal Use Area\n"
+    printf "%-30s%+40s\n" "Internal Use Data:" "${inertnal_data}"
+    echo "----------------------------------------------------------------------"
+fi
+
+if [ ${areas_condition[1]} -eq 1 ]; then
+    echo -e "Chassis Info Area\n"
+    printf "%-30s%+40s\n" "Chassis Type:" "${chassis_type}"
+    printf "%-30s%+40s\n" "Chassis Part Number:" "${chassis_part}"
+    printf "%-30s%+40s\n" "Chassis Serial Numbe:" "${chassis_serial}"
+    echo "----------------------------------------------------------------------"
+fi
+
+if [ ${areas_condition[2]} -eq 1 ]; then
+    echo -e "Board Info Area\n"
+    printf "%-30s%+40s\n" "Board Language Code:" "${board_language}"
+    printf "%-30s%+40s\n" "Board Mfg. Date/Time:" "${board_date}"
+    printf "%-30s%+40s\n" "Board Manufacturer:" "${board_manufacturer}"
+    printf "%-30s%+40s\n" "Board Product:" "${board_product}"
+    printf "%-30s%+40s\n" "Board Serial Number:" "${board_serial}"
+    printf "%-30s%+40s\n" "Board Part Number:" "${board_part}"
+    printf "%-30s%+40s\n" "Board FRU File ID:" "${board_fileid}"
+    printf "%-30s%+40s\n" "Board PCB Part:" "${board_pcb}"
+    echo "----------------------------------------------------------------------"
+fi
+
+if [ ${areas_condition[3]} -eq 1 ]; then
+    echo -e "Product Info Area\n"
+    printf "%-30s%+40s\n" "Product Language Code:" "${product_language}"
+    printf "%-30s%+40s\n" "Product Manufacturer:" "${product_manufacturer}"
+    printf "%-30s%+40s\n" "Product Name:" "${product_name}"
+    printf "%-30s%+40s\n" "Product Part/Model Number" "${product_part}"
+    printf "%-30s%+40s\n" "Product Version" "${product_version}"
+    printf "%-30s%+40s\n" "Product Serial Number:" "${product_serial}"
+    printf "%-30s%+40s\n" "Product Asset Tag:" "${product_asset}"
+    printf "%-30s%+40s\n" "Product FRU File ID:" "${product_fileid}"
+    echo "----------------------------------------------------------------------"
+fi
+

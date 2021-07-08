@@ -1,0 +1,108 @@
+// TAG:               SPBM; IEEE802.1ad; IEEE802.1ah;
+// Short Description: set configuration PE-device in Backbone System
+// Description:       The generic sample.
+// PE-device contains both Provider Edge ports and Customer Edge
+// Configuration separated to two parts:
+// - P-device configuration (basic)
+// - PE-device configuration (additional)
+//
+//Basic configuration of P-device using ports 36 and 56 vlan 5
+//MAC=00:10:20:30:40:50
+//Neigbours:
+//connected via port 36 mac A0:10:20:30:40:50
+//connected via port 36 mac B0:10:20:30:40:50
+//connected via port 54 mac C0:10:20:30:40:50
+//Registered multicast groups:
+//I-SID 0x101 mac A1:00:00:00:01:01 ports 0/36,54
+//I-SID 0x102 mac A1:00:00:00:01:02 ports 0/36
+//I-SID 0x103 mac A1:00:00:00:01:03 ports 0/54
+end
+configure
+mac address 00:10:20:30:40:50
+tpid device 0 direction ingress index 7 etherType 0x88A8
+tpid device 0 direction egress index 7 etherType 0x88A8
+interface vlan device 0 vid 5
+exit
+interface range ethernet 0/36,54
+switchport allowed vlan add 5 tagged
+exit
+interface range ethernet 0/36,54
+tpid egress bind 7 ether_type_index 0
+exit
+interface range ethernet 0/36,54
+bridge multicast unregistered drop
+exit
+mac address-table static A0:10:20:30:40:50 device 0 vlan 5 ethernet 0/36
+mac address-table static B0:10:20:30:40:50 device 0 vlan 5 ethernet 0/36
+mac address-table static C0:10:20:30:40:50 device 0 vlan 5 ethernet 0/54
+interface vlan device 0 vid 5
+bridge multicast mac address group A1:00:00:00:01:01 ethernet 0/36,54
+bridge multicast mac address group A1:00:00:00:01:02 ethernet 0/36
+bridge multicast mac address group A1:00:00:00:01:03 ethernet 0/54
+exit
+//Additional configuration of PE-device
+//remote PE-devices: mac, vid, port, ePort
+//mac A0:10:20:30:40:50 vid 5 port 36 ePort 0x20A
+//mac B0:10:20:30:40:50 vid 5 port 36 ePort 0x20B
+//mac C0:10:20:30:40:50 vid 5 port 54 ePort 0x20C
+//Multicast flood ways: mac_prefix, vid, port, ePort
+//mc-mac-prefix A1:00:00 vid 5 port 36 ePort 0x210
+//mc-mac-prefix A1:00:00 vid 5 port 54 ePort 0x211
+//I-SIDs/VLANs/customer-flood-ports/back-bone-flood-ports/ePorts:
+//I-SID 0x101 VID 11 c-ports 0,18 bb-ports 36,54 e-ports 0x210,0x211
+//I-SID 0x102 VID 12 c-ports 0,18 bb-ports 36    e-ports 0x210
+//I-SID 0x103 VID 13 c-ports 0    bb-ports 36,54 e-ports 0x210,0x211
+interface eport 0/0x20A
+tpid tunnel-start bind 7
+exit
+interface eport 0/0x20B
+tpid tunnel-start bind 7
+exit
+interface eport 0/0x20C
+tpid tunnel-start bind 7
+exit
+interface eport 0/0x210
+tpid tunnel-start bind 7
+exit
+interface eport 0/0x211
+tpid tunnel-start bind 7
+exit
+interface ethernet 0/36
+spbm pe-node b-vid 5 mac A0:10:20:30:40:50 uc-eport 0x20A
+spbm pe-node b-vid 5 mac B0:10:20:30:40:50 uc-eport 0x20B
+exit
+interface ethernet 0/54
+spbm pe-node b-vid 5 mac C0:10:20:30:40:50 uc-eport 0x20C
+exit
+interface ethernet 0/36
+spbm provider-flood-port b-vid 5 mc-mac-prefix A1:00:00 flood-eport 0x210
+exit
+interface ethernet 0/54
+spbm provider-flood-port b-vid 5 mc-mac-prefix A1:00:00 flood-eport 0x211
+exit
+interface vlan device 0 vid 11
+exit
+interface vlan device 0 vid 12
+exit
+interface vlan device 0 vid 13
+exit
+interface range ethernet 0/0,18
+switchport allowed vlan add 11 tagged
+switchport allowed vlan add 12 tagged
+exit
+interface ethernet 0/18
+switchport allowed vlan add 13 tagged
+exit
+spbm service-vlan i-sid 0x101 e-vid 11
+spbm service-vlan i-sid 0x102 e-vid 12
+spbm service-vlan i-sid 0x103 e-vid 13
+interface eport 0/0x211
+spbm provider-flood-eport i-sid 0x101
+spbm provider-flood-eport i-sid 0x103
+exit
+interface eport 0/0x210
+spbm provider-flood-eport i-sid 0x101
+spbm provider-flood-eport i-sid 0x102
+spbm provider-flood-eport i-sid 0x103
+exit
+

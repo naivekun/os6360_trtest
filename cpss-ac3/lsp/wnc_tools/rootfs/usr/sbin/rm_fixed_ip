@@ -1,0 +1,9 @@
+#!/bin/bash
+
+rm -f /usr/data/wnc_fixed_ip
+sync
+echo "Removed fixed ip."
+
+exit 0
+
+

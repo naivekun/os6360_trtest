@@ -1,0 +1,9 @@
+// TAG:               PX devices(PIPE); CNC counters;
+// Short Description: PIPE device : CNC counters deconfiguration.
+// Description:       PIPE device : CNC counters deconfiguration.
+//
+end
+//
+configure
+no counters ${@@currentCncClient} device ${dev}
+end

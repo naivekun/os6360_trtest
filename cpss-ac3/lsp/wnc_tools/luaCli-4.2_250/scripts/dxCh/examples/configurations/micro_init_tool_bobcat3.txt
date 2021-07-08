@@ -1,0 +1,47 @@
+// TAG:               micro-init
+// Short Description: Create configuration file by using the micro-init tool
+// Description:       Use the micro-init tool commands to create configuration files:
+//                    device-config command creates config-device.txt
+//                    port-map command creates config-map.txt
+//                    port-pizza-resources command creates config-pizza.txt
+//                    port-smi command creates config-smi.txt
+//                    other user defined configurations saved to config-other.txt
+
+end
+micro-init file config-bobcat3-${@@tid}
+device-config deviceId CPSS_98CX8420_CNS mngInterfaceType CPSS_CHANNEL_PEX_MBUS_E coreClock 525Mhz features-list EPLR_RM EXTENDED_DSA_BYPASS_BRIDGE_RM LED_INIT
+port-map
+range 0/0-11 type ethernet_mac txq-port 0 interface-number 0
+range 0/12-23 type ethernet_mac txq-port 100 interface-number 12
+range 0/24-35 type ethernet_mac txq-port 192 interface-number 24
+range 0/36-47 type ethernet_mac txq-port 288 interface-number 36
+range 0/48-58 type ethernet_mac txq-port 384 interface-number 48
+ethernet 0/64 type ethernet_mac txq-port 395 interface-number 59
+range 0/65-76 type ethernet_mac txq-port 480 interface-number 60
+ethernet 0/77 type ethernet_mac txq-port 204 interface-number 72
+ethernet 0/78 type ethernet_mac txq-port 492 interface-number 73
+exit
+port-pizza-resources
+range 0/0,4,8,12,16,20 ifMode KR4 speed 100000
+range 0/24-58,64-78 ifMode KR speed 10000
+exit
+port-smi
+range 0/0,4,8,12,16,20,24-58,64-78 inband-auto-neg-enable true smi-interface CPSS_PHY_SMI_INTERFACE_0_E phy-addr 0x10
+exit
+end
+debug-mode
+trace hw-access
+end
+// user configurations
+configure
+interface vlan device 0 vid 2
+exit
+interface range ethernet 0/0,4,8,12,16,20,24-58,64-78
+switchport pvid 2
+switchport allowed vlan add 2 tagged
+exit
+end
+debug-mode
+trace save file config-other-bobcat3-${@@tid}.txt as micro-init saveToHd
+no trace hw-access mode write
+end

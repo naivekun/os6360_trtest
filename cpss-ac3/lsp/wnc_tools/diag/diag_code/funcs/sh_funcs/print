@@ -1,0 +1,46 @@
+#!/bin/bash
+
+function print_pass() {
+	echo -n "$*"
+	echo " [OK]"
+}
+
+function print_fail() {
+	echo -n "$*">&2
+	echo " [Oops]">&2
+}
+
+function print_exact() {
+	echo -n "$*">&2
+	echo " [Exact]">&2
+}
+
+function filename() {
+	echo -n "$(cd $(dirname $1) && pwd -P)/$(basename $1)"
+}
+
+function print_exec_time_debug() {
+    local debug_level=$1
+    local func_name=$2
+    local stime=$3
+    local etime=`date +%s`
+    local diff_time=$(($etime - $stime))
+
+    [ -n "$debug_level" ] && echo "Info: The execution time of \"$func_name\" = $diff_time(s)."
+}
+
+function wnc_debug() {
+	local debug_flag_file="/usr/bin/wnc_diag/funcs/sh_funcs/file/debug_file"
+	local debug_flag=$(cat ${debug_flag_file} | awk -F"-" '{print $1}')
+	local debug_level=$(cat ${debug_flag_file} | awk -F"-" '{print $2}')
+
+
+	if [ "${debug_flag}" == "true" ]; then
+		local msg_level="$1"
+		local debug_msg="$2"
+
+		if [ "${debug_level}" -ge "${msg_level}" ]; then
+				printf "[DEBUG]${debug_msg}"
+		fi
+	fi
+}

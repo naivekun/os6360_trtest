@@ -1,0 +1,194 @@
+#! /bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=$(basename $0)
+
+usage () {
+echo "Usage:
+NAME
+       045_system_led - control system LED status
+
+SYNOPSIS
+       045_system_led  [-s LED-Status]
+                       [-h]
+
+DESCRIPTION
+       This command is used to control system LED behavior. The LED behavior
+       is controlled by CPLD. There provide 3 mode to set: Off, Solid green
+       light and Solid amber light.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -s    Control LED status
+             LED:
+                 0: All
+                 1: VC_LED
+                 2: Diag/OK_LED
+                 3: PWR_LED
+             Status:
+                 0: Turn off
+                 1: Solid green light
+                 2: Solid amber light
+
+       -h    Help message
+
+PASS CRITERIA
+       - Control LED status(-s) :
+           SUCCESS: LED status could be controlled
+             Display: N/A
+             Return code : 0
+
+           ERROR: LED status couldn't be controlled
+             Display: N/A
+             Return code : 2
+
+           ERROR: invalid argument
+             Display: N/A
+             Return code : 3
+
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS
+             Display: N/A
+             Return code : 1
+EXAMPLE
+       045_system_led -s 1-2
+       045_system_led -s 3-0
+       045_system_led -h
+" >&2
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result=${PASS}
+
+# folder path.
+sysfs_ok_led="/sys/bus/i2c/devices/0-007f/diag_led"
+sysfs_vc_led="/sys/bus/i2c/devices/0-007f/vc_led"
+sysfs_pwr_led="/sys/bus/i2c/devices/0-007f/pwr_led"
+
+# LED status.
+ok_led_status=`cat ${sysfs_ok_led}`
+vc_led_status=`cat ${sysfs_vc_led}`
+pwr_led_status=`cat ${sysfs_pwr_led}`
+
+# LED name.
+led_name=(all vc diag/ok pwr)
+
+# setting_mode status.
+setting_mode=false
+
+#====================================================================
+
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":s:h" arg
+do
+    case ${arg} in
+        s) 
+            input_mode=${OPTARG}
+            setting_mode=true
+            ;;  
+        h)
+            usage
+            quit_ok
+            ;;
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    quit 1
+elif [ -z ${ok_led_status} ] || [ -z ${vc_led_status} ] || \
+     [ -z ${pwr_led_status} ]; then
+    echo
+    echo "===================================="
+    print_fail "No LED status get"
+    echo "===================================="
+    quit 2
+fi
+
+if [ ${setting_mode} = true ]; then
+
+    # check if arg is an integer between 1-3.
+    input_led=`echo ${input_mode} | awk -F"-" '{print $1}' | grep '^[0-3]\{1\}$'`
+
+    # check if arg is an integer between 0-2.
+    input_status=`echo ${input_mode} | awk -F"-" '{print $2}' | grep '^[0-2]\{1\}$'`
+
+    if [ -z ${input_led} ] || [ -z ${input_status} ]; then
+        echo
+        echo "===================================="
+        print_fail "Invalid argument"
+        echo "===================================="
+        result=3
+    else
+        # walk around.
+        if [ ${input_status} -eq 1 ]; then
+            input_wa=2
+        elif [ ${input_status} -eq 2 ]; then
+            input_wa=1
+        else
+            input_wa=0
+        fi
+
+        # set LED status.
+        if [ ${input_led} -eq 1 ]; then
+            echo ${input_wa} > ${sysfs_vc_led}
+            check_setting=`cat ${sysfs_vc_led}`
+
+            # walk around.
+            input_status=${input_wa}
+        elif [ ${input_led} -eq 2 ];then
+            echo ${input_status} > ${sysfs_ok_led}
+            check_setting=`cat ${sysfs_ok_led}`
+        elif [ ${input_led} -eq 3 ]; then
+            echo ${input_status} > ${sysfs_pwr_led}
+            check_setting=`cat ${sysfs_pwr_led}`
+        elif [  ${input_led} -eq 0 ]; then
+            echo ${input_wa} > ${sysfs_vc_led}
+            checkVC=`cat ${sysfs_vc_led} | sed s/0x//g`
+
+            echo ${input_status} > ${sysfs_ok_led}
+            checkOK=`cat ${sysfs_ok_led}| sed s/0x//g`
+
+            echo ${input_status} > ${sysfs_pwr_led}
+            checkPWR=`cat ${sysfs_pwr_led}| sed s/0x//g`
+
+            # walk around.
+            check_setting=`[ ${checkVC} -eq ${input_wa} ] && \
+            [ ${checkOK} -eq ${input_status} ] && [ ${checkPWR} -eq ${input_status} ] \
+            && echo "0x${input_status}" || echo fail`
+
+            # check_setting=`echo $((${checkVC} & ${checkOK} & ${checkPWR}))`
+        fi
+
+        # check setting.
+        input_status="0x${input_status}"
+
+        echo
+        echo "===================================="
+
+        if [ ${check_setting} != ${input_status} ]; then
+            print_fail "set ${led_name[${input_led}]}_led status fail"
+            result=2
+        else
+            print_pass "set ${led_name[${input_led}]}_led status success"
+            result=${PASS}
+        fi
+
+        echo "===================================="
+    fi
+fi
+
+exit ${result}

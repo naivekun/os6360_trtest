@@ -1,0 +1,24 @@
+// TAG:               vlan mapping; vlan translation; service-id;flush FDB;
+// Short Description: deconfigure settings relevant to vlan mapping
+// Description:       - clear (flush) FDB
+//                    - delete vlans 5,6
+//                    - disable ingress vlan mapping on the port 0
+//                    - disable egress vlan mapping on the port 18
+//                    - set service-id value for vlan 6 to 0
+
+
+end
+clear bridge type ${dev} all
+configure
+no interface range vlan device ${dev} vid 5,6
+
+exit
+interface ethernet ${dev}/${port[1]}
+no switchport vlan mapping enable ingress
+
+exit
+interface ethernet ${dev}/${port[2]}
+no switchport vlan mapping enable egress
+
+exit
+vlan service-id device ${dev} vid 6 sid 0

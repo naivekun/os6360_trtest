@@ -1,0 +1,105 @@
+// TAG: Policing; MEF10.3;
+// Short Description: set policy envelope (MEF10.3) config
+// Description:       general configuration, Qos, PCL, PLR
+// - PCL assigns QoS profile and Policig Pointer (borh metering and counting)
+// - QoS prfile 224, variable initial Policer DP, and Priority per QoS profile
+// - Policer Flow Based Envelope threshold 64, Envelope Max Size 8 MRU 10000
+// - Ingress1 Policer Stage enable and configure
+//parameters are:
+// ${@@test_env.ingress_acl_index}
+// ${@@test_env.egress_acl_index}
+// ${@@test_env.stage}
+// ${@@test_env.direction}
+// ${@@test_env.policy_index}
+// ${@@test_env.init_color}
+// ${@@test_env.priority}
+// ${@@test_env.entry_rel_index}
+// ${@@test_env.cbs}
+// ${@@test_env.ebs}
+// ${@@test_env.color_mode}
+// ${@@test_env.envelope_base}
+// ${@@test_env.envelope_size}
+// ${@@test_env.coupling_flag0}
+//
+// configure ingress1 stage
+end
+configure
+policy-meter stage-enable device ${dev} stage ingress1 mode flow counting billing
+policy-meter hierachical-map device ${dev} base 0 size 128 base-map 0 increment 1 metering true counting true
+//ingress PCL rule for any packet from port2 assign QoS profile 224 and policy_index
+end
+configure
+access-list device ${dev} ingress pcl-ID 11
+rule-id ${@@test_env.ingress_acl_index} action permit set-qos-profile-index 224 source-port ${port[2]} policy ${@@test_env.policy_index} policy-mode meter-count
+exit
+interface ethernet ${dev}/${port[2]}
+service-acl pcl-ID 11 lookup 0
+exit
+//egress PCL rule for any packet from port2 to port4 assign ${@@test_env.policy_index}
+end
+configure
+access-list device ${dev} egress pcl-ID 22
+rule-id ${@@test_env.egress_acl_index} action permit source-port ${port[2]} policy ${@@test_env.policy_index} policy-mode meter-count
+exit
+interface ethernet ${dev}/${port[4]}
+service-acl pcl-ID 22  egress lookup 0
+exit
+// set MRU 10000, flow-based envelope-base threshold 64, max-envelope-size 8
+// packet init color (via profile 224) to ${@@test_env.init_color}
+// packet priority (via profile 224) to ${@@test_env.priority}
+end
+configure
+policy-meter set-mru device ${dev} stage ${@@test_env.stage} mru 10000
+policy-meter flow-based-cfg device ${dev} stage ${@@test_env.stage} threshold 64 max-size 8-entries
+qos profile device ${dev} index 224 dp ${@@test_env.init_color}
+do show qos profile device ${dev} index 224-225
+policy-meter qos-profile-to-priority device ${dev} stage ${@@test_env.stage} qos-profile-index 224 priority ${@@test_env.priority}
+//init envelope in CPU memory
+end
+configure
+no policy-meter 0-7
+policy-meter prepare ${@@test_env.direction} 0-7
+command green-cmd no-change yellow-cmd no-change red-cmd no-change
+conformance mef10-3 cir 0 cbs 20000 eir 0 ebs 20000 max-cir 100 max-eir 100
+counting mng-cnt-set set0
+exit
+policy-meter prepare ${@@test_env.direction} 0
+counting counting-index 10
+exit
+policy-meter prepare ${@@test_env.direction} 1
+counting counting-index 11
+exit
+policy-meter prepare ${@@test_env.direction} 2
+counting counting-index 12
+exit
+policy-meter prepare ${@@test_env.direction} 3
+counting counting-index 13
+exit
+policy-meter prepare ${@@test_env.direction} 4
+counting counting-index 14
+exit
+policy-meter prepare ${@@test_env.direction} 5
+counting counting-index 15
+exit
+policy-meter prepare ${@@test_env.direction} 6
+counting counting-index 16
+exit
+policy-meter prepare ${@@test_env.direction} 7
+counting counting-index 17
+exit
+//reset managment and billing counters
+end
+configure
+policy-mng-conters reset device ${dev} stage ${@@test_env.stage} set 0
+policy-billing reset device ${dev} stage ${@@test_env.stage} entry-index 10-17 count-mode packet
+//set evelope of metering entries
+end
+configure
+policy-meter prepare ${@@test_env.direction} ${@@test_env.entry_rel_index}
+conformance mef10-3 cir 0 cbs ${@@test_env.cbs} eir 0 ebs ${@@test_env.ebs} max-cir 100 max-eir 100
+conformance mef10-3 meter-color-mode ${@@test_env.color_mode}
+exit
+policy-meter set-envelope device ${dev} stage ${@@test_env.stage} prepared-index 0 envelope-size ${@@test_env.envelope_size} coupling-flag0 ${@@test_env.coupling_flag0} entry-index ${@@test_env.envelope_base}
+
+
+

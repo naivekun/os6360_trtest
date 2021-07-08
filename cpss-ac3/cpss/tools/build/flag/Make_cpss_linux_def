@@ -1,0 +1,59 @@
+# Common definitions for all Linux builds
+# included from Make_cpss_def
+
+ECHO    = echo
+MKDIR_P = $(MKDIR) -p
+
+ADD_MODULE_MK=$(USER_BASE)/tools/build/flag/Add_module_lnx.mk
+
+_DEP = d
+_OBJ = o
+
+#----------------------------------------------------------------------------
+
+clean:
+	@ rm -fr $(OUT_DIR)
+	@ $(shell [ -d $(OUT_DIR) ] || mkdir -p $(OUT_DIR))
+
+DEP :=
+
+#-----------------------------------------------------------------
+# Function compile(flags, output_folder)
+#
+# Compile a .c file into .o file using the defined toolchain, including dependecy .d file.
+# Object and dependency files will be located together in output_folder,
+# under the relative path to the source.
+#
+# Example: $(call compile $(CFLAGS),/local/objects)
+# Source file: foo/bar/baz.c
+# Targets: /local/objects/foo/bar/baz.o
+#          /local/objects/foo/bar/baz.d
+#-----------------------------------------------------------------
+
+define compile
+@# create dependency file
+	$(if $(filter-out $(DEPENDENCY),DEP_NO),$(CC) -M -c $1 $< -o $2/$*.d,)
+@# Duplicate it
+	$(if $(filter-out $(DEPENDENCY),DEP_NO),cp $2/$*.d $2/$*.tmp,)
+@# Create empty rule per file in dependency rule to avoid "No rule to make target ..." Errors
+	$(if $(filter-out $(DEPENDENCY),DEP_NO),sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' -e '/^$$/d' -e 's/$$/ :/' < $2/$*.d >> $2/$*.tmp,)
+@# Change object filename to include full path
+	$(if $(filter-out $(DEPENDENCY),DEP_NO),sed -e 's/$(subst .,\.,$(notdir $@))/$(subst /,\/,$@)/'  < $2/$*.tmp > $2/$*.d,)
+@# Remove temporary file
+	$(if $(filter-out $(DEPENDENCY),DEP_NO),rm $2/$*.tmp,)
+@# print compilation msg
+        $(if $(COMPILATION_TYPE),,@ $(ECHO) CC $<)
+@# compile
+	$(CC) -c $1 $< -o $@
+endef
+
+define make_lib
+	@test -d $(@D) || $(MKDIR_P) $(@D)
+	$(if $(COMPILATION_TYPE),,@ $(ECHO) AR $(subst $(OUT_DIR)/,,$@))
+	$(AR) $(ARFLAGS) $@ $^
+endef
+
+pre_build_objdir:
+	@ $(foreach dir,$(CPSS_SUBDIRS_LIST_CAP), \
+		$(if $($(dir)_DIRS), \
+			$(shell $(MKDIR_P) $($(dir)_DIRS)) ) )

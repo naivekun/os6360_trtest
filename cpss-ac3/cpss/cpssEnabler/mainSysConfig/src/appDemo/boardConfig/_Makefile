@@ -1,0 +1,141 @@
+# $(warning "Started") 
+
+LIB_NAME = mainSysConfig.lib
+
+DX_BOARDS =                      \
+    dxFamilyBoards.c             \
+    gtDbDxAC3_Quagga_Utils.c        \
+    gtRd_xCat_24GE_4HGS.c        \
+    gtDbDxLion_ForMultiCoreFdbLookup.c \
+    gtDbDxLion2_ForMultiCoreFdbLookup.c \
+    gtDbDxLion2_96XG.c           \
+    gtLion2PortPizzaArbiterProfile_360MHz_4x10G_3x40G_30slices.c \
+    appDemoLion2TrunkWa.c        \
+    gtDbDxBobcat2_X6.c           \
+    gtDbDxBobcat2.c              \
+    gtDbDxBobcat2Ap.c            \
+    gtDbDxBobcat2PhyConfig.c     \
+    gtDbDxBobcat2Mappings.c      \
+    gtDbDxBobcat2UtilsSimClock.c \
+    gtDbDxBobcat2GenUtils.c      \
+    gtDbDxBobcat2Utils.c         \
+    gtDbDxBobkUtils.c            \
+    gtDbDxAldrinUtils.c          \
+    gtDbDxFalcon.c               \
+    gtDbDxHexRaven.c             \
+    gtDbDxBobcat3Utils.c         \
+    gtDbDxBobcat2LedIfConfig.c   \
+    gtDbDxBobkQsgmiiAutoNegTask.c\
+    gtDbDxBc3_TxQDynamicThresholdingTask.c\
+    gtDbDxBc3_TxQDynamicThresholdingTaskIf.c\
+    gtDbDxBc3_TxQDynamicThresholdingTaskApp.c\
+    gtDbDxAc3x.c                 \
+    gtDbDxAc3x_trunk_phy1690_WA_B.c \
+    gtDbDxAc3x_trunk_phy1690_WA_C.c \
+    gtDbDxLion2_X2_Bobcat2.c     \
+    appDemoPortInit.c
+
+PX_BOARDS =                      \
+    pxFamilyBoards.c             \
+    gtDbPxPipe.c                 \
+    gtDbPxUtils.c                \
+    appDemoPortInit.c
+
+FPGA_BOARDS  =                   \
+    noPpBoards.c
+
+
+FILES :=
+ifeq (EXISTS, $(CHX_FAMILY))
+  DX_FAMILY = EXIST
+endif
+ifeq (RHODES, $(FPGA_TYPE))
+  FPGA_FAMILY = EXIST
+endif
+
+# $(warning "DX_FAMILY =$(DX_FAMILY)")
+
+ifeq (EXIST, $(DX_FAMILY))
+    FILES := $(DX_BOARDS)
+    # $(warning "DX_BOARDS=$(DX_BOARDS)")
+    # $(warning "FILES DX_FAMILY =$(FILES)")
+else
+    # $(warning "FILES ! DX_FAMILY =$(FILES)")
+endif
+
+ifeq (EXISTS, $(PX_FAMILY))
+    FILES += $(PX_BOARDS)
+endif
+
+
+ifeq (YES, $(INCLUDE_UTF))
+  FILES += appDemoBoardConfig.c appDemoCfgMisc.c 
+else
+  FILES += appDemoBoardConfig.c appDemoCfgMisc.c
+endif 
+# $(warning "FILES 2 =$(FILES)")
+
+ifeq (EXIST, $(FPGA_FAMILY))
+  FILES += $(FPGA_BOARDS)
+endif
+
+
+ifeq (YES, $(USEFUL_START))
+    cpssEnabler_CFLAGS_CL += $(FD)USEFUL_START
+    ifeq (EXISTS, $(CHX_FAMILY))    
+        FILES += gtDbDxLion2_usefulStart.c       \
+                 gtDbDxBobcat2_usefulStart.c     \
+                 gtDbDxBobkCetus_usefulStart.c   \
+                 gtDbDxAldrin_usefulStart.c      \
+                 gtDbDxBobcat3_usefulStart.c
+    endif
+endif
+
+ifeq (YES, $(TEST_GOP_CONFIG_REG))
+    cpssEnabler_CFLAGS_CL += $(FD)TEST_GOP_CONFIG_REG
+    ifeq (YES, $(TEST_GOP_CONFIG_REG_CETUS))    
+        FILES +=  gtDbDxBobKCetus_testGopConfigRegisters.c       \
+                  gtDbDxBobKCetus_testGopConfigRegistersTables.c 
+    endif
+    ifeq (YES, $(TEST_GOP_CONFIG_REG_ALDRIN))
+        FILES +=  gtDbDxAldrin_testGopConfigRegisters.c          \
+                  gtDbDxAldrin_testGopConfigRegistersTables.c
+    endif
+    ifeq (YES, $(TEST_GOP_CONFIG_REG_BC3))
+        FILES +=  gtDbDxBc3_testGopConfigRegisters.c             \
+                  gtDbDxBc3_testGopConfigRegistersTables.c
+    endif
+endif
+
+
+
+
+#List of subfolders to include in build
+MODULES := 
+
+##List of files to include in list
+#FILES :=
+#ifeq (EXISTS, $(DX_FAMILY))
+#       FILES += $(DX_BOARDS)
+#endif
+
+
+# $(warning "FILES end =$(FILES)")
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainSysConfig.lib
+    cpssEnabler_mainSysConfig_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

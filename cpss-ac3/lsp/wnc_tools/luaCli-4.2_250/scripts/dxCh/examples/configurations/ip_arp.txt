@@ -1,0 +1,12 @@
+// TAG:               ip; arp;
+// Short Description: create ARP entries.
+// Description:       configure several ARP entries using 'ip arp' command.
+
+end
+configure
+
+ip arp device ${dev} index 1 mac 11:22:33:44:55:66
+ip arp device ${dev} index 12 mac 00:AB:00:CD:00:EF
+ip arp device ${dev} index 123 mac 11:00:22:00:33:00
+
+end

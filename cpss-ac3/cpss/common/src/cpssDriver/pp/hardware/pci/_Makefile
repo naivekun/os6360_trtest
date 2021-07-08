@@ -1,0 +1,77 @@
+# $(warning "Started")
+
+LIB_NAME = cpssDrvPpHwPci.lib
+
+#List of files to include in list
+#FILES := \
+        #cpssDrvPpHwPciCntl.c
+        #cpssDrvPpHwPciCntlSim.c\
+        #cpssDrvPpHwPciCntlStandBy.c\
+        #cpssDrvPpHwPexMbusCntl.c
+
+
+#$(warning "ASIC_SIMULATION=$(ASIC_SIMULATION)")
+#$(info "OS_RUN=$(OS_RUN)")
+#$(info "KERNEL_SYSCALL_TABLE_EXPORTED=$(KERNEL_SYSCALL_TABLE_EXPORTED)")
+#$(info "NO_KERN_PP_DRV=$(NO_KERN_PP_DRV)")
+
+
+ifeq (EXISTS, $(ASIC_SIMULATION))
+        #C_EXCLUDE_FILE_LIST = cpssDrvPpHwPciCntl.c new_cpssDrvPpHwPciCntl.c new_cpssDrvPpHwPciKernCntl.c
+
+        FILES := \
+         cpssDrvPpHwPciCntlSim.c \
+         cpssDrvPpHwPciCntlStandBy.c \
+         cpssDrvPpHwPexMbusCntl.c \
+         newdrv_simCntl.c \
+         newdrv_eagleCntl.c
+
+else
+    C_EXCLUDE_FILE_LIST = cpssDrvPpHwPciCntlSim.c new_cpssDrvPpHwPciCntlSim.c
+
+        FILES := \
+                cpssDrvPpHwPciCntl.c\
+                cpssDrvPpHwPciCntlStandBy.c\
+                cpssDrvPpHwPexMbusCntl.c\
+                newdrv_pexCntl.c\
+                newdrv_eagleCntl.c
+
+
+    ifeq (linux, $(OS_RUN))
+
+        ifeq (yes,$(KERNEL_SYSCALL_TABLE_EXPORTED))
+            mainPpDrv_AD_CFLAGS += -DPRESTERA_SYSCALLS
+        endif
+        ifeq (YES,$(NO_KERN_PP_DRV))
+            #C_EXCLUDE_FILE_LIST += new_cpssDrvPpHwPciKernCntl.c
+            FILES := $(filter-out new_cpssDrvPpHwPciKernCntl.c,$(FILES))
+        endif
+
+
+
+    else
+        #C_EXCLUDE_FILE_LIST += new_cpssDrvPpHwPciKernCntl.c
+        FILES := $(filter-out new_cpssDrvPpHwPciKernCntl.c,$(FILES))
+    endif
+endif
+
+#List of subfolders to include in build
+MODULES :=
+
+
+#ifneq (EXISTS, $(ASIC_SIMULATION))
+#        FILES += \
+#         cpssDrvPpHwPciCntl.c
+#endif
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+COMMON_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

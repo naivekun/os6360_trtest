@@ -1,0 +1,10 @@
+--- JSON.lua.orig	2017-01-19 14:17:36.000000000 +0200
++++ JSON.lua	2017-01-19 14:19:53.000000000 +0200
+@@ -878,6 +878,7 @@ local function grok_object(self, text, s
+ 
+       local new_val, new_i = grok_one(self, text, i, options)
+ 
++      if tonumber(key) ~= nil then key=tonumber(key) end
+       VALUE[key] = new_val
+ 
+       --

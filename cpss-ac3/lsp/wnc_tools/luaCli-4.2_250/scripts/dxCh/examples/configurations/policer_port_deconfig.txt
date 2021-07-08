@@ -1,0 +1,9 @@
+// TAG:               policer; flow; restore; default;
+// Short Description: Restore default policer configuration
+// Description:       Restore default policer configuration
+end
+configure
+interface ethernet ${dev}/${port[2]}
+no policy
+end
+

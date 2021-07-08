@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#This command to get if network interface is existing.
+
+IFACE=eth2
+
+if [ $# -eq 1 ]
+then
+   IFACE=$1
+   #echo $IFACE
+fi
+
+
+ST=`ifconfig | grep $IFACE |  awk '{print $1}'`
+
+#echo $ST
+
+if [ "$ST" == "$IFACE" ]
+then
+echo yes
+else
+echo no
+fi
+
+
+exit 0

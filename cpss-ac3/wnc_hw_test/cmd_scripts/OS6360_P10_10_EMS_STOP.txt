@@ -1,0 +1,8 @@
+do cpss-api call cpssDxChBrgVlanTableInvalidate devNum 0
+do configure
+interface vlan device 0 vid 1
+exit
+interface range ethernet all 0
+switchport allowed vlan add 1 untagged
+switchport pvid 1
+end

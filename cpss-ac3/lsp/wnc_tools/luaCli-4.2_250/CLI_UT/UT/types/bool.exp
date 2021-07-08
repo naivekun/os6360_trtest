@@ -1,0 +1,9 @@
+proc UT_types_bool { typename } {
+    UT_type_syntax_expect_ok "true"
+    UT_type_expect_true "result == true"
+    UT_type_syntax_expect_ok "false"
+    UT_type_expect_true "result == false"
+    UT_type_syntax_expect_fail "something"
+}
+
+UT_type_test bool UT_types_bool

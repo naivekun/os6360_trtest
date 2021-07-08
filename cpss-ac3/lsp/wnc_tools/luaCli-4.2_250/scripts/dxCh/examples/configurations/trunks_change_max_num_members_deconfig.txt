@@ -1,0 +1,42 @@
+// TAG:               trunk; channel-group; port-channel; trunk-max-num-of-members
+// Short Description: Remove the trunk members and restore the 'original' number of trunks and members
+// Description:       Remove the trunk members and restore the 'original' number of trunks and members
+//
+end
+//
+configure
+//
+// remove the ports from trunk 45
+//
+interface range ethernet ${dev}/${@@getExistingPortsRange(16)}
+no channel-group 45
+exit
+//
+// show the 'empty' trunk , via several options :
+//
+// option 1: 'direct call' to cpssDxChTrunkTableEntryGet
+do cpss-api call cpssDxChTrunkTableEntryGet devNum ${dev} trunkId 45 
+// option 2: show command for trunk 45
+do show interfaces port-channel 45
+// option 3: show command for all trunk
+do show interfaces port-channel
+//
+// restore the 'original' number of trunks and members
+//
+port-channel fixed-num-members device ${dev} num-of-trunks ${@@trunkOrigNumOfTrunks()} max-members ${@@trunkOrigMaxNumMembers()}
+// show how the trunk LIB was initialized
+do cpss-api call cpssDxChTrunkDbInitInfoGet devNum ${dev}
+//
+// show last trunk is valid
+//
+do cpss-api call cpssDxChTrunkDbFlexInfoGet devNum 0 trunkId ${@@trunkOrigNumOfTrunks()}
+//
+// show last trunk + 1 is not valid
+//
+do cpss-api call cpssDxChTrunkDbFlexInfoGet devNum 0 trunkId ${@@trunkOrigNumOfTrunks(1)}
+//
+// show command for all trunk
+do show interfaces port-channel
+
+
+end

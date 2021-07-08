@@ -1,0 +1,13 @@
+// TAG:               cpss-log-error
+// Short Description: deconfigure settings of cpss-log-error
+// Description:       - disable cpss log for specific lib bridge for error type of log
+//                    - disable cpss log (globally)
+
+
+end
+debug
+no trace cpss-log lib bridge log-type error
+no trace cpss-log lib bridge log-type info
+trace cpss-log stack size 1
+no trace cpss-log
+end

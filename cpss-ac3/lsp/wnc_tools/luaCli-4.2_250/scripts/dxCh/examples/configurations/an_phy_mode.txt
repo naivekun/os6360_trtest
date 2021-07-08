@@ -1,0 +1,13 @@
+// TAG:               auto-negotiation; mac; phy; like;
+// Short Description: Configure auto-negotiation phy mode for port 58
+// Description:       Set SGMII and configure auto-negotiation mode when mac speaks like phy for port 58
+end
+configure
+//
+// save the init values so we can restore at the 'deconfig'
+//
+${@@autoNegOrigInitSave(4)}
+// 
+interface ethernet ${dev}/${port[4]}
+auto-negotiation phy-mode 1000f
+end

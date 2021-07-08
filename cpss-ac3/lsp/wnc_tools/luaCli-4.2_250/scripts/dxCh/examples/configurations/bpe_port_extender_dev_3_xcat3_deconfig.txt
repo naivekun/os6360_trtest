@@ -1,0 +1,121 @@
+// TAG:               BPE; IEEE8021br; PortExtender; xcat3
+// Short Description: set configuration for 'Port Extender' in BPE IEEE 802.1br system (device PE3 in the system)
+// Description:       Configures the 'Port Extender' PE3 device in the next system :
+//                      station_1
+//                            &
+//                            &
+//                            &
+//              ******************************************
+//              *            port 54                     *
+//              *                                        *
+//              *        Contrlo bridge (CB)      port 0 *&&&&&& station_7 (not tested)
+//              *                                        *
+//              *       port 36             port 18      *
+//              ******************************************
+//                     #                         #
+//                     #                         #
+//                     #                         #
+//       ***********************      ***********************
+//       *          port 18    *      *       port  8       *
+//       *       (xcat3)       *      *      (xcat3)        *
+//       *        PE3          *      *        PE2   port 0 *&&&&&&   station_2
+//       *                     *      *                     *         pcid=1004
+//       *    port 0           *      *    port  18         *         eport=1004
+//       ***********************      ***********************
+//              &                              # station_6
+//              &                              # pcid=1005
+//              &                              # eport=1005
+//        station_5                   ***********************
+//        pcid=1001                   *     port 23         *
+//        eport=1101                  *      (xcat3)        *
+//                                    *        PE1  port  8 *&&&&&& station_8 (not tested)
+//                                    *                     *       pcid=1003
+//                                    * port 0      port 18 *       eport=1003
+//                                    ***********************
+//                                       &              &
+//                                       &              &
+//                                       &              &
+//                                   station_4
+//                                   station_9       station_3
+//                                   pcid=1001       pcid=1002
+//                                   eport=1001      eport=1002
+
+//      REMOVING CONFIGURATIONS
+end
+
+// enter the config context
+config
+
+// Left configuration
+// set TPID global config to add 0x8100 (standard vlan tag ethertype) - for ingress,egress
+//  tpid device ${dev} direction ingress index 0 etherType 0x8100
+//  tpid device ${dev} direction egress index 0 etherType 0x8100
+
+// set TPID global config to add 0x893f (BPE 802.1br ethertype)  - for ingress,egress
+// restoring
+tpid device ${dev} direction ingress index 7 etherType 0x8100
+tpid device ${dev} direction egress index 7 etherType 0x8100
+
+//Neighbors removing moved to the end of the file
+
+//-------  remove the registered mac-multicast groups
+// in vlan 5 : 01:02:03:55:55:55 
+// in vlan 6 : 01:02:03:55:55:55
+// in vlan 6 : 01:02:03:66:66:66
+
+interface vlan device ${dev} vid 5
+no bridge multicast mac address group 01:02:03:55:55:55
+exit
+
+interface vlan device ${dev} vid 6
+no bridge multicast mac address group 01:02:03:55:55:55
+no bridge multicast mac address group 01:02:03:66:66:66
+exit
+
+//
+// bind <GRP>,<ECID> to vlans:
+// REMOVED
+// 	to vlan 1 : GRP = 3 , ECID = 0xf01
+// 	to vlan 5 : GRP = 1 , ECID = 0xf05
+// 	to vlan 6 : GRP = 2 , ECID = 0xf06
+//
+interface vlan device ${dev} vid 1
+no bpe-802-1-br flood-etag-info
+exit
+interface vlan device ${dev} vid 5
+no bpe-802-1-br flood-etag-info
+exit
+interface vlan device ${dev} vid 6
+no bpe-802-1-br flood-etag-info
+exit
+
+//
+// removed ports from vlan :
+//
+interface range ethernet ${dev}/${port[1]},${port[3]}
+switchport allowed vlan add 1 untagged
+switchport allowed vlan remove 5
+switchport allowed vlan remove 6
+exit
+//remove the vlans 5,6
+no interface range vlan device ${dev} vid 5,6
+
+//remove 'pcid on me'
+//   
+interface ethernet ${dev}/${port[1]}
+no bpe-802-1-br pcid-on-me
+exit
+
+//remove 'CB neighbor'
+interface ethernet ${dev}/${port[3]}
+no bpe-802-1-br neighbor-info name "main_cb"
+exit
+
+//remove 'my-info'
+no bpe-802-1-br my-info
+
+// command to show 'ALL' BPE 802.1br info
+do show bpe-802-1-br info
+
+// show the registered mac-multicast groups
+do show bridge multicast address-table device ${dev}

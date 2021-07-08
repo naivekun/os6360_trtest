@@ -1,0 +1,408 @@
+#!/bin/bash
+
+source /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl
+source /usr/bin/wnc_diag/funcs/sh_funcs/list
+source /usr/bin/wnc_diag/funcs/sh_funcs/print
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+PINFO_FPATH="/etc"
+CHK_FPATH="/tmp/port_speed_chk_result.txt"
+SET_FPATH="/tmp/set_port_speed.txt"
+port_list=""
+speed=""
+port_start="1"
+restore="0"
+
+function mapping_speed(){
+    local speed_to_map=$1
+
+    if [ "$speed_to_map" == "10" ]; then
+        rtn="10M"
+    elif [ "$speed_to_map" == "100" ]; then
+        rtn="100M"
+    elif [ "$speed_to_map" == "1000" ]; then
+        rtn="1G"
+    elif [ "$speed_to_map" == "2500" ]; then
+        rtn="2.5G"
+    elif [ "$speed_to_map" == "10000" ]; then
+        rtn="10G"
+    fi
+
+    echo "$rtn"
+}
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - to configure different speed for front panel ports
+
+SYNOPSIS
+       $prog_name [-p port_range] [-s speed] [-r] [-h]
+
+DESCRIPTION
+       This command is used to change port speed. It will write the register of
+       PHY if a PHY device is connected, or configure MAC settings to support
+       different speed.
+
+       Parameter \"-p\" is to indicate which ports to be configured. It supports
+       multiple ports indication, which is using comma to separate two ports or
+       using dash to select a range. For instance, \"-p 1,3\" is indicated port 1
+       and port 3 will be configured, and \"-p 1-3\" means port 1 to port 3 will
+       be selected to change the speed.
+
+       Parameter \"-s\" is to choose the speed to be set, and parameter \"-r\" is
+       to restore setting to default. Only one of these two parameters can be
+       assigned followed with indicated port. Parameter \"-h\" is to show this 
+       help message.
+
+MANDATORY OPTIONS
+       -p    To indicate which ports to be configured, using comma or dash to
+             separate if more than one port are chosen. For instance, \"-p 1,3\"
+             or \"-p 1-3\".
+
+OPTIONAL OPTIONS
+       -s    To indicate which speed to configure. Available options are: 10,
+             100, 1000, 2500 and 10000, which mean 10M, 100M, 1G, 2.5G and 10G.
+
+       -r    To restore PHY device or MAC settings to default.
+
+       -h    Show this help message.
+
+PASS CRITERIA
+       - Configure different speeds for front panel ports:
+           SUCCESS: all ports changed successfully
+             Display: \"=== Change ports speed to 1G successfully ===\"
+             or
+             Display: \"=== Change ports speed to default successfully ===\"
+             Return code : 0
+
+           ERROR: some ports not support chosen speed or out of range
+             Display: \"FAIL: Port 1 not support 10G speed!\"
+                      \"FAIL: Port 3 not support 10G speed!\"
+                      \"=== Some ports not supported, please check and retry ===\"
+             or
+             Display: \"FAIL: Port 29 is out of range!\"
+                      \"=== Some ports not supported, please check and retry ===\"
+             Return code : 1
+
+EXAMPLE
+       $prog_name -p 1,3 -s 100
+       $prog_name -p 1-3 -s 100
+       $prog_name -p 1-3 -r
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    res=$FAIL
+    echo "">&2
+    exit 1
+fi
+
+while getopts "p:s:rh" arg; do
+    case $arg in
+        p) # port list
+            port_list=$OPTARG
+            ;;
+        s) # speed
+            speed=$OPTARG
+            if [ "$speed" != "10" ] && [ "$speed" != "100" ] && [ "$speed" != "1000" ] && 
+               [ "$speed" != "2500" ] && [ "$speed" != "10000" ]; then
+                print_fail "Speed not supported, please check!" 
+                echo "">&2
+                exit 1
+            fi 
+            ;;
+        r) # restore
+            restore="1"
+            ;;
+        h | *) # display usage
+            usage
+            exit 0
+            ;;
+    esac
+done
+
+# Check both port_list and speed are valid
+if [ "$port_list" == "" ] || [ "$speed" == "" -a "$restore" == "0" ]; then
+    print_fail "Port range or speed not specified, please check!" 
+    echo "">&2
+    exit 1
+fi
+
+# Check whether issue -s and -r at the same time
+if [  "$speed" != "" ] && [ "$restore" == "1" ]; then
+    print_fail "Can't configure speed and restroe at the same time, please check!" 
+    echo "">&2
+    exit 1
+fi
+
+# Get pinfo_cfg and port range
+case $SKU in
+    OS6360-10 | OS6360-P10)
+        pinfo_cfg="${PINFO_FPATH}/pinfo_os6360_p10.cfg"
+        port_end="12"
+        ;;
+    OS6360-P24X | OS6360-PH24)
+        pinfo_cfg="${PINFO_FPATH}/pinfo_os6360_p24.cfg"
+        port_end="28"
+        ;;
+    OS6360-P48X)
+        pinfo_cfg="${PINFO_FPATH}/pinfo_os6360_p48.cfg"
+        port_end="52"
+        ;;
+    *)
+        print_fail "Get board ID failed, please check!"
+        echo "">&2
+        exit 1
+        ;;
+esac
+
+# Parse port_list
+port_list=`echo $(parse_list $port_list)`
+
+# Check port valid or not
+rm -f $CHK_FPATH
+for port in $port_list; do
+    port_valid="0"
+    for ((cmp=${port_start}; cmp<=${port_end}; cmp++)); do
+        if [ "$port" == "$cmp" ]; then
+            port_valid="1"
+            break
+        fi
+    done
+    if [ "$port_valid" == "0" ]; then
+        echo "FAIL: Port $port is out of range!" >> $CHK_FPATH
+    fi
+done
+# Display check result
+if [ -f $CHK_FPATH ]; then
+    cat $CHK_FPATH; rm -f $CHK_FPATH
+    echo "=== Some ports not supported, please check and retry ==="
+    echo "">&2
+    exit 1
+fi
+
+# Check speed supported or not
+rm -f $CHK_FPATH
+for port in $port_list; do
+    speed_support="1"
+    line=$((port+2))
+    phy_type=`cat $pinfo_cfg | sed -n ${line}p | awk '{print $5}'`
+    if [ "$phy_type" == "88E1680" -o "$phy_type" == "88E1543" ] && [ "$speed" == "2500" -o "$speed" == "10000" ]; then
+        speed_support="0"
+    elif [ "$phy_type" == "88E2010" ] && [ "$speed" == "10000" ]; then
+        speed_support="0"
+    elif [ "$phy_type" == "88X3220" ] && [ "$speed" == "2500" ]; then
+        speed_support="0"
+    elif [ "$phy_type" == "IntPHY" ]  && [ "$speed" == "10" -o "$speed" == "100" -o "$speed" == "2500" ]; then
+        # Stacking port
+        speed_support="0"
+    fi
+    if [ "$speed_support" == "0" ]; then
+        echo "FAIL: Port $port doesn't support $(mapping_speed $speed) speed!" >> $CHK_FPATH
+    fi
+done
+# Display check result
+if [ -f $CHK_FPATH ]; then
+    cat $CHK_FPATH; rm -f $CHK_FPATH
+    echo "=== Some ports not supported, please check and retry ==="
+    echo "">&2
+    exit 1
+fi
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    print_fail "CPSS not ready!"
+    exit 1
+fi
+
+# Echo commands to set_port_speed.txt
+rm -f $SET_FPATH
+for port in $port_list; do
+    line=$((port+2))
+    port_info=`cat $pinfo_cfg | sed -n ${line}p`
+    dev_num=`echo $port_info | awk '{print $2}'`
+    pport=`echo $port_info | awk '{print $3}'`
+    phy_addr=`echo $port_info | awk '{print $4}'`
+    phy_type=`echo $port_info | awk '{print $5}'`
+
+    case $phy_type in
+        88E1680 | 88E1543)
+            if [ "$speed" == "10" ]; then
+                reg_9_data="0x0C00"
+                reg_4_data="0x0061"
+                reg_0_data="0x9100"
+            elif [ "$speed" == "100" ]; then
+                reg_9_data="0x0C00"
+                reg_4_data="0x0181"
+                reg_0_data="0xb100"
+            elif [ "$speed" == "1000" ]; then
+                reg_9_data="0x0E00"
+                reg_4_data="0x0001"
+                reg_0_data="0x9140"
+            elif [ "$restore" == "1" ]; then
+                reg_9_data="0x0E00"
+                reg_4_data="0x01E1"
+                reg_0_data="0x9140"
+            fi
+            echo "do debug-mode" >> $SET_FPATH
+            echo "phy register write device $dev_num port $pport register 9 data $reg_9_data" >> $SET_FPATH
+            echo "phy register write device $dev_num port $pport register 4 data $reg_4_data" >> $SET_FPATH
+            echo "phy register write device $dev_num port $pport register 0 data $reg_0_data" >> $SET_FPATH
+            echo "end" >> $SET_FPATH
+            ;;
+        88E2010)
+            CLI_CMD="phy 10G register write"
+            if [ "$speed" == "10" ]; then
+                reg_7_8000_data="0x0010"
+                reg_7_0010_data="0x1061"
+                reg_1_0000_data="0x8018"
+                reg_3_0000_data="0x8000"
+                reg_7_0020_data="0x0001"
+                reg_7_0000_data="0x3200"
+            elif [ "$speed" == "100" ]; then
+                reg_7_8000_data="0x0010"
+                reg_7_0010_data="0x1181"
+                reg_1_0000_data="0xa018"
+                reg_3_0000_data="0x8000"
+                reg_7_0020_data="0x0001"
+                reg_7_0000_data="0x3200"
+            elif [ "$speed" == "1000" ]; then
+                reg_7_8000_data="0x0310"
+                reg_7_0010_data="0x1001"
+                reg_1_0000_data="0x8058"
+                reg_3_0000_data="0x8000"
+                reg_7_0020_data="0x0001"
+                reg_7_0000_data="0x3200"
+            elif [ "$speed" == "2500" ]; then
+                reg_7_8000_data="0x0010"
+                reg_7_0010_data="0x1001"
+                reg_1_0000_data="0xa058"
+                reg_3_0000_data="0x8000"
+                reg_7_0020_data="0x0081"
+                reg_7_0000_data="0x3200"
+            elif [ "$restore" == "1" ]; then
+                reg_7_8000_data="0x0310"
+                reg_7_0010_data="0x11E1"
+                reg_1_0000_data="0xa058"
+                reg_3_0000_data="0x8000"
+                reg_7_0020_data="0x0081"
+                reg_7_0000_data="0x3200"
+                # Default 2.5G
+                speed="2500"
+            fi
+            echo "do configure" >> $SET_FPATH
+            echo "interface ethernet $dev_num/$pport" >> $SET_FPATH
+            echo "no speed" >> $SET_FPATH
+            echo "speed $speed mode SGMII" >> $SET_FPATH
+            if [ "$dev_num/$pport" == "1/27" ]; then
+                echo "serdes polarity lane_num 0 invert_tx false invert_rx true" >> $SET_FPATH
+            elif [ "$dev_num/$pport" == "0/24" ]; then
+                echo "serdes polarity lane_num 0 invert_tx false invert_rx false" >> $SET_FPATH
+            fi
+            echo "do debug-mode" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x8000 phyDev 7 phyID $phy_addr data $reg_7_8000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0010 phyDev 7 phyID $phy_addr data $reg_7_0010_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0000 phyDev 1 phyID $phy_addr data $reg_1_0000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0000 phyDev 3 phyID $phy_addr data $reg_3_0000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0020 phyDev 7 phyID $phy_addr data $reg_7_0020_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0000 phyDev 7 phyID $phy_addr data $reg_7_0000_data" >> $SET_FPATH
+            ;;
+        88X3220)
+            CLI_CMD="phy 10G register write"
+            mode="SGMII"
+            if [ "$speed" == "10" ]; then
+                reg_7_0020_data="0x6001"
+                reg_7_8000_data="0x0010"
+                reg_7_0010_data="0x1061"
+                reg_1_0000_data="0x8018"
+                reg_7_0000_data="0x3200"
+                reg_3_0000_data="0xa040"
+                reg_3_1000_data="0xa040"
+                reg_3_2000_data="0x9140"
+                reg_31_f001_data="0x8004"
+            elif [ "$speed" == "100" ]; then
+                reg_7_0020_data="0x6001"
+                reg_7_8000_data="0x0010"
+                reg_7_0010_data="0x1181"
+                reg_1_0000_data="0xa018"
+                reg_7_0000_data="0x3200"
+                reg_3_0000_data="0xa040"
+                reg_3_1000_data="0xa040"
+                reg_3_2000_data="0x9140"
+                reg_31_f001_data="0x8004"
+            elif [ "$speed" == "1000" ]; then
+                reg_7_0020_data="0x6001"
+                reg_7_8000_data="0x0310"
+                reg_7_0010_data="0x1001"
+                reg_1_0000_data="0x8058"
+                reg_7_0000_data="0x3200"
+                reg_3_0000_data="0xa040"
+                reg_3_1000_data="0xa040"
+                reg_3_2000_data="0x9140"
+                reg_31_f001_data="0x8004"
+            elif [ "$speed" == "10000" -o "$restore" == "1" ]; then
+                reg_7_0020_data="0x7001"
+                reg_7_8000_data="0x0010"
+                reg_7_0010_data="0x1001"
+                reg_1_0000_data="0xa040"
+                reg_7_0000_data="0x3200"
+                reg_3_0000_data="0xa040"
+                reg_3_1000_data="0xa040"
+                reg_3_2000_data="0x9140"
+                reg_31_f001_data="0x801C"
+                mode="KR"
+                speed="10000"
+            fi
+            echo "do configure" >> $SET_FPATH
+            echo "interface ethernet $dev_num/$pport" >> $SET_FPATH
+            echo "no speed" >> $SET_FPATH
+            echo "speed $speed mode $mode" >> $SET_FPATH
+            echo "do debug-mode" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0020 phyDev 7 phyID $phy_addr data $reg_7_0020_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x8000 phyDev 7 phyID $phy_addr data $reg_7_8000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0010 phyDev 7 phyID $phy_addr data $reg_7_0010_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0000 phyDev 1 phyID $phy_addr data $reg_1_0000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0000 phyDev 7 phyID $phy_addr data $reg_7_0000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x0000 phyDev 3 phyID $phy_addr data $reg_3_0000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x1000 phyDev 3 phyID $phy_addr data $reg_3_1000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0x2000 phyDev 3 phyID $phy_addr data $reg_3_2000_data" >> $SET_FPATH
+            echo "$CLI_CMD device $dev_num port $pport register 0xf001 phyDev 31 phyID $phy_addr data $reg_31_f001_data" >> $SET_FPATH
+            ;;
+        IntPHY)
+            if [ "$speed" == "1000" ]; then
+                mode="1000Base_X"
+            elif [ "$speed" == "10000" -o "$restore" == "1" ]; then
+                mode="KR"
+                speed="10000"
+            fi
+            echo "do configure" >> $SET_FPATH
+            echo "interface ethernet $dev_num/$pport" >> $SET_FPATH
+            echo "no speed" >> $SET_FPATH
+            echo "speed $speed mode $mode" >> $SET_FPATH
+            if [ "$dev_num/$pport" == "0/26" ] && [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ] ; then
+                echo "serdes polarity lane_num 0 invert_tx true invert_rx true" >> $SET_FPATH
+            elif [ "$dev_num/$pport" == "0/27" ] && [ "$SKU" == "OS6360-P48X" ]; then
+                echo "serdes polarity lane_num 0 invert_tx false invert_rx true" >> $SET_FPATH
+            fi
+            ;;
+    esac
+done
+
+# Load set_port_speed.txt in CPSS
+cpss_load_config_file "$SET_FPATH" "no_show"
+
+# Display log
+if [ "$restore" == "1" ]; then
+    echo "=== Change ports speed to default successfully ==="
+else
+    echo "=== Change ports speed to $(mapping_speed $speed) successfully ==="
+fi
+echo "">&2
+
+exit 0

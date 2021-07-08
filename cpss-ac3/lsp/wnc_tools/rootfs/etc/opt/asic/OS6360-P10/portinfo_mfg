@@ -1,0 +1,17 @@
+# !!! NOTE: New info please add above "Port info table", due to port parsing done in file-portmap !!!
+
+# Port info table
+LPort Dev/PPort Vlan    VlanMemberType  LoopBackMode  PhyType
+----- --------- ------  --------------  ------------  --------
+1     0/0       2       Untagged        ExtPhy        88E1680
+2     0/1       3       Untagged        ExtPhy        88E1680
+3     0/2       4       Untagged        ExtPhy        88E1680
+4     0/3       5       Untagged        ExtPhy        88E1680
+5     0/4       6       Untagged        ExtPhy        88E1680
+6     0/5       7       Untagged        ExtPhy        88E1680
+7     0/6       8       Untagged        ExtPhy        88E1680
+8     0/7       9       Untagged        ExtPhy        88E1680
+9     0/24      10      Untagged        ExtPhy        88E1543
+10    0/25      11      Untagged        ExtPhy        88E1543
+11    0/26      12      Untagged        None          IntPHY
+12    0/27      13      Untagged        None          IntPHY

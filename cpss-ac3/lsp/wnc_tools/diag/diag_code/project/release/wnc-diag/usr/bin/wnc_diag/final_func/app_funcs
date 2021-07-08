@@ -1,0 +1,515 @@
+#!/bin/bash
+
+# [PURPOSE]
+#   validate settings in the configuration file (conf).
+# [PARAMETERS]
+#   msg_file            - message file
+#   log_file            - log file
+# [NOTES]
+#   msg_file will be removed before returning from the function.
+#   below configurations could be found in conf:
+#     CFG_RUN_MODE: run mode
+#     CFG_STOP_MODE: stop mode
+#
+function Check_config() {
+	local msg_file=$1
+	local log_file=$2
+
+	# check CFG_RUN_MODE
+	if [ -z "$CFG_RUN_MODE" ]; then
+		echo "CFG_RUN_MODE is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	case $CFG_RUN_MODE in
+	$RUN_PERMANENT)
+		;;
+	$RUN_UNTIL_TIMEOUT)
+		if [ -z "$CFG_RUN_TIMEOUT_SEC" ] || [ $CFG_RUN_TIMEOUT_SEC -le 0 ]; then
+			echo "invalid CFG_RUN_TIMEOUT_SEC $CFG_RUN_TIMEOUT_SEC" >$msg_file
+			Exit_on_error 1 $msg_file $log_file
+		fi
+		;;
+	$RUN_BY_ROUND)
+		if [ -z "$CFG_RUN_MAX_ROUND" ] || [ $CFG_RUN_MAX_ROUND -le 0 ]; then
+			echo "invalid CFG_RUN_MAX_ROUND $CFG_RUN_MAX_ROUND" >$msg_file
+			Exit_on_error 1 $msg_file $log_file
+		fi
+		;;
+	*)
+		echo "invalid CFG_RUN_MODE $CFG_RUN_MODE" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+		;;
+	esac
+
+	# check CFG_STOP_MODE
+	if [ -z "$CFG_STOP_MODE" ]; then
+		echo "CFG_STOP_MODE is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	case $CFG_STOP_MODE in
+	$STOP_NEVER|$STOP_ON_ERROR)
+		;;
+	*)
+		echo "invalid CFG_STOP_MODE $CFG_STOP_MODE" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+		 ;;
+	esac
+
+	# check log file settings
+	if [ -z "$CFG_LOG_PREFIX" ]; then
+		echo "CFG_LOG_PREFIX is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+
+	# check persistent settings
+	if [ -z "$CFG_PERSISTENT_MNT" ]; then
+		echo "CFG_PERSISTENT_MNT is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+
+	# check CPU affinity settings
+	if [ -z "$CFG_SER_CMDSET_CPU_AFFINITY" ]; then
+		echo "CFG_SER_CMDSET_CPU_AFFINITY is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ -z "$CFG_PAR_CMDSET_CPU_AFFINITY" ]; then
+		echo "CFG_PAR_CMDSET_CPU_AFFINITY is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ -z "$CFG_BURN_IN_CPU_AFFINITY" ]; then
+		echo "CFG_BURN_IN_CPU_AFFINITY is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+
+	# check background stress load settings
+	if [ -z "$CFG_CPU_STRESS_CORE_MASK" ]; then
+		echo "CFG_CPU_STRESS_CORE_MASK is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ -z "$CFG_MEM_STRESS_CORE_MASK" ]; then
+		echo "CFG_MEM_STRESS_CORE_MASK is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ -z "$CFG_MEM_STRESS_MEM_SIZE" ]; then
+		echo "CFG_MEM_STRESS_MEM_SIZE is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	
+	# check tmpfs settings
+	if [ -z "$CFG_PARCMD_TMPFS_MNT" ]; then
+		echo "CFG_PARCMD_TMPFS_MNT is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ -z "$CFG_PARCMD_TMPFS_SIZE" ]; then
+		echo "CFG_PARCMD_TMPFS_SIZE is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ -z "$CFG_LOG_TMPFS_MNT" ]; then
+		echo "CFG_LOG_TMPFS_MNT is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ -z "$CFG_LOG_TMPFS_SIZE" ]; then
+		echo "CFG_LOG_TMPFS_SIZE is missing" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+}
+
+# [PURPOSE]
+#   validate settings in the configuration file (conf).
+# [PARAMETERS]
+#   msg_file            - message file
+#   log_file            - log file
+# [NOTES]
+#   msg_file will be removed before returning from the function.
+#   below configurations could be found in conf:
+#     CFG_RUN_MODE: run mode
+#     CFG_STOP_MODE: stop mode
+#
+function Check_project_funcs() {
+	local vendor=$(Get_Vendor)
+	local sdk=$(Get_SDK)
+	local serial=$(Get_Serial)
+	local mac=$(Get_Mac)
+	local temp=$(Get_Temperature)
+	
+	if [ "${vendor}" == "unknown" ]; then
+		echo "Get_Vendor funcs is not defined" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ "${sdk}" == "unknown" ]; then
+		echo "Get_SDK funcs is not defined" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ "${serial}" == "unknown" ]; then
+		echo "Get_Serial funcs is not defined" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ "${mac}" == "unknown" ]; then
+		echo "Get_Mac funcs is not defined" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+	if [ "${temp}" == "unknown" ]; then
+		echo "Get_Temperature funcs is not defined" >$msg_file
+		Exit_on_error 1 $msg_file $log_file
+	fi
+}
+
+#
+# [PURPOSE]
+#   run init processes (defined in init).
+# [PARAMETERS]
+#   msg_file            - message file
+#   log_file            - log file
+# [NOTES]
+#   DIR must be set before calling the function.
+#   msg_file will be removed before returning from the function.
+#
+function Init() {
+	local msg_file=$1
+	local log_file=$2
+
+	#Check msg / log folders
+	local msg_dir=`echo $1 | awk 'BEGIN{FS=OFS="/"}{NF--; print}'`
+        if [ ! -d $msg_dir ]; then
+	    mkdir -p $msg_dir
+   	fi
+
+	local log_dir=`echo $1 | awk 'BEGIN{FS=OFS="/"}{NF--; print}'`
+        if [ ! -d $log_dir ]; then
+	    mkdir -p $log_dir
+   	fi
+
+	# create running stamp file
+	touch ${CFG_PARCMD_TMPFS_MNT}/$RUN_STAMP_FILE
+
+	# init process
+	local start_time=`date +%s`
+	echo $start_time > /tmp/cmdd_init_start_time
+	start_time_str=`date '+%Y-%m-%d %H:%M:%S'`
+	echo "run final functional init process at $start_time_str" | tee $msg_file
+	cat $msg_file >>$log_file
+	${DIR}/init &>$msg_file
+	Exit_on_error $? $msg_file $log_file
+	Output_message $msg_file $log_file
+}
+#
+# [PURPOSE]
+#   summarize test result into a summation
+# [PARAMETERS]
+#   msg_file            - message file
+#   cmd_idx_file        - command index file
+#   ret_file            - result file
+# [NOTES]
+#
+function Post_summation() {
+    local msg_file=$1
+    local cmd_idx_file=$2
+    local ret_file=$3
+    local serial=$(Get_Serial)
+    local start_time="unknown"
+    local end_time="unknown"
+    local pass_cnt=0
+    local fail_cnt=0
+    local total_cnt=0
+    local total_fail_cnt=0
+
+    echo $'\n'"[ Test Summation ]" >  $msg_file
+
+    #Serial Number
+    echo "[ Serial Number : $serial ]" >> $msg_file
+
+    #Start Time
+    # if [ -f /tmp/cmdd_init_start_time ]; then
+    #     start_time=`date +%s`
+    #     start_time_str=`date '+%Y-%m-%d %H:%M:%S'`
+    # fi
+
+    echo "[ Start Time : $start_time_str ]" >> $msg_file
+    echo "------------------------------------------------------------------------------" >> $msg_file
+
+    #Check the pass counts and fail counts of each commands
+    if [ "${SFCS_FLAG}" == "true" ]; then
+        printf "%-6s%-36s|%-21s|%-7s%-7s\n" "[Idx]" "[Test]" "[SFCS]" "[Total]" "[Fail]">> $msg_file
+    else
+        printf "%-6s%-36s|%-7s%-7s\n" "[Idx]" "[Test]" "[Total]" "[Fail]">> $msg_file
+    fi
+
+    while IFS= read -r line;
+    do
+        idx=`echo $line | awk -F":" '{print $1}' | sed 's/^0*//'`
+        cmd=`echo $line | awk -F":" '{print $2}'`
+        if [ "${SFCS_FLAG}" == "true" ]; then
+            sfcs=`echo $line | awk -F":" '{print $3}'`
+            if [[ -n "$sfcs" ]]; then
+                pass_cnt=`grep -o "$idx:$cmd:ps" $ret_file | wc -l`
+                fail_cnt=`grep -o "$idx:$cmd:fa" $ret_file | wc -l`
+                total_cnt=$((pass_cnt+fail_cnt))
+                total_fail_cnt=$((total_fail_cnt+fail_cnt))
+                printf "%4s   %-35s| %-20s|%6s  %4s\n" $idx "${cmd::35}" "${sfcs::20}" $total_cnt $fail_cnt >> $msg_file
+            else
+                echo "Invalid cmdset."
+                exit 1
+            fi
+        else
+            pass_cnt=`grep -o "$line:ps" $ret_file | wc -l`
+            fail_cnt=`grep -o "$line:fa" $ret_file | wc -l`
+            total_cnt=$((pass_cnt+fail_cnt))
+            total_fail_cnt=$((total_fail_cnt+fail_cnt))
+            printf "%4s   %-35s|%4s  %4s\n" $idx "${cmd::35}" $total_cnt $fail_cnt >> $msg_file
+        fi
+    done < "$cmd_idx_file"
+
+    echo "------------------------------------------------------------------------------" >> $msg_file
+
+    #End Time
+    if [ -f /tmp/cmdd_post_end_time ]; then
+        end_time=`cat /tmp/cmdd_post_end_time`
+        end_time_str=`date '+%Y-%m-%d %H:%M:%S'`
+    fi
+    echo "[ End Time : $end_time_str ]" >> $msg_file
+    #Count test duration/elapsed time
+    end_time=`cat /tmp/cmdd_post_end_time`
+    start_time=`cat /tmp/cmdd_init_start_time`
+    elapsed_time=$((end_time - start_time))
+    days=$((elapsed_time / 86400))
+    elapsed_time=$((elapsed_time % 86400))
+    ss=$((elapsed_time%60))
+    mm=$(((elapsed_time/60)%60))
+    hh=$((elapsed_time/3600))
+    elapsed_time_str=`printf "%i:%02i:%02i" $hh $mm $ss`
+
+    if [ $days -gt 0 ]; then
+        elapsed_time_str="$days days $elapsed_time_str"
+    fi
+
+    echo "[ Test Duration : $elapsed_time_str ]" >> $msg_file
+
+    #Check the final result of whole cmdd process
+    if [ $total_fail_cnt -eq 0 ]; then
+        echo "[ Result : PASS ]" >> $msg_file
+    else
+        echo "[ Result : FAIL ]" >> $msg_file
+    fi
+	dump_info >> $msg_file
+}
+#
+# [PURPOSE]
+#   run post processes (defined in post).
+# [PARAMETERS]
+#   msg_file            - message file
+#   log_file            - log file
+# [NOTES]
+#   DIR must be set before calling the function.
+#   msg_file will be removed before returning from the function.
+#
+function Post() {
+	local msg_file=$1
+	local log_file=$2
+	local cmd_idx_file=$3
+	local ret_file=$4
+
+	# remove running stamp file
+	rm -f ${CFG_PARCMD_TMPFS_MNT}/$RUN_STAMP_FILE
+
+	# wait for all cmdset termination
+	while [ -n "`jobs`" ]; do
+		jobs &>/dev/null
+		sleep 1
+	done
+
+	local end_time=`date +%s`
+	echo $end_time > /tmp/cmdd_post_end_time
+	end_time_str=`date '+%Y-%m-%d %H:%M:%S'`
+	echo "run final functional post process at $end_time_str" > $msg_file
+	Output_message $msg_file $log_file
+
+	# post summation
+	Post_summation $msg_file $cmd_idx_file $ret_file
+	Output_message $msg_file $log_file
+
+	# post process
+	${DIR}/post $log_file &>$msg_file
+	Output_message $msg_file $log_file
+
+	# commit logs caches to disk
+	sync
+}
+
+#
+# [PURPOSE]
+#   dump general information when cmdd end
+# [PARAMETERS]
+#   none
+# [NOTES]
+#   dump general information when cmdd end.
+function dump_info() {
+	local os="`uname -a | awk -F ' ' '{ print $2 }'`"
+	local kernel="`uname -a | awk -F ' ' '{ print $3 }'`"
+	local vendor=$(Get_Vendor)
+	local sdk=$(Get_SDK)
+	local diag_ver=$(Get_DiagVer)
+	local serial=$(Get_Serial)
+	local mac=$(Get_Mac)
+	local temp=$(Get_Temperature)
+
+	# OS distribution
+	echo "[ OS Distribution : $os ]"
+
+	# Linux kernel version
+	echo "[ Kernel Version : $kernel ]"
+
+	# SDK version
+	echo "[ Switch Vendor : $vendor, SDK Version : $sdk ]"
+
+	# Diagnostics program version
+	echo "[ Diagnostics $diag_ver ]"
+
+	# Serial number
+	echo "[ Serial Number : $serial ]"
+	
+	# MAC address
+	echo "[ MAC Address : $mac ]"
+
+    # Current temperatures
+    echo "[ Temperature : $temp ]"
+
+}
+
+#
+# [PURPOSE]
+#   link final functional conf and funcs
+# [PARAMETERS]
+#   none
+# [NOTES]
+#   none
+function Link_final_func() {
+    ln -fs ${ABSDIR}/const ${ABSDIR}/../cmdd/const
+    ln -fs ${ABSDIR}/conf ${ABSDIR}/../cmdd/conf
+    ln -fs ${ABSDIR}/app_funcs ${ABSDIR}/../cmdd/app_funcs
+    ln -fs ${ABSDIR}/init ${ABSDIR}/../cmdd/init
+    ln -fs ${ABSDIR}/post ${ABSDIR}/../cmdd/post
+    ln -fs ${ABSDIR}/bg_stress ${ABSDIR}/../cmdd/bg_stress
+    ln -fs ${ABSDIR}/err_handler ${ABSDIR}/../cmdd/err_handler
+    ln -fs ${ABSDIR}/cmdset ${ABSDIR}/../cmdd/cmdset
+}
+
+#
+# [PURPOSE]
+#   unlink final functional conf and funcs
+# [PARAMETERS]
+#   none
+# [NOTES]
+#   none
+function Unlink_final_func() {
+    unlink ${ABSDIR}/../cmdd/const
+    unlink ${ABSDIR}/../cmdd/conf
+    unlink ${ABSDIR}/../cmdd/app_funcs
+    unlink ${ABSDIR}/../cmdd/init
+    unlink ${ABSDIR}/../cmdd/post
+    unlink ${ABSDIR}/../cmdd/bg_stress
+	unlink ${ABSDIR}/../cmdd/err_handler
+    unlink ${ABSDIR}/../cmdd/cmdset
+	
+	#sometime unlink can not work, so we remove the link files
+	rm -f ${ABSDIR}/../cmdd/const
+    rm -f  ${ABSDIR}/../cmdd/conf
+    rm -f  ${ABSDIR}/../cmdd/app_funcs
+    rm -f  ${ABSDIR}/../cmdd/init
+    rm -f  ${ABSDIR}/../cmdd/post
+    rm -f  ${ABSDIR}/../cmdd/bg_stress
+	rm -f  ${ABSDIR}/../cmdd/err_handler
+    rm -f  ${ABSDIR}/../cmdd/cmdset
+}
+
+#
+# [PURPOSE]
+#   get final functional information
+# [PARAMETERS]
+#   cmd_list_input            - command list
+#   log_prefix_input          - customer prefix
+# [NOTES]
+#   none
+#
+function Get_final_func_info() {
+	local cmd_list_input=$1
+	local log_prefix_input=$2
+
+	echo "Final Functional Test Info:"
+	# run mode
+	if [ "$CFG_RUN_MODE" = "$RUN_BY_ROUND" ]; then
+		echo " Run Mode: Run $CFG_RUN_MAX_ROUND times"
+	elif [ "$CFG_RUN_MODE" = "$RUN_PERMANENT" ]; then
+		echo " Run Mode: Run forever"
+	elif [ "$CFG_RUN_MODE" = "$RUN_UNTIL_TIMEOUT" ]; then
+		echo " Run Mode: Run until time expires ${CFG_RUN_TIMEOUT_SEC}s"
+	fi
+
+	# command list
+	local ABS_CMD_LIST_INPUT=""
+	if [ -f "$cmd_list_input" ]; then
+		ABS_CMD_LIST_INPUT=`realpath ${cmd_list_input}`
+	else
+		ABS_CMD_LIST_INPUT=${cmd_list_input}
+	fi
+	echo " Command List: $ABS_CMD_LIST_INPUT"
+
+	# persistent media and mount point
+	echo " Persistent Media: $CFG_PERSISTENT_MEDIA"
+	echo " Persistent Mount Point: $CFG_PERSISTENT_MNT"
+
+	# find log dir $LOG_FILE_DIR
+	local LOG_FILE_DIR=""
+	local LOG_FILE=""
+	local ABS_LOG_FILE_DIR=""
+	if [ -z "$log_prefix_input" ]; then
+		LOG_FILE=${CFG_PERSISTENT_MNT}${CFG_LOG_PREFIX}_${BROAD_SN}
+	else
+		LOG_FILE=${CFG_PERSISTENT_MNT}${log_prefix_input}_${BROAD_SN}
+	fi
+	LOG_FILE_DIR=$(dirname $LOG_FILE)
+	if [ -d "$LOG_FILE_DIR" ]; then
+		ABS_LOG_FILE_DIR=`realpath $LOG_FILE_DIR`
+	else
+		ABS_LOG_FILE_DIR=${LOG_FILE_DIR}
+	fi
+	echo " Final Log Directory: ${ABS_LOG_FILE_DIR}"
+
+	# log prefix conf
+	if [ -z "$log_prefix_input" ]; then
+		echo " Final Log Prefix: ${CFG_LOG_PREFIX}"
+	else
+		echo " Final Log Prefix: ${log_prefix_input}"
+	fi
+
+	# remote scp config
+	if [ $CFG_LOG_SCP_ENABLE = "0" ]; then
+		echo " Copy to Remote: Disable"
+	else
+		echo " Copy to Remote: Enable"
+		echo "   Remote IP: $CFG_LOG_SCP_IP"
+		echo "   Remote Usr/Password: $CFG_LOG_SCP_USR/$CFG_LOG_SCP_PWD"
+		echo "   Remote Log Directory: $CFG_LOG_SCP_REMOTE_PATH"
+	fi
+}
+
+function update_config () {
+	local config_file="$1"
+	local cmd_list="$2"
+
+	cmd_arry=($(echo "${cmd_list}" | sed 's/,/ /g'))
+
+	local i item find
+
+	for i in "${cmd_arry[@]}"; do
+		item=$(echo ${i} | awk -F"=" '{print $1}')
+
+		find=$(grep -r "${item}=" "${config_file}" | grep -v "^#")
+		if [ -z "${find}" ]; then
+			echo "item:${item} not found!!"
+		else
+			echo "Modify \"${find}\" to \"${i}\""
+			sed -i "s/${find}/${i}/g" "${config_file}"
+		fi
+	done
+
+}

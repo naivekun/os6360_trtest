@@ -1,0 +1,23 @@
+#!/bin/bash
+
+#This command to get hw version from Aikido
+
+A_TOOL=/usr/bin/aikido_tool
+REG_FILE=/tmp/aikido_reg
+
+if [ ! -f $A_TOOL ];
+then
+   echo Error: There is no aikido_tool command. 
+fi
+
+aikido_tool -r 0x08 -b 0 > $REG_FILE
+aikido_tool -r 0x08 -b 1 >> $REG_FILE
+
+BIT0=`grep "bit 0" $REG_FILE | awk '{print $7}'`
+BIT1=`grep "bit 1" $REG_FILE | awk '{print $7}'`
+echo HW VERSION from Aikido = $BIT1$BIT0 
+
+rm -f $REG_FILE
+sync
+
+exit 0

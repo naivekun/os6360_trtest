@@ -1,0 +1,59 @@
+# !!! NOTE: New info please add above "Port info table", due to port parsing done in file-portmap !!!
+
+# Total MAC units
+UNIT_CNT=1
+
+# Inter-port combination for segment
+IPORTLINK_SET=
+
+# Port info table
+LPort PPort  PhyType PortType PortSpeed
+----- ------ ------- -------- ---------
+1     0/68   IntPHY  FIBER    10G
+2     0/67   IntPHY  FIBER    10G
+3     0/66   IntPHY  FIBER    10G
+4     0/65   IntPHY  FIBER    10G
+5     0/58   IntPHY  FIBER    10G
+6     0/64   IntPHY  FIBER    10G
+7     0/57   IntPHY  FIBER    10G
+8     0/56   IntPHY  FIBER    10G
+9     0/55   IntPHY  FIBER    10G
+10    0/54   IntPHY  FIBER    10G
+11    0/53   IntPHY  FIBER    10G
+12    0/52   IntPHY  FIBER    10G
+13    0/51   IntPHY  FIBER    10G
+14    0/50   IntPHY  FIBER    10G
+15    0/49   IntPHY  FIBER    10G
+16    0/48   IntPHY  FIBER    10G
+17    0/47   IntPHY  FIBER    10G
+18    0/46   IntPHY  FIBER    10G
+19    0/45   IntPHY  FIBER    10G
+20    0/44   IntPHY  FIBER    10G
+21    0/43   IntPHY  FIBER    10G
+22    0/42   IntPHY  FIBER    10G
+23    0/41   IntPHY  FIBER    10G
+24    0/40   IntPHY  FIBER    10G
+25    0/39   IntPHY  FIBER    10G
+26    0/38   IntPHY  FIBER    10G
+27    0/37   IntPHY  FIBER    10G
+28    0/36   IntPHY  FIBER    10G
+29    0/35   IntPHY  FIBER    10G
+30    0/34   IntPHY  FIBER    10G
+31    0/33   IntPHY  FIBER    10G
+32    0/32   IntPHY  FIBER    10G
+33    0/31   IntPHY  FIBER    10G
+34    0/30   IntPHY  FIBER    10G
+35    0/29   IntPHY  FIBER    10G
+36    0/28   IntPHY  FIBER    10G
+37    0/27   IntPHY  FIBER    10G
+38    0/26   IntPHY  FIBER    10G
+39    0/25   IntPHY  FIBER    10G
+40    0/24   IntPHY  FIBER    10G
+41    0/23   IntPHY  FIBER    10G
+42    0/22   IntPHY  FIBER    10G
+43    0/21   IntPHY  FIBER    10G
+44    0/20   IntPHY  FIBER    10G
+45    0/19   IntPHY  FIBER    10G
+46    0/18   IntPHY  FIBER    10G
+47    0/17   IntPHY  FIBER    10G
+48    0/16   IntPHY  FIBER    10G

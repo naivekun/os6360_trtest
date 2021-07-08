@@ -1,0 +1,7 @@
+if { [ UT_suite_enabled types ] } {
+    UT_suite_start syntax
+
+    source [ file join $UT_root_dir syntax pipe.exp ]
+
+    UT_suite_end
+}

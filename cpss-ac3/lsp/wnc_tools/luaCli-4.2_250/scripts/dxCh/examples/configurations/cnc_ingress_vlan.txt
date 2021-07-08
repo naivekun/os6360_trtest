@@ -1,0 +1,15 @@
+// TAG:               cnc; ingress-vlan; count-drop; vlan; switchport;
+// Short Description: Configures ingress-vlan cnc counters
+// Description:       Enables cnc counters for ingress-vlan client
+//		      for dev#0. Bind also the DROP counters.
+//		      Also creates vlan#20 and adds ports 0,18,36,54 to this vlan as tagged
+end
+configure
+counters ingress-vlan device ${dev} count-drop
+
+interface vlan device ${dev} vid 20
+exit
+// interface range ethernet 0/0,18,36,54
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan add  20 tagged
+end

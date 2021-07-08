@@ -1,0 +1,44 @@
+# $(warning "Started") 
+
+#ifeq (VIPS, $(HOME_ENV))
+#
+#
+#PROJECT_COMMON_DIR = $(subst \,/,$(CHJ_ROOT))
+#
+#INCLUDE_PATH +=  -I$(PROJECT_COMMON_DIR)/mainDrv/h
+#
+#
+#
+#PRESTERA_COMMON_DIR = $(subst \,/,$(SW_ROOT))
+#include $(PRESTERA_COMMON_DIR)/mainLabServices/gtBuild
+#
+#else
+#
+#C_EXCLUDE_FILE_LIST = SerdesRxOptMilos4If.c
+#
+#
+#include $(PROJ_BASE)/gtTopMake 
+#
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ algorithm \
+ applicationIf \
+ deviceIf 
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINPPDRV_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

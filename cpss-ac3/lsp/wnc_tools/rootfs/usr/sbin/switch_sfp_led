@@ -1,0 +1,41 @@
+#!/bin/bash
+
+#Switch SFP LED to orange/green
+
+Usage()
+{
+   echo Usage: switch_sfp_led [1/0] : 0=orange, 1=green
+}
+
+if [ $# -ne 1 ];
+then
+   Usage
+   exit 1
+fi
+
+
+ST=$1
+
+if [ $ST -lt 0 ] || [ $ST -gt 1 ];
+then
+   Usage
+   exit 1
+fi  
+
+
+#LED color control pin 10 11 13 18
+for PIN in 10 11 13 18
+do
+   set_ac3_gpio $PIN $ST 1
+done
+
+if [ $ST -eq 1 ];
+then
+echo Set SFP LED to green color.
+else
+echo Set SFP LED to orange color.
+fi
+
+
+exit 0
+

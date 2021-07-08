@@ -1,0 +1,43 @@
+// TAG:               entropy label; mpls;
+// Short Description: entropy label:
+// Description:       configure MPLS entropy label
+
+
+//Test description:
+//
+//configure 3 FDB entry to redirect packet on egress ports [2],[3],[4] depending on MAC-DA,
+//          MPLS command with corresponding entropy labels
+//Ingress: Three Ethernet packets. the only difference between the packets is MAC-SA
+//Action: The packet will redirect to egress port according to FDB entry.
+//        MPLS command will assign TS properties to egress port. MPLS header
+//        and Entropy label will be added - according to configuration
+//        my-mac-addr 00:04:05:06:07:11 is used to configure macToMe entry.
+//Egress: First  packet egress port [2] with 1 mpls label  and 1 entropy label,
+//        second packet egress port [3] with 3 mpls labels and 2 entropy labels,
+//        third  packet egress port [4] with 2 mpls labels and 2 entropy labels.
+
+end
+clear bridge type ${dev} all
+
+configure
+
+mac address-table static 00:01:02:03:34:01 device ${dev} vlan 1 eport ${dev}/0x201
+mac address-table static 00:01:02:03:34:05 device ${dev} vlan 1 eport ${dev}/0x202
+mac address-table static 00:01:02:03:34:07 device ${dev} vlan 1 eport ${dev}/0x203
+
+interface ethernet ${dev}/${port[2]}
+mpls assign-eport 0x201 vid 1 my-mac-addr 00:04:05:06:07:11 nexthop-mac-addr 00:01:02:03:34:02 ingress-labels-values-list 0x333 egress-labels-values-list 0x333 add-egress-entropy-label-after-labels 0
+exit
+
+interface ethernet ${dev}/${port[3]}
+mpls assign-eport 0x202 vid 1 my-mac-addr 00:04:05:06:07:11 nexthop-mac-addr 00:01:02:03:34:02 ingress-labels-values-list 0x333,0x444,0x555 egress-labels-values-list 0x333,0x444,0x555 add-egress-entropy-label-after-labels 0,2
+exit
+
+interface ethernet ${dev}/${port[4]}
+mpls assign-eport 0x203 vid 1 my-mac-addr 00:04:05:06:07:11 nexthop-mac-addr 00:01:02:03:34:02 ingress-labels-values-list 0x333,0x444 egress-labels-values-list 0x333,0x444 add-egress-entropy-label-after-labels 0,1
+exit
+
+do show mpls
+
+end
+

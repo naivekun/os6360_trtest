@@ -1,0 +1,364 @@
+#! /bin/bash
+
+# version:1.0.2
+
+#exec 3>&1 1>>log.txt 2>&1
+prog_name=$(basename $0)
+
+usage () {
+echo "Usage:
+NAME
+       ${prog_name} - SSD health check utility
+
+SYNOPSIS
+       ${prog_name} [-t] [-h]
+
+DESCRIPTION
+       This utility is used to stress test ssd health quality. 
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -t    Stress test
+
+       -h    Help message
+
+PASS CRITERIA
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS
+             Display: FAIL
+             Return code : 0
+
+       - Stress test (-t) :
+           SUCCESS: 
+             Display: PASS
+             Return code : 1
+
+           ERROR: test fail
+             Display: FAIL
+             Return code : 0
+
+           ERROR: invalid argument
+             Display: invalid
+             Return code : 0
+
+EXAMPLE
+       ${prog_name} -t
+       ${prog_name} -h
+" >&2
+}
+
+find_ssd ()
+{
+    find_result=${PASS}
+    device_list=`ls /dev/sd* | grep '/dev/sd[^0-9]$'`
+    i=1
+
+    while true
+    do
+        device=`echo ${device_list} | awk -v i="$i" '{print $i}'`
+
+        if [ -z "${device}" ]; then
+            echo "No ADATA SSD device"
+            find_result=${FAIL}
+            break
+        fi
+
+        model=`${smart} -i ${device} | grep 'Device Model' | awk -F: '{print $2}'`
+        model=`echo ${model}`
+
+        rotation=`${smart} -i ${device} | grep 'Rotation Rate' | awk -F: '{print $2}'`
+        rotation=`echo ${rotation}`
+
+        if [ "${model}" == "ADATA_IM2S3328E-016GM" ] && [ "${rotation}" == "Solid State Device" ]; then
+            ssd_device=${device}
+            break
+        else
+            i=$(($i+1))
+            continue
+        fi
+    done
+
+}
+
+smart_check ()
+{
+    ${smart} -A ${device}
+
+    check_result=${PASS}
+    for att_key in ${att_orders[@]};
+    do
+
+        att_id=`printf "%3d" ${att_key}`
+        raw_val=`${smart} -A ${device} | grep "^${att_id}" | awk '{print $10}'`
+        att_name=`${smart} -A ${device} | grep "^${att_id}" | awk '{print $2}'`
+
+        echo "[${att_key}-${att_name}]"
+        echo "pass criteria:${attribute[${att_key}]}"
+
+        
+        up_cri=`echo ${attribute[${att_key}]} | awk -F- '{print $2}'`
+        down_cri=`echo ${attribute[${att_key}]} | awk -F- '{print $1}'`  
+
+        if [ ${raw_val} -le ${up_cri} ] && [ ${raw_val} -ge ${down_cri} ]; then
+            echo "raw value:${raw_val} [PASS]"
+        else
+            echo "raw value:${raw_val} [FAIL]"
+            check_result=${FAIL}
+        fi
+        
+        echo
+    done
+}
+
+ecc_err_increase_rate_check ()
+{
+    if [ ${first} == "true" ]; then
+        ECC_rec_before=`${smart} -A ${device} | grep "^195" | awk '{print $10}'`
+        lba_wrriten_before=`${smart} -A ${device} | grep "^241" | awk '{print $10}'`
+        first=false
+    else
+        rate_criteria=1.4
+
+        ECC_rec_after=`${smart} -A ${device} | grep "^195" | awk '{print $10}'`
+        lba_wrriten_after=`${smart} -A ${device} | grep "^241" | awk '{print $10}'`
+
+        ecc_increase=`echo "${ECC_rec_before} ${ECC_rec_after}" | awk '{print $2-$1}'`
+        lba_increase=`echo "${lba_wrriten_before} ${lba_wrriten_after}" | awk '{print $2-$1}'`
+
+        recovered_rate=`echo "${ecc_increase} ${lba_increase}" | awk '{print $1/($2*32/1024)}'`
+        recovered_rate=`echo ${recovered_rate} | awk '{printf ("%.1f",$1)}'`
+
+        rate_result=`awk -v num1=${recovered_rate} -v num2=${rate_criteria} 'BEGIN{print(num1<num2)?"1":"0"}'`
+
+        if [ ${rate_result} -eq 0 ]; then
+            rate_result_str="[FAIL]"
+        else
+            rate_result_str="[PASS]"
+        fi
+
+        echo "[ECC Error Recovered increase rate after dd test]"
+        echo "pass criteria:${rate_criteria}"
+        echo "value: ${recovered_rate}${rate_result_str}"
+        echo
+    fi
+
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+PASS=1
+FAIL=0
+result=${PASS}
+
+# folder path.
+
+# attribute.
+declare -A attribute
+declare -a att_orders
+
+# test partition & folder.
+declare -A partition
+declare -a orders
+
+#partition["p4"]="/mnt/flash"; orders+=("p4")
+partition["p5"]="/cfg";       orders+=("p5")
+partition["p6"]="/coredump";  orders+=("p6")
+partition["p7"]="/mnt/flash2";orders+=("p7")
+
+# tool path.
+smart=`find . -name smartctl`
+dd_test=`find . -name dd_test_tool`
+config=`find . -name attribute.cfg`
+
+# setting_mode status.
+test_mode=false
+
+#===================================================================
+
+
+if [ $# -lt 1 ]; then
+    usage
+    exit 1
+fi
+
+while getopts ":th" arg
+do
+    case ${arg} in
+        t)
+            test_mode=true
+            ;;
+        h)
+            usage
+            exit 0
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+done 
+
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    exit 1
+fi
+
+if [ "${test_mode}" == "true" ]; then
+
+
+    if [ ! -f "${smart}"  ]; then
+        echo "smartctl not exist!!"
+        exit 0
+    fi
+
+    if [ ! -f "${smart}"  ]; then
+        echo "dd_test_tool not exist!!"
+        exit 0
+    fi
+
+    # search ssd node.
+    # ============================================
+    find_ssd
+
+    if [ ${find_result} == ${FAIL} ]; then
+        result=${FAIL}
+        exit 0
+    fi
+
+    # ============================================
+
+
+    # read config.
+    # ============================================
+
+    if [ -z ${config} ]; then
+        echo "attribute.cfg not exist!!!"
+        return
+    fi
+
+    exec < ${config}
+    read_result=${PASS}
+
+    while read line
+    do
+        read_line=`echo ${line} | grep "^@"`
+
+        if [ -n "${read_line}" ]; then
+            attri=`echo ${read_line} | awk -F: '{print $1}' | sed s/@//g`
+            cri=`echo ${read_line} | awk -F: '{print $2}'`
+            attribute["${attri}"]="${cri}";att_orders+=("${attri}")
+
+            up_cri=`echo ${attribute[${attri}]} | awk -F- '{print $2}' | grep '^[0-9]*$'`
+            down_cri=`echo ${attribute[${attri}]} | awk -F- '{print $1}' | grep '^[0-9]*$'`
+
+            attri_id=`printf "%3d" ${attri}`
+            att_cehck=`${smart} -A ${device} | grep "^${attri_id}"`
+
+            if [[ ! ${attri} =~ ^[[:digit:]]*$ ]] || [ -z "${att_cehck}" ]; then
+                fail_id=`echo ${read_line} | awk -F: '{print $1}' | sed s/@//g`
+                echo "Invaild attribute ID: ${fail_id}"
+                read_result=${FAIL}
+            fi
+
+            if [ -z ${up_cri} ] || [ -z ${down_cri} ] ; then
+                echo "${attri}: Invaild criteria"
+                read_result=${FAIL}
+            else
+                if [ ${up_cri} -lt ${down_cri} ]; then
+                    echo "${attri}: Invaild criteria range"
+                    read_result=${FAIL}
+                fi
+            fi
+
+            
+
+            #echo "${attri}:${attribute[${attri}]}"
+        fi
+    done
+
+    if [ ${read_result} -ne ${PASS} ]; then
+        exit 0
+    fi
+
+    # ============================================
+
+
+    # s.m.a.r.t check.
+    # ============================================
+    smart_check
+    
+    if [ ${check_result} -eq ${FAIL} ]; then
+        result=${FAIL}
+    fi
+
+    # ============================================
+
+
+
+    # ecc err check.
+    # ============================================
+    first=true
+    ecc_err_increase_rate_check
+
+    # ============================================
+
+
+
+    # dd_test 3 cycles
+    # ============================================
+   
+    # list_check=`echo ${orders[@]}`
+    # if [ -z ${kelist_checky} ]; then
+    #     echo "No partitions have to dd test!!!"
+    # fi
+    run_cycles=3
+
+    for ((k=1;k<=${run_cycles};k++))
+    do
+        echo "[run dd test cycles:${k}]"
+        for key in "${orders[@]}";
+        do
+            ${dd_test} -f ${partition[${key}]}
+            echo
+
+            if [ $? -eq 1 ]; then
+                result=${FAIL}
+            fi
+        done
+    done
+    # ============================================
+
+
+    # s.m.a.r.t check.
+    # ============================================
+    smart_check
+
+    if [ ${check_result} -eq ${FAIL} ]; then
+        result=${FAIL}
+    fi
+    # ============================================
+
+
+
+    # ecc err check.
+    # ============================================
+    ecc_err_increase_rate_check
+
+    if [ ${rate_result} -eq ${FAIL} ]; then
+        result=${FAIL}
+    fi
+    # ============================================
+fi
+
+if [ ${result} -eq ${PASS} ]; then
+    echo "Result: PASS"
+else
+    echo "Result: FAIL"
+fi
+
+exit ${result}

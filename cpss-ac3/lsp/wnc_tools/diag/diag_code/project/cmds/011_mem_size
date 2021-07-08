@@ -1,0 +1,144 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=$(basename $0)
+
+usage () {
+echo "Usage:
+NAME
+       011_mem_size - Memory size info test command
+
+SYNOPSIS
+       011_mem_size [-g] [-t size] [-h]
+
+DESCRIPTION
+       This command is used to display memory size info,and
+       verify whether memory size match with input value which
+       user expected or not. The input unit is KB.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -g    Display memory size
+
+       -t    Verify memory size with user input value(KB)
+
+       -h    Help message
+
+PASS CRITERIA
+       - Display memory size (-g) :
+           SUCCESS: could get memory size
+             Display: PASS
+             Return code : 0
+
+           ERROR: couldn't get memory size
+             Display: FAIL
+             Return code : 2
+
+       - Verify memory size with input value (-t) :
+           SUCCESS: memory size is match with user expected
+             Display: PASS
+             Return code : 0
+
+           ERROR: memory size is not match with user expected
+             Display: FAIL
+             Return code : 3
+
+           ERROR: invalid argument
+             Display: FAIL
+             Return code : 4
+
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS
+             Display: FAIL
+             Return code : 1
+EXAMPLE
+       011_mem_size -g
+       011_mem_size -t 1028656
+" >&2
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result=${PASS}
+
+# test_mode status.
+test_mode=false
+disp_mode=false
+
+# get total_mem.
+total_mem=`cat /proc/meminfo | grep MemTotal`
+total_mem=`echo ${total_mem} | awk -F" " '{print $2}'`
+#====================================================================
+
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":gt:h" arg
+do
+    case ${arg} in
+        g)
+            disp_mode=true
+            ;;
+        t)
+            input_size=${OPTARG}
+            test_mode=true
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    quit 1
+elif [ -z ${total_mem} ]; then
+    echo
+    echo "===================================="
+    print_fail "No memory info get"
+    echo "===================================="
+    quit 2
+fi
+
+if [ ${disp_mode} = true ]; then
+    echo
+    echo "Display memory size:"
+    echo "===================================="
+    echo Total Memory size: ${total_mem} KB
+    echo "===================================="
+fi
+
+if [ ${test_mode} = true ]; then
+    echo
+    echo "Verify total memory size: ${total_mem}"
+    echo "===================================="
+
+    # check if arg is integer.
+    check_arg=`echo ${input_size} | grep '^[0-9]*$'`
+    if [ -z ${check_arg} ]; then
+        print_fail "Invalid argument"
+        result=4
+    else
+        if [ ${total_mem} -eq ${input_size} ]; then
+            print_pass "Match with input"
+            result=${PASS}
+        else
+            print_fail "Not match with input"
+            result=3
+        fi
+    fi
+    echo "===================================="
+fi
+
+quit ${result}

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#set -x
+
+
+#Check start bit
+STHEX=`i2cget -y 0 0x2e 0x40`
+STVAL=`printf "%d"  $STHEX` 
+STBIT=$(( $STVAL%2 ))
+
+if [ $STBIT -ne 1 ];
+then
+STVAL=$(( $STVAL+1 ))
+STHEX=`printf "0x02x" $STVAL`
+i2cset -y 0 0x2e 0x40 $STVAL
+sleep 1
+fi
+
+echo Start ADT7476 chipset...
+
+exit 0

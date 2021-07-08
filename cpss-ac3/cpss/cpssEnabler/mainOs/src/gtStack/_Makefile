@@ -1,0 +1,44 @@
+# $(warning "Started")
+
+ifeq (uClinux, $(OS_RUN))
+  #SUBDIRS = linux
+        MODULES := linux
+endif
+ifeq (linux, $(OS_RUN))
+    ifeq (FreeBSD, $(OS_TARGET))
+        #SUBDIRS  = FreeBsd
+        MODULES  := FreeBsd
+    else
+        #SUBDIRS   = linux
+        MODULES   := linux
+    endif
+endif
+ifeq (FreeBSD, $(OS_RUN))
+	#SUBDIRS = FreeBsd
+        MODULES := FreeBsd
+endif
+ifeq (win32, $(OS_RUN))
+	#SUBDIRS = win32
+        MODULES := win32
+endif
+ifeq (VXWORKS, $(OS_RUN))
+	#SUBDIRS = vxWorks
+        MODULES := vxWorks
+endif
+
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

@@ -1,0 +1,55 @@
+// QSGMII
+do configure
+interface ethernet 0/3
+serdes manual configuration tx lane_num 0 amp 14 amp_adj_enable true emph_0 1 emph_1 9 amp_shift false
+exit
+interface ethernet 0/7
+serdes manual configuration tx lane_num 0 amp 14 amp_adj_enable true emph_0 1 emph_1 9 amp_shift false
+exit
+interface ethernet 0/11
+serdes manual configuration tx lane_num 0 amp 12 amp_adj_enable true emph_0 1 emph_1 5 amp_shift false
+exit
+interface ethernet 0/15
+serdes manual configuration tx lane_num 0 amp 12 amp_adj_enable true emph_0 1 emph_1 5 amp_shift false
+exit
+interface ethernet 0/19
+serdes manual configuration tx lane_num 0 amp 12 amp_adj_enable true emph_0 1 emph_1 5 amp_shift false
+exit
+interface ethernet 0/23
+serdes manual configuration tx lane_num 0 amp 12 amp_adj_enable true emph_0 1 emph_1 5 amp_shift false
+end
+
+// SFI interface
+do debug-mode
+phy 10G register write device 0 port 26 register 0x8301 phyDev 0x1e phyID 0xd data 0x03c7
+phy 10G register write device 0 port 26 register 0x002a phyDev  0x3 phyID 0xd data 0x03c7
+phy 10G register write device 0 port 26 register 0x0000 phyDev  0x1 phyID 0xd data 0xa040
+phy 10G register write device 0 port 24 register 0x8301 phyDev 0x1e phyID 0xc data 0x03c7
+phy 10G register write device 0 port 24 register 0x002a phyDev  0x3 phyID 0xc data 0x03c7
+phy 10G register write device 0 port 24 register 0x0000 phyDev  0x1 phyID 0xc data 0xa040
+end
+do configure
+interface ethernet 0/25
+serdes manual configuration tx lane_num 0 amp 17 amp_adj_enable true emph_0 1 emph_1 8 amp_shift false
+exit
+interface ethernet 0/27
+serdes manual configuration tx lane_num 0 amp 17 amp_adj_enable true emph_0 1 emph_1 8 amp_shift false
+end
+
+// XFI interface from AC3-BXH
+do configure
+interface ethernet 0/26
+serdes manual configuration tx lane_num 0 amp 10 amp_adj_enable true emph_0 2 emph_1 2 amp_shift false
+exit
+interface ethernet 0/24
+serdes manual configuration tx lane_num 0 amp 10 amp_adj_enable true emph_0 1 emph_1 0 amp_shift false
+end
+// XFI interface from 88X3220
+do debug-mode
+phy 10G register write device 0 port 26 register 0x8101 phyDev 0x1e phyID 0xd data 0x13c4
+phy 10G register write device 0 port 26 register 0x0029 phyDev  0x3 phyID 0xd data 0x13c4
+phy 10G register write device 0 port 26 register 0x0000 phyDev  0x1 phyID 0xd data 0xa040
+phy 10G register write device 0 port 24 register 0x8101 phyDev 0x1e phyID 0xc data 0x0bc4
+phy 10G register write device 0 port 24 register 0x0029 phyDev  0x3 phyID 0xc data 0x0bc4
+phy 10G register write device 0 port 24 register 0x0000 phyDev  0x1 phyID 0xc data 0xa040
+end

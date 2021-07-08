@@ -1,0 +1,64 @@
+// TAG:               PX devices(PIPE); ip filtering;
+// Short Description: PIPE device : ip filtering configuration.
+// Description:       PIPE device : ip filtering configuration.
+//
+
+// Configure IP2ME table
+end
+configure
+ingress ip2me-entry device ${dev} index 1 ip 192.168.0.1 prefix 24
+ingress ip2me-entry device ${dev} index 2 ip FF02::1 prefix 16
+
+// Configure packet type table configuration
+end
+configure
+packet-type-key device ${dev} ingress packet-type 0
+key-entry mask ip2me-index 7
+key-entry data ip2me-index 1
+key-entry data source-port-profile 16
+format-entry destination constant-index 0 max-index 4095
+format-entry source constant-index 0
+
+end
+configure
+packet-type-key device ${dev} ingress packet-type 1
+key-entry mask ip2me-index 7
+key-entry data ip2me-index 2
+key-entry data source-port-profile 16
+format-entry destination constant-index 1 max-index 4095
+format-entry source constant-index 16
+
+end
+configure
+packet-type-key device ${dev} ingress packet-type 2
+key-entry mask ip2me-index 7
+key-entry data ip2me-index 0
+key-entry data source-port-profile 16
+format-entry destination constant-index 2 max-index 4095
+format-entry source constant-index 32
+
+// Configure destination port map
+end
+configure
+ingress port-map-entry destination device ${dev} indexes 0 entry ${@@makeSinglePortBitmap(1)}
+ingress port-map-entry destination device ${dev} indexes 1 entry ${@@makeSinglePortBitmap(2)}
+ingress port-map-entry destination device ${dev} indexes 2 entry ${@@makeSinglePortBitmap(3)}
+
+// Configure port filtering
+end
+configure
+no egress port filtering device ${dev} packet-type 0
+no egress port filtering device ${dev} packet-type 1
+no egress port filtering device ${dev} packet-type 2
+
+
+// Enable target ports
+end
+cpss-api call cpssPxIngressPortTargetEnableSet devNum ${dev} portNum ${port[1]} enable true
+cpss-api call cpssPxIngressPortTargetEnableSet devNum ${dev} portNum ${port[2]} enable true
+cpss-api call cpssPxIngressPortTargetEnableSet devNum ${dev} portNum ${port[3]} enable true
+
+// Link up
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum ${dev} portNum ${port[1]} state true
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum ${dev} portNum ${port[2]} state true
+cpss-api call cpssPxPortForceLinkPassEnableSet devNum ${dev} portNum ${port[3]} state true

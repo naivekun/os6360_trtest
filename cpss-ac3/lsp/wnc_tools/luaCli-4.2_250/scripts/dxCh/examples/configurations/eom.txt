@@ -1,0 +1,9 @@
+// TAG:               eom matrix
+// Short Description: Display eom matrix
+// Description:       Display EOM matrix ,vbts and hvts calculation results
+end
+debug-mode
+eom matrix port ${dev}/${port[1]} serdes 0
+eom matrix port ${dev}/${port[2]} serdes 0 min-dwell 1000000 max-dwell 10000000
+eom matrix port ${dev}/${port[3]} serdes 0 noeye
+end

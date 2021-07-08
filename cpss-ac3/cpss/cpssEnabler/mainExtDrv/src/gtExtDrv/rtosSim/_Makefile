@@ -1,0 +1,43 @@
+# $(warning "Started") 
+
+#ifeq (win32, $(OS_RUN))
+#  ifeq (SX_FAMILY, $(PRESTERA_FAMILY))
+#        C_EXCLUDE_FILE_LIST = rtosSimSmiHwCtrl.c
+#  else
+#  ifeq (SX_FAMILY, $(SECOND_FAMILY))
+#        C_EXCLUDE_FILE_LIST = rtosSimSmiHwCtrl.c
+#  endif
+#  endif
+#endif
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ rtosSimCacheMng.c \
+ rtosSimDmaDrv.c \
+ rtosSimEthPortCtrl.c \
+ rtosSimGppIsr.c \
+ rtosSimHsuDrv.c \
+ rtosSimHwIfDrv.c \
+ rtosSimHwIfOp.c \
+ rtosSimI2cDrv.c \
+ rtosSimIntDrv.c \
+ rtosSimPciDrvAsicSim.c \
+ rtosSimSmiDrvCtrl.c \
+ rtosSimSmiHwCtrl.c \
+ rtosSimTwsiHwCtrl.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

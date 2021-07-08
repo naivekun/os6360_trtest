@@ -1,0 +1,321 @@
+#!/bin/bash
+
+source /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+INF="0"
+DUR="60"
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - command for ESD test
+
+SYNOPSIS
+       $prog_name [-i interface] [-d duration] [-h]
+
+DESCRIPTION
+       To do ESD test.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+
+       -i    To choose the interface of combo port.
+             Available options are \"0\" for fiber, \"1\" for copper.
+             Without this option default is fiber.
+
+       -d    Determine test duration, default value is 60 seconds.
+
+       -h    Show this help message.
+
+EXAMPLE
+       $prog_name -d 300
+       $prog_name -i 1 -d 300
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    exit 1
+fi
+
+while getopts "i:d:h" arg; do
+    case $arg in
+        i) # combo port interface
+            INF="$OPTARG"
+            ;;
+        d) # test interval
+            DUR="$OPTARG"
+            ;;
+        h | *) # display usage
+            usage
+            exit 0
+            ;;
+    esac
+done
+
+# Remove previous result
+rm -f /tmp/esd_result
+
+ems_test -s -i $INF 2>&1 > /dev/null
+if [ $? -ne 0 ]; then
+    echo -e "Set VLAN failed, please check!\n"
+    exit 1
+fi
+
+# Change some ports to group by speed
+if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+    echo "do configure" 2>&1 > /tmp/esd_cmds
+    # change 0/1 from vlan 15 to vlan 13
+    echo "interface ethernet 0/1" >> /tmp/esd_cmds
+    echo "switchport allowed vlan remove 15" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 13 untagged" >> /tmp/esd_cmds
+    echo "switchport pvid 13" >> /tmp/esd_cmds
+    echo "exit" >> /tmp/esd_cmds
+    # change 0/26 from vlan 13 to vlan 15
+    echo "interface ethernet 0/26" >> /tmp/esd_cmds
+    echo "switchport allowed vlan remove 13" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 15 untagged" >> /tmp/esd_cmds
+    echo "switchport pvid 15" >> /tmp/esd_cmds
+    echo "end" >> /tmp/esd_cmds
+
+    cpss_load_config_file "/tmp/esd_cmds" "no_show" 
+elif [ "$SKU" == "OS6360-P48X" ]; then
+    echo "do configure" 2>&1 > /tmp/esd_cmds
+    # change 0/1 from vlan 27 to vlan 24
+    echo "interface ethernet 0/1" >> /tmp/esd_cmds
+    echo "switchport allowed vlan remove 27" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 24 untagged" >> /tmp/esd_cmds
+    echo "switchport pvid 24" >> /tmp/esd_cmds
+    echo "exit" >> /tmp/esd_cmds
+    # change 0/24 from vlan 24 to vlan 25
+    echo "interface ethernet 0/24" >> /tmp/esd_cmds
+    echo "switchport allowed vlan remove 24" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 25 untagged" >> /tmp/esd_cmds
+    echo "switchport pvid 25" >> /tmp/esd_cmds
+    echo "exit" >> /tmp/esd_cmds
+    # change 1/24 from vlan 25 to vlan 27
+    echo "interface ethernet 1/24" >> /tmp/esd_cmds
+    echo "switchport allowed vlan remove 25" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 27 untagged" >> /tmp/esd_cmds
+    echo "switchport pvid 27" >> /tmp/esd_cmds
+    echo "exit" >> /tmp/esd_cmds
+    # add 0/26,1,26 into vlan 25 and vlan 27
+    echo "interface ethernet 0/26" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 25 untagged" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 27 untagged" >> /tmp/esd_cmds
+    echo "exit" >> /tmp/esd_cmds
+    echo "interface ethernet 1/26" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 25 untagged" >> /tmp/esd_cmds
+    echo "switchport allowed vlan add 27 untagged" >> /tmp/esd_cmds
+    echo "end" >> /tmp/esd_cmds
+
+    cpss_load_config_file "/tmp/esd_cmds" "no_show" 
+fi
+
+# Clear counters first
+mrvl_luash -c "do clear mac counters all" 2>&1 > /dev/null
+
+if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+    mrvl_luash -c "do load OS6360_P10_10_ESD_traffic.txt" 2>&1 > /dev/null
+elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+    mrvl_luash -c "do load OS6360_P24X_PH24_ESD_traffic.txt" 2>&1 > /dev/null
+elif [ "$SKU" == "OS6360-P48X" ]; then
+    mrvl_luash -c "do load OS6360_P48X_ESD_traffic.txt" 2>&1 > /dev/null
+fi
+echo -e "=== All packets are sent ===\n"
+
+timeout=0
+while [ $timeout -lt $DUR ]; do
+    sleep 1
+    timeout=`expr $timeout + 1`
+done
+
+if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+    # Stop traffic
+    mrvl_luash -c "do configure" 2>&1 > /dev/null
+    mrvl_luash -c "no interface vlan device 0 vid 2" 2>&1 > /dev/null
+    mrvl_luash -c "end" 2>&1 > /dev/null
+
+    # Get counters
+    mrvl_luash -c "do set output nopause" 2>&1 > /dev/null
+    mrvl_luash -c "do show interfaces mac counters all" | sed 's/\r//g' > /tmp/esd_counter
+
+    pass_cnt_1g=0
+    p1_counter=`grep -w "0/0" /tmp/esd_counter | awk -F " " '{print $2}'`
+    p4_counter=`grep -w "0/3" /tmp/esd_counter | awk -F " " '{print $2}'`
+    for counts_1 in $p1_counter; do
+        for counts_2 in $p4_counter; do
+            diff=`expr $counts_2 - $counts_1`
+            if [ $diff -le 4 ] && [ $diff -ge -4 ]; then
+                pass_cnt_1g=`expr $pass_cnt_1g + 1`
+            fi
+        done
+        if [ $counts_1 -eq 0 ]; then
+            pass_cnt_1g=99
+        fi
+    done
+elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+    # Stop traffic
+    mrvl_luash -c "do configure" 2>&1 > /dev/null
+    mrvl_luash -c "no interface vlan device 0 vid 2" 2>&1 > /dev/null
+    mrvl_luash -c "no interface vlan device all vid 15" 2>&1 > /dev/null
+    mrvl_luash -c "end" 2>&1 > /dev/null
+
+    # Get counters
+    mrvl_luash -c "do set output nopause" 2>&1 > /dev/null
+    mrvl_luash -c "do show interfaces mac counters all" | sed 's/\r//g' > /tmp/esd_counter
+
+    # 1G group
+    pass_cnt_1g=0
+    p1_counter=`grep -w "0/0" /tmp/esd_counter | awk -F " " '{print $2}'`
+    p4_counter=`grep -w "0/3" /tmp/esd_counter | awk -F " " '{print $2}'`
+    for counts_1 in $p1_counter; do
+        for counts_2 in $p4_counter; do
+            diff=`expr $counts_2 - $counts_1`
+            if [ $diff -le 4 ] && [ $diff -ge -4 ]; then
+                pass_cnt_1g=`expr $pass_cnt_1g + 1`
+            fi
+        done
+        if [ $counts_1 -eq 0 ]; then
+            pass_cnt_1g=99
+        fi
+    done
+
+    # 10G group
+    pass_cnt_10g=0
+    p25_counter=`grep -w "0/26" /tmp/esd_counter | awk -F " " '{print $2}'`
+    p28_counter=`grep -w "0/27" /tmp/esd_counter | awk -F " " '{print $2}'`
+    for counts_1 in $p25_counter; do
+        for counts_2 in $p28_counter; do
+            diff=`expr $counts_2 - $counts_1`
+            if [ $diff -le 4 ] && [ $diff -ge -4 ]; then
+                pass_cnt_10g=`expr $pass_cnt_10g + 1`
+            fi
+        done
+        if [ $counts_1 -eq 0 ]; then
+            pass_cnt_10g=99
+        fi
+    done
+elif [ "$SKU" == "OS6360-P48X" ]; then
+    # Stop traffic
+    mrvl_luash -c "do configure" 2>&1 > /dev/null
+    mrvl_luash -c "no interface vlan device 0 vid 2" 2>&1 > /dev/null
+    mrvl_luash -c "no interface vlan device all vid 25" 2>&1 > /dev/null
+    mrvl_luash -c "no interface vlan device all vid 26" 2>&1 > /dev/null
+    mrvl_luash -c "end" 2>&1 > /dev/null
+
+    # Get counters
+    mrvl_luash -c "do set output nopause" 2>&1 > /dev/null
+    mrvl_luash -c "do show interfaces mac counters all" | sed 's/\r//g' > /tmp/esd_counter
+
+    # 1G group
+    pass_cnt_1g=0
+    p1_counter=`grep -w "0/0" /tmp/esd_counter | awk -F " " '{print $2}'`
+    p4_counter=`grep -w "0/3" /tmp/esd_counter | awk -F " " '{print $2}'`
+    for counts_1 in $p1_counter; do
+        for counts_2 in $p4_counter; do
+            diff=`expr $counts_2 - $counts_1`
+            if [ $diff -le 4 ] && [ $diff -ge -4 ]; then
+                pass_cnt_1g=`expr $pass_cnt_1g + 1`
+            fi
+        done
+        if [ $counts_1 -eq 0 ]; then
+            pass_cnt_1g=99
+        fi
+    done
+
+    # 2.5G group
+    pass_cnt_2g=0
+    p47_counter=`grep -w "1/27" /tmp/esd_counter | awk -F " " '{print $2}'`
+    p48_counter=`grep -w "0/24" /tmp/esd_counter | awk -F " " '{print $2}'`
+    for counts_1 in $p47_counter; do
+        for counts_2 in $p48_counter; do
+            diff=`expr $counts_2 - $counts_1`
+            if [ $diff -le 4 ] && [ $diff -ge -4 ]; then
+                pass_cnt_2g=`expr $pass_cnt_2g + 1`
+            fi
+        done
+        if [ $counts_1 -eq 0 ]; then
+            pass_cnt_2g=99
+        fi
+    done
+
+    # 10G group
+    pass_cnt_10g=0
+    p49_counter=`grep -w "1/25" /tmp/esd_counter | awk -F " " '{print $2}'`
+    p52_counter=`grep -w "0/27" /tmp/esd_counter | awk -F " " '{print $2}'`
+    for counts_1 in $p49_counter; do
+        for counts_2 in $p52_counter; do
+            diff=`expr $counts_2 - $counts_1`
+            if [ $diff -le 4 ] && [ $diff -ge -4 ]; then
+                pass_cnt_10g=`expr $pass_cnt_10g + 1`
+            fi
+        done
+        if [ $counts_1 -eq 0 ]; then
+            pass_cnt_10g=99
+        fi
+    done
+fi
+
+# Restore
+mrvl_luash -c "do set output paused" 2>&1 > /dev/null
+ems_test -q 2>&1 > /dev/null
+
+fail_log_1g=""
+fail_log_2g=""
+fail_log_10g=""
+
+# Print result
+result="PASS"
+if [ "$SKU" == "OS6360-10" -o "$SKU" == "OS6360-P10" ]; then
+    if [ $pass_cnt_1g -ne 2 ] && [ $pass_cnt_1g -ne 4 ]; then
+        result="FAIL"
+    fi
+elif [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+    if [ $pass_cnt_1g -ne 2 ] && [ $pass_cnt_1g -ne 4 ]; then
+        result="FAIL"
+        fail_log_1g="1G group failed!"
+    fi
+    if [ $pass_cnt_10g -ne 2 ] && [ $pass_cnt_10g -ne 4 ]; then
+        result="FAIL"
+        fail_log_10g="10G group failed!"
+    fi
+elif [ "$SKU" == "OS6360-P48X" ]; then
+    if [ $pass_cnt_1g -ne 2 ] && [ $pass_cnt_1g -ne 4 ]; then
+        result="FAIL"
+        fail_log_1g="1G group failed!"
+    fi
+    if [ $pass_cnt_2g -ne 2 ] && [ $pass_cnt_2g -ne 4 ]; then
+        result="FAIL"
+        fail_log_2g="2.5G group failed!"
+    fi
+    if [ $pass_cnt_10g -ne 2 ] && [ $pass_cnt_10g -ne 4 ]; then
+        result="FAIL"
+        fail_log_10g="10G group failed!"
+    fi
+fi
+
+# To screen
+cat /tmp/esd_counter
+echo ""
+[ "$fail_log_1g" != "" ] && echo "$fail_log_1g"
+[ "$fail_log_2g" != "" ] && echo "$fail_log_2g"
+[ "$fail_log_10g" != "" ] && echo "$fail_log_10g"
+echo -e "\n=== ESD test result: $result ===\n"
+
+# To file
+cat /tmp/esd_counter > /tmp/esd_result
+echo "" >> /tmp/esd_result
+[ "$fail_log_1g" != "" ] && echo "$fail_log_1g" >> /tmp/esd_result
+[ "$fail_log_2g" != "" ] && echo "$fail_log_2g" >> /tmp/esd_result
+[ "$fail_log_10g" != "" ] && echo "$fail_log_10g" >> /tmp/esd_result
+echo -e "\n=== ESD test result: $result ===\n" >> /tmp/esd_result
+rm -f /tmp/esd_counter
+
+exit 0

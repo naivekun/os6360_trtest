@@ -1,0 +1,19 @@
+
+
+###
+###  add include path and file list
+###
+
+INCLUDE_PATH =        $(TM_API_PATH_CORE)    $(TM_API_PATH_PLATFORM)
+
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+LIB_NAME = cpssGenTm.lib
+LIB_NAME = cpssTmSchedUT.lib
+
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

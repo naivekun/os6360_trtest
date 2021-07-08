@@ -1,0 +1,52 @@
+#/bin/bash
+
+LSOCKET_TO_CPSS="/tmp/lsocket_to_cpss"
+
+# Get SKU sting
+SKU_STR="`cat /usr/local/sku`"
+
+echo "SKU_STR=$SKU_STR"
+# Link sysinfo for MAC, may be used by TfGen, TrTest or DIAG commands
+ln -sf /etc/opt/asic/${SKU_STR}/sysinfo /etc/opt/asic/sysinfo
+
+# Check MFG mode that stored in R/W partition of the storage
+if [ -e /usr/data/mfg_mode ] ; then
+  # The file will be used for traffic test diag command and TRtest module to make TRtest module running with MFG mode
+  touch /etc/opt/trtest/mfg_mode
+
+  # To prevent previous existed metadata
+  rm -rf /etc/opt/trtest/mfg_cfg/metadata
+
+  # Prepare configuration files that used for TRtest running with MFG mode
+  ln -sf /etc/opt/asic/${SKU_STR}/config_mfg.txt /etc/opt/asic/config.txt
+  ln -sf /etc/opt/trtest/mfg_cfg/${SKU_STR}/metadata /etc/opt/trtest/mfg_cfg/metadata
+  ln -sf /etc/opt/trtest/mfg_cfg/${SKU_STR}/trtest_mfg_init.cfg /etc/opt/trtest/mfg_cfg/trtest_mfg_init.cfg
+
+  # Copy to /cmdFS folder and run with "load" command
+  if [ -e /etc/opt/trtest/mfg_cfg/metadata ] && \
+     [ -e /etc/opt/trtest/mfg_cfg/trtest_mfg_init.cfg ]; then
+    rm -f /cmdFS/trtest_mfg_init.cfg
+    cp /etc/opt/trtest/mfg_cfg/trtest_mfg_init.cfg /cmdFS/trtest_mfg_init.cfg
+  else
+    echo "FAIL: Lack of configuration files for TrTest utility with MFG mode!!!"
+  fi
+  
+  # Link portinfo_mfg for MAC, may be used by TfGen, TrTest or DIAG commands
+  ln -sf /etc/opt/asic/${SKU_STR}/portinfo_mfg /etc/opt/asic/portinfo_mfg
+else
+  # To prevent traffic test running with MFG mode when system is not in MFG mode
+  [ -e /etc/opt/trtest/mfg_mode ] && rm /etc/opt/trtest/mfg_mode
+  # Normal case
+  ln -sf /etc/opt/asic/${SKU_STR}/config.txt /etc/opt/asic/config.txt
+fi
+
+# Init SDK
+if test -e /usr/bin/appDemo
+then
+  rm -rf /cmdFS/etc/opt/asic/config.txt; rm -f $LSOCKET_TO_CPSS
+  /usr/bin/appDemo -daemon -config /etc/opt/asic/config.txt > /dev/null 2>&1 
+else
+  echo /usr/bin/appDemo not found
+fi
+
+exit 0

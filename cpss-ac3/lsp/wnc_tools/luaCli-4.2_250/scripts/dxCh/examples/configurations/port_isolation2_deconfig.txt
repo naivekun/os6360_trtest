@@ -1,0 +1,26 @@
+// TAG:               port; ports; isolation; restore; default;
+// Short Description: Disable switchport isolation for dev#0 port#0
+// Description:       Disable switchport isolation for dev#0 port#0
+//                    (restore default mode)
+end
+configure
+interface range ethernet ${dev}/${port[1]}
+no switchport isolate
+switchport allowed vlan remove 20
+exit
+interface range ethernet ${dev}/${port[2]}
+no switchport isolate
+switchport allowed vlan remove 20
+exit
+interface range ethernet ${dev}/${port[3]}
+no switchport isolate
+switchport allowed vlan remove 20
+exit
+interface range ethernet ${dev}/${port[4]}
+no switchport isolate
+switchport allowed vlan remove 20
+exit
+no interface vlan device ${dev} vid 20
+end
+show interfaces switchport isolate
+end

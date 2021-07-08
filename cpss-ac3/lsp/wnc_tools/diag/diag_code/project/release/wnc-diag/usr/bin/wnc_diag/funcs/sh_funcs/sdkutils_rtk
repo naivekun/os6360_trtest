@@ -1,0 +1,619 @@
+#!/bin/bash
+
+
+RTK_PATH=''
+RTK_CMDIO_IN_QUEUE='/dev/mqueue/sh_cmdio_inq'
+RTK_CMDIO_OUT_QUEUE='/dev/mqueue/sh_cmdio_outq'
+RTK_UNIT_LIST='0'
+RTK_TIMEOUT=300
+RTK_PORT_UP_TIMEOUT=10
+
+# Format for ports should be 1,2,... or all
+
+function is_rtk_running() {
+  # mount message queue filesystem is necessary in system init
+  if [ -z "`mount | grep mqueue`" ]; then
+    echo "no" # message queue filesystem is not mounted
+    return
+  fi
+
+  if [ -z "`ls /dev/mqueue/sh_cmdio_inq 2>/dev/null`" ]; then
+    echo "no" # RTK is not ready
+  else
+    echo "yes" # RTK is ready
+  fi
+}
+
+function stop_rtk() {
+    if [ "`is_rtk_running`" == "no" ]; then
+        return
+    fi
+
+    # stop RTK
+    rtksh -c "exit"
+
+    # wait for RTK termination
+    while [ -n  "`ps aux | grep diag | grep -v grep`" ]; do
+        sleep 1
+    done
+}
+
+function start_rtk() {
+    if [ "`is_rtk_running`" == "yes" ]; then
+        return
+    fi
+
+    # start RTK
+    tmux new-session -d -s sdk "exec /opt/sdk/run"
+
+    # wait for RTK init
+    while [  "`is_rtk_running`" == "no" ]; do
+        sleep 1
+    done
+
+    # wait for cmdio to create I/O pipes
+    while [ ! -e $RTK_CMDIO_IN_QUEUE ] ||
+          [ ! -e $RTK_CMDIO_OUT_QUEUE ]; do
+        sleep 1
+    done
+}
+
+function wait_rtk() {
+    local cnt=0
+
+    # wait for RTK init
+    while [ "`is_rtk_running`" == "no"  ] || [ ! -e $RTK_CMDIO_IN_QUEUE ] || [ ! -e $RTK_CMDIO_OUT_QUEUE ]; do
+        sleep 1
+        cnt=$(($cnt + 1))
+        if [ $cnt -gt $RTK_TIMEOUT ]; then
+            echo "Error: RTK init failed!"
+            exit 1
+        fi
+    done
+}
+
+function rtk_pw_setup() {
+    local unit="$1"
+    wait_rtk
+
+    rtksh -c "nic set rx trace start raw-data cpu-tag"
+}
+
+function rtk_pw_start() {
+    local unit="$1"
+    wait_rtk
+
+    rtksh -c "nic set rx state enable"
+}
+
+function rtk_pw_stop() {
+    local unit="$1"
+    wait_rtk
+
+    rtksh -c "nic set rx state disable"
+}
+
+function rtk_cw_start() {
+    local unit="$1"
+    local ports="$2"
+    wait_rtk
+
+    rtksh -a "wnc_counter_watcher_start $unit" > /dev/null
+}
+
+# Output the counter data for specified port
+function rtk_cw_stop() {
+    local unit="$1"
+    local ports="$2"
+    local cnt_data=""
+    wait_rtk
+
+    cnt_data=`rtksh -a "wnc_counter_watcher_stop $unit" | grep -v "^#*#"`
+    echo "$cnt_data"
+}
+
+function rtk_cw_hr_start() {
+    local unit="$1"
+    local ports="$2"
+    wait_rtk
+
+    rtksh -a "wnc_counter_hr_start $unit" > /dev/null
+}
+
+function rtk_cw_hr_stop() {
+    local unit="$1"
+    local ports="$2"
+    wait_rtk
+
+    rtksh -a "wnc_counter_hr_stop $unit" > /dev/null
+}
+
+# Output the counter data for specified port
+function rtk_cw_hr_show() {
+    local unit="$1"
+    local ports="$2"
+    local data=""
+    wait_rtk
+
+    data=`rtksh -a "wnc_counter_hr_show $unit" | grep -v "^#*#"`
+    [ -z "$data" ] && echo "" || echo "$data"
+}
+
+# Output the counter data for specified port
+function rtk_cw_hr_rx_ok_get() {
+    local unit="$1"
+    local port="$2"
+    local count=0
+    wait_rtk
+
+    count=`rtksh -a "wnc_counter_hr_rx_ok $unit $port" | grep -v "^#*#" | grep -v "^$"`
+    [ -z "$count" ] && echo "0" || echo "$count"
+}
+
+# Output the counter data for specified port
+function rtk_cw_hr_rx_ng_get() {
+    local unit="$1"
+    local port="$2"
+    local count=0
+    wait_rtk
+
+    count=`rtksh -a "wnc_counter_hr_rx_ng $unit $port" | grep -v '^#*#' | grep -v '^$'`
+    [ -z "$count" ] && echo "0" || echo "$count"
+}
+
+# Output the counter data for specified port
+function rtk_cw_hr_rx_pps_get() {
+    local unit="$1"
+    local port="$2"
+    local count=0
+    wait_rtk
+
+    count=`rtksh -a "wnc_counter_hr_rx_pps $unit $port" | grep -v '^#*#' | grep -v '^$'`
+    [ -z "$count" ] && echo "0" || echo "$count"
+}
+
+# Output the counter data for specified port
+function rtk_cw_hr_tx_ok_get() {
+    local unit="$1"
+    local port="$2"
+    local count=0
+    wait_rtk
+
+    count=`rtksh -a "wnc_counter_hr_tx_ok $unit $port" | grep -v '^#*#' | grep -v '^$'`
+    [ -z "$count" ] && echo "0" || echo "$count"
+}
+
+# Output the counter data for specified port
+function rtk_cw_hr_tx_ng_get() {
+    local unit="$1"
+    local port="$2"
+    local count=0
+    wait_rtk
+
+    count=`rtksh -a "wnc_counter_hr_tx_ng $unit $port" | grep -v '^#*#' | grep -v '^$'`
+    [ -z "$count" ] && echo "0" || echo "$count"
+}
+
+# Output the counter data for specified port
+function rtk_cw_hr_tx_pps_get() {
+    local unit="$1"
+    local port="$2"
+    local count=0
+    wait_rtk
+
+    count=`rtksh -a "wnc_counter_hr_tx_pps $unit $port" | grep -v '^#*#' | grep -v '^$'`
+    [ -z "$count" ] && echo "0" || echo "$count"
+}
+
+# Traffic test related functions
+function rtk_trtest_start() {
+    wait_rtk
+    rtksh -a "wnc_traffic_tester_start" > /dev/null
+}
+
+function rtk_trtest_stop() {
+    wait_rtk
+    rtksh -a "wnc_traffic_tester_stop" > /dev/null
+}
+
+function rtk_trtest_state() {
+    wait_rtk
+    rtksh -a "wnc_traffic_tester_state" | grep -v '^#*#'
+}
+
+function rtk_clear_vlan() {
+    local unit="$1"
+    wait_rtk
+    # set VLAN to default
+    rtksh -c "vlan destroy all restore-default-vlan"
+    rtksh -c "vlan set pvid inner port all 1"
+}
+
+function rtk_create_vlan() {
+    local unit="$1"
+    local vlan="$2"
+
+    wait_rtk
+    rtksh -c "vlan create vlan-table vid $vlan"
+}
+
+function rtk_add_vlan_port() {
+    local unit="$1"
+    local vlan="$2"
+    local ports="$3"
+    local portlist=`echo $ports | sed "s/,/ /g"`
+
+    wait_rtk
+    for port in $portlist; do
+        rtksh -c "vlan add vlan-table vid $vlan member port $port untag"
+    done
+    rtksh -c "vlan set pvid inner port $ports $vlan"
+}
+
+function rtk_add_vlan_tag_port() {
+    local unit="$1"
+    local vlan="$2"
+    local ports=`echo $3 | sed "s/,/ /g"`
+
+    wait_rtk
+    for port in $ports; do
+        rtksh -c "vlan add vlan-table vid $vlan member port $port tag"
+    done
+}
+
+function rtk_del_vlan_port() {
+    local unit="$1"
+    local vlan="$2"
+    local ports=`echo $3 | sed "s/,/ /g"`
+
+    wait_rtk
+    for port in $ports; do
+        rtksh -c "vlan del vlan-table vid $vlan member port $port"
+    done
+}
+
+function rtk_set_pvid() {
+    local unit="$1"
+    local vlan="$2"
+    local ports="$3"
+
+    wait_rtk
+    rtksh -c "vlan set pvid inner port $ports $vlan"
+}
+
+# Output CPU TX Ucast counter
+function rtk_show_cpu_tx_ust_counter() {
+    local unit="$1"
+    local port="$2"
+
+    wait_rtk
+    rtksh -c "mib get counter port $port ifOutUcastPkts"
+}
+
+# Output Port's TX discard counter
+function rtk_show_port_tx_discard_counter() {
+    local unit="$1"
+    local port="$2"
+    local count=0
+
+    wait_rtk
+    count=`rtksh -c "mib get counter port $port ifOutDiscards" | cut -d ':' -f2`
+    [ -z "$count" ] && echo "0" || echo "$count"
+}
+
+# Output all counters
+function rtk_show_counter() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "mib dump counter port $ports"
+}
+
+function rtk_clear_counter() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "mib reset counter port $ports"
+}
+
+function rtk_enable_ports() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port set port $ports state enable"
+}
+
+function rtk_disable_ports() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port set port $ports state disable"
+}
+
+function rtk_enable_port_all() {
+    local unit="$1"
+
+    wait_rtk
+    rtksh -c "port set port all state enable"
+}
+
+function rtk_disable_port_all() {
+    local unit="$1"
+
+    wait_rtk
+    rtksh -c "port set port all state disable"
+}
+
+function rtk_enable_sys_oam() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "register modify OAM_CTRL EN=1"
+}
+
+function rtk_disable_sys_oam() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "register modify OAM_CTRL EN=0"
+}
+
+# Mode(OAM action) = 1(default), = 2(loop), =3(Trap to CPU)
+function rtk_trap_oam_port() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "register modify OAM_PORT_ACT_CTRL.$ports PAR_ACT=0x3"
+}
+
+# Mode(OAM action) = 1(default), = 2(loop), =3(Trap to CPU)
+function rtk_set_oam_port() {
+    local unit="$1"
+    local ports="$2"
+	local mode="$3"
+
+    wait_rtk
+    rtksh -c "register modify OAM_PORT_ACT_CTRL.$ports PAR_ACT=$mode"
+}
+
+function rtk_set_oam_port_all() {
+    local unit="$1"
+    local mode="$2"
+
+    wait_rtk
+    rtksh -c "register modify OAM_PORT_ACT_CTRL PAR_ACT=$mode"
+}
+
+function rtk_set_polarity_port() {
+    local unit="$1"
+    local pport="$2"
+    local tx_pol="$3"
+    local rx_pol="$4"
+
+    wait_rtk
+    rtksh -c "port set phy-polarity port $pport tx $tx_pol"
+    rtksh -c "port set phy-polarity port $pport rx $rx_pol"
+}
+
+function rtk_enable_phy_loop_port() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port set port $ports phy loopback enable"
+}
+
+function rtk_disable_phy_loop_port() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port set port $ports phy loopback disable"
+}
+
+function rtk_enable_rj45_loop_port() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port set port $ports phy mdi-loopback enable"
+}
+
+function rtk_disable_rj45_loop_port() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port set port $ports phy mdi-loopback disable"
+}
+
+function rtk_enable_pause_port_all() {
+    local unit="$1"
+
+    wait_rtk
+    rtksh -c "port set phy-force port all flow-control state enable"
+    rtksh -c "port set phy-force port all flow-control tx-pause enable rx-pause enable"
+}
+
+function rtk_disable_pause_port_all() {
+    local unit="$1"
+
+    wait_rtk
+    rtksh -c "port set phy-force port all flow-control state disable"
+    rtksh -c "port set phy-force port all flow-control tx-pause disable rx-pause disable"
+}
+
+function rtk_enable_pause_port() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port set phy-force port $ports flow-control state enable"
+    rtksh -c "port set phy-force port $ports flow-control tx-pause enable rx-pause enable"
+}
+
+function rtk_disable_pause_port() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port set phy-force port $ports flow-control state disable"
+    rtksh -c "port set phy-force port $ports flow-control tx-pause disable rx-pause disable"
+}
+
+function rtk_valid_acl_entry() {
+    local unit="$1"
+    local index="$2"
+
+    wait_rtk
+    rtksh -c "acl set entry phase 0 entry $index state valid"
+}
+
+function rtk_invalid_acl_entry() {
+    local unit="$1"
+    local index="$2"
+
+    wait_rtk
+    rtksh -c "acl set entry phase 0 entry $index state invalid"
+}
+
+function rtk_get_port_link_status() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port get port $ports link-media"
+}
+
+function rtk_get_port_link_speed() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port dump port $ports" | grep "Link"
+}
+
+function rtk_get_port_state() {
+    local unit="$1"
+    local ports="$2"
+
+    wait_rtk
+    rtksh -c "port get port $ports stat"
+}
+
+function rtk_get_port_polarity() {
+    local unit="$1"
+    local pport="$2"
+
+    wait_rtk
+    rtksh -c "port get phy-polarity port $pport"
+}
+
+function rtk_get_cpu_portidx() {
+    local unit="$1"
+    local cpu_port=""
+
+    wait_rtk
+    cpu_port=`rtksh -c "port dump cpu-port" | cut -d " " -f3`
+
+    echo $cpu_port
+}
+
+function rtk_get_first_xe_portidx() {
+    local unit="$1"
+    local xe_port=0
+    local xe_info=""
+
+    wait_rtk
+    xe_info=`rtksh -c "port get 10g-media port all"`
+    if [ "`echo $xe_info | grep -c Error`" -eq 0 ]; then
+        xe_port=`echo $xe_info | cut -d " " -f2 | tr -d ":"`
+    fi
+    
+    echo $xe_port
+}
+
+function rtk_get_switch_info() {
+    wait_rtk
+    rtksh -c "switch get probe-information"
+}
+
+function rtk_tx_packet() {
+    local unit="$1"
+    local vlan="$2"
+    local ports="$3"
+    local tx_cnt="$4"
+    local file="$5"
+
+    wait_rtk
+    rtksh -c "nic set tag auto port $ports"
+    if [ ! -z $file ]; then
+        # packet lengh is the mandatory for the command "nic set tx-data" but "64" is the dummy parameter when send packet with the given file.
+        rtksh -c "nic set tx-data $file 64" 
+    else
+        rtksh -c "nic set tx-data 0x0000000000110000000000220800 64"
+    fi
+    rtksh -c "nic send packet num $tx_cnt"
+}
+
+function rtk_cmdio_get_ready() {
+    local cnt=0
+    local rtk_done="yes"
+
+    # wait for RTK init
+    while [ "`is_rtk_running`" == "no"  ]; do
+        sleep 1
+        cnt=$(($cnt + 1))
+        if [ $cnt -gt $RTK_TIMEOUT ]; then
+            echo "Error: RTK init failed!"
+            rtk_done="no"
+            break
+        fi
+    done
+
+    # wait for cmdio to create I/O pipes
+    if [ "$rtk_done" == "yes" ]; then
+        cnt=0
+        while [ ! -e $RTK_CMDIO_IN_QUEUE ] ||
+              [ ! -e $RTK_CMDIO_OUT_QUEUE ]; do
+            sleep 1
+            cnt=$(($cnt + 1))
+            if [ $cnt -gt $RTK_TIMEOUT ]; then
+                echo "Error: CMDIO pipes create failed!"
+                break
+            fi
+        done
+    fi
+}
+
+function rtk_port_up_get_ready() {
+    local cnt=0
+    local unit="$1"
+    local ports="$2"
+    local stat=1
+
+    wait_rtk
+    if [ ! -z $ports ]; then
+        # wait for RTK port link up
+        while [ "$stat" -ne 0 ]; do
+            if [ $cnt -gt $RTK_PORT_UP_TIMEOUT ]; then
+                echo "Error: RTK port($ports) link-down!"
+                rtksh -c "port get port $ports link-media"
+                break
+            fi
+            stat="`rtksh -c \"port get port $ports link-media\" | grep -c down`"
+            usleep 100000
+            cnt=$(($cnt + 1))
+        done
+
+        # give RTK a buffer to prepare for the next process
+        usleep 100000
+    fi
+}

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+#Record chip info
+dmesg | grep spi | cut -d : -f 2 > /usr/local/spi_info
+dmesg | grep nand.*Manufacturer | awk -F", " '{print $2}' > /usr/local/nand_info
+dmesg | grep nand.*Manufacturer | awk -F", " '{print $3}' >> /usr/local/nand_info
+dmesg | grep "nand.*MiB" | cut -d ":" -f 2 | \
+cut -d " " -f 2 >> /usr/local/nand_info

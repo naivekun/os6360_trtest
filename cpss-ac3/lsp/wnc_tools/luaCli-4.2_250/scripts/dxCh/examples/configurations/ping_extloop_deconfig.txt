@@ -1,0 +1,13 @@
+// TAG:               ping; cable; loop;
+// Short Description: Restore default configuration
+// Description:       Restore default configuration
+end
+configure
+    interface range ethernet ${dev}/${port[1]},${port[2]}
+        switchport allowed vlan add 1 untagged
+    exit
+    interface ethernet ${dev}/${port[2]}
+        no loopback
+    exi
+end
+

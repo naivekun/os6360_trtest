@@ -1,0 +1,8 @@
+// TAG:               PX devices(PIPE); CoS attributes;
+// Short Description: PIPE device: CoS test reset counters script.
+// Description:       PIPE device: CoS test reset counters script.
+//
+do configure
+no counters egress-queue device ${dev}
+counters egress-queue device ${dev} mode tail-drop
+end

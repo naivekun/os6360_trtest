@@ -1,0 +1,20 @@
+ERROR GT_BAD_PARAM in function: internal_cpssDxChNstPortIsolationEnableGet, file cpssdxchnstportisolation.c, line[272]. devNum = 11
+API history log entry 2.
+Enter: cpssDxChIpExceptionCommandGet
+Exit: cpssDxChIpExceptionCommandGet
+API history log entry 1.
+Enter: cpssDxChPortDefaultUPGet
+@s_s1@%s
+@s_s2@%s
+Exit: cpssDxChPortDefaultUPGet
+API history log entry 0.
+Enter: cpssDxChBrgGenIgmpSnoopEnableGet
+@s_s1@%s
+@s_s2@%s
+Exit: cpssDxChBrgGenIgmpSnoopEnableGet
+Enter: cpssDxChNstPortIsolationEnableGet
+ERROR GT_BAD_PARAM in function: internal_cpssDxChNstPortIsolationEnableGet, file cpssdxchnstportisolation.c, line[272]. devNum = 11
+ERROR GT_BAD_PARAM in function: internal_cpssDxChNstPortIsolationEnableGet, file cpssdxchnstportisolation.c, line[272]. devNum = 11
+API history log entry 0.
+Enter: cpssDxChNstPortIsolationEnableGet
+ERROR GT_BAD_PARAM in function: internal_cpssDxChNstPortIsolationEnableGet, file cpssdxchnstportisolation.c, line[272]. devNum = 11

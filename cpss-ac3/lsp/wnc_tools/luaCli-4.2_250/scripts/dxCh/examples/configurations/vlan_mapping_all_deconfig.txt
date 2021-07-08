@@ -1,0 +1,19 @@
+// TAG:               vlan mapping; vlan translation; service-id; flush FDB;
+// Short Description: deconfigure settings relevant to vlan mapping
+// Description:       - clear (flush) FDB
+//                    - disable "all" vlan mapping on ports 0,18
+//                    - set service-id value for vlan 6 to 0
+
+
+end
+clear bridge type ${dev} all
+configure
+
+no interface range vlan device ${dev} vid 5,6
+
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]}
+no switchport vlan mapping enable all
+
+exit
+vlan service-id device ${dev} vid 6 sid 0

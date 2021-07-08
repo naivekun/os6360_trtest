@@ -1,0 +1,22 @@
+// TAG: fdb; fid; vid1; vlan; lookup key mode; learning;
+// Short Description: Configure device for checking an auto-learning when
+//                    a double tag FDB lookup key mode is enabled
+// Description: Set fdb hash mode to scr-multi.
+//              Enable vid1 assignment mode.
+//              Create vlan 5
+//              Enable auto-learning in vlan 5.
+//              Enable double tag lookup key mode in vlan 5
+//              Add 0,18,36,48 to vlan 5
+//              Activate auto-learning mode on all used ports.
+end
+configure
+bridge fdb-hash-mode crc-multi device ${dev}
+bridge fdb-vid1-assignmemt-mode true
+interface vlan device ${dev} vid 5
+fdb-key-lookup-mode fid-vid1
+vlan-mac learning
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan add 5 do_not_modify
+port-mac learning automatic
+exit

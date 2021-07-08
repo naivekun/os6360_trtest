@@ -1,0 +1,38 @@
+// TAG:               traffic_generator_emulated
+// Short Description: stop generate wirespeed traffic to and from CPU
+// Description:       stop generate wirespeed traffic on port1 by command of 'traffic-generator emulation', 
+//                    and ingress burst traffic on port2 with capture
+end
+//
+traffic
+//
+capture show timeout 1
+//
+// stop generate continuous wirespeed from port 18
+//
+no traffic-generator emulate port ${dev}/${port[2]}
+//
+// stop generate single packet from port ${dev}/${port[4]}
+//
+no traffic-generator emulate port ${dev}/${port[4]}
+//
+// stop capture
+//
+capture stop
+//
+exit
+//
+// show there are no ports generating wirespeed
+//
+show traffic traffic-generator emulate all
+//
+// show rates on the ports 
+//
+//show np traffic on ports
+show traffic rates ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+//
+exit
+//
+//disable printings of indication of AUQ/FUQ messages
+shell-execute appDemoTraceAuqFlagSet 0
+

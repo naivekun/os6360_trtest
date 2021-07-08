@@ -1,0 +1,34 @@
+# $(warning "Started") 
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ mv_pmc8245CacheMng.c \
+ mv_pmc8245DmaDrv.c \
+ mv_pmc8245EthPortCtrlStub.c \
+ mv_pmc8245GppIsr.c \
+ mv_pmc8245HsuDrv.c \
+ mv_pmc8245HwIfDrv.c \
+ mv_pmc8245I2cDrv.c \
+ mv_pmc8245IntDrv.c \
+ mv_pmc8245PciDrv.c \
+ mv_pmc8245ResetDrv.c \
+ mv_pmc8245SmiStub.c \
+ mv_pmc8245TwsiHwCtrl.c \
+ mv_pmc8245UartDrv.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

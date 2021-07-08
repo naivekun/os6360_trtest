@@ -1,0 +1,16 @@
+Begin3
+Title: OS6360 GA code
+Version: 8.7.252.R02
+Locale: en
+Entered-Date: Monday, March 22, 2021 04:01:51 PM PDT
+Description: AOS 8.7.252.R02
+Keywords: AOS 8.7.252.R02
+Author: Alcatel Internetworking Division
+Maintained-by: Customer Service
+Primary-site: file:Nosa.img, 99515176
+Primary-site: file:u-boot.8.7.R02.252.tar.gz, 2008690
+Platforms: OmniSwitch-6360, 8.7
+Copying-policy:
+
+
+End

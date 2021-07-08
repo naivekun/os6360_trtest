@@ -1,0 +1,49 @@
+// TAG: fdb; fid; vid1; vlan; IP MC; multicast
+// Short Description: Deconfigure FDB static IPv4/6 MC static entries
+//                    for double tag FDB lookup test.
+// Description: Deconfigure FDB static IPv4/6 MC entries different only in vid1 field.
+// A BRIEF DESCRIPTION OF CONFIGURATION THAT SHOULD BE CLEAN:
+// Configure VLAN 6 multicast IPv4/6 mode to be an ip-group:
+// - vlan 6: ip-group
+// - vlan 7: ip-src-group
+// IPv4 224.1.1.1 vid 6 vid1 10 ===>> 0/18,36
+// IPv4 224.1.1.1 vid 6 vid1 11 ===>> 0/18,54
+//
+// IPv6 fff1::1   vid 6 vid1 10 ===>> 0/18,36
+// IPv6 fff1::1   vid 6 vid1 11 ===>> 0/18,54
+//
+// Configure VLAN 7 multicast IPv4/6 mode to be an ip-src-group:
+// IPv4 Group/Source 224.2.2.2/9.8.7.6  vid 7 vid1 10 ===>> 0/18,36
+// IPv4 Group/Source 224.2.2.2/9.8.7.6  vid 7 vid1 11 ===>> 0/18,54
+//
+// IPv6 Group/Source FFF1::2/::2        vid 7 vid1 10 ===>> 0/18,36
+// IPv6 Group/Source FFF1::2/::2        vid 7 vid1 11 ===>> 0/18,54
+end
+configure
+interface vlan device ${dev} vid 7
+no bridge multicast ipv4 mode
+no bridge multicast ipv4 source-group address source 9.8.7.6 group 224.2.2.2 vid1 10
+no bridge multicast ipv4 source-group address source 9.8.7.6 group 224.2.2.2 vid1 11
+no bridge multicast ipv6 mode
+no bridge multicast ipv6 source-group address source ::2 group FFF1::2 vid1 10
+no bridge multicast ipv6 source-group address source ::2 group FFF1::2 vid1 11
+exit
+interface vlan device ${dev} vid 6
+no bridge multicast ipv4 mode
+no bridge multicast ipv4 address group 224.1.1.1 vid1 10
+no bridge multicast ipv4 address group 224.1.1.1 vid1 11
+no bridge multicast ipv6 mode
+no bridge multicast ipv6 address group fff1::1 vid1 10
+no bridge multicast ipv6 address group fff1::1 vid1 11
+no bridge multicast mac address group 01:23:45:0f:0e:0d vid1 10
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan remove 6,7
+exit
+interface range vlan device ${dev} vid 6,7
+fdb-key-lookup-mode fid
+exit
+no interface range vlan device ${dev} vid 6,7
+
+bridge fdb-hash-mode ${@@getDefaultFdbHashMode()} device ${dev}
+bridge fdb-vid1-assignmemt-mode false

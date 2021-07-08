@@ -1,0 +1,14 @@
+ERROR GT_BAD_PARAM in function: internal_cpssPxCncCounterWraparoundEnableGet, file cpssPxCnc.c, line[1973]. devNum[11] not exists
+API history log entry 2.
+Enter: cpssPxNetIfSdmaRxCountersGet
+Exit: cpssPxNetIfSdmaRxCountersGet
+API history log entry 1.
+Enter: cpssPxEgressBypassModeGet
+Exit: cpssPxEgressBypassModeGet
+API history log entry 0.
+Enter: cpssPxCncCounterWraparoundEnableGet
+ERROR GT_BAD_PARAM in function: internal_cpssPxCncCounterWraparoundEnableGet, file cpssPxCnc.c, line[1973]. devNum[11] not exists
+ERROR GT_BAD_PARAM in function: internal_cpssPxCncCounterWraparoundEnableGet, file cpssPxCnc.c, line[1973]. devNum[11] not exists
+API history log entry 0.
+Enter: cpssPxCncCounterWraparoundEnableGet
+ERROR GT_BAD_PARAM in function: internal_cpssPxCncCounterWraparoundEnableGet, file cpssPxCnc.c, line[1973]. devNum[11] not exists

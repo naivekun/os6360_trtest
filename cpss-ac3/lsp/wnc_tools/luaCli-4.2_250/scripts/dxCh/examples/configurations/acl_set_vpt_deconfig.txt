@@ -1,0 +1,22 @@
+// TAG:               acl; pcl-ID; set-vpt; access-list
+// Short Description: clear acl set vpt
+// Description:       delete rule-id 18, delete the binding of port 3 to pcl-ID 11
+//		      and delete pcl-ID 11 in access-list
+end
+configure
+
+access-list device ${dev} pcl-ID 11
+delete rule-id 18
+exit
+
+interface ethernet ${dev}/${port[3]}
+no service-acl pcl-ID 11
+exit
+
+delete access-list device ${dev} pcl-id 11
+end
+
+clear mac address-table all device ${dev} vlan 8
+configure
+no interface vlan device ${dev} vid 8
+exit

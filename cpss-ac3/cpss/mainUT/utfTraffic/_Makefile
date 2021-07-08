@@ -1,0 +1,32 @@
+# $(warning "Started") 
+
+ifneq (YES, $(INCLUDE_ENHANCED_UTF))
+        #SUBDIRS = NONE
+        MODULES :=
+else
+        #List of subfolders to include in build
+        MODULES := \
+         src 
+endif
+
+ifneq (EXISTS, $(CHX_FAMILY))
+  ifeq (EXISTS, $(PX_FAMILY))
+    #MODULES := NONE
+    MODULES :=
+  endif
+endif 
+
+#List of files to include in list
+FILES := 
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINUT_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

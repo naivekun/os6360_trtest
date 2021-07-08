@@ -1,0 +1,13 @@
+// TAG:               cpss-log
+// Short Description: configure cpss-log
+// Description:       - enable cpss log (globally)
+//                    - enable cpss log for specific lib all for all kinds of log
+//					  - set cpss log fomat to all params
+//					  - set stack size to be zero
+end
+debug-mode
+trace cpss-log lib all log-type entry-level-function
+trace cpss-log format all-params
+trace cpss-log stack size 0
+exit
+end

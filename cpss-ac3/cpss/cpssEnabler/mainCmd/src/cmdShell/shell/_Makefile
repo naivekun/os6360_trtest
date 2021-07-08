@@ -1,0 +1,69 @@
+# $(warning "Started")
+#SUBDIRS = NONE
+#List of subfolders to include in build
+MODULES := 
+
+ifeq (win32, $(OS_RUN))
+	#C_EXCLUDE_FILE_LIST = userInitCmdDb.c
+	#List of files to include in list
+	#cmdMultiTapi.c 
+	FILES := \
+		 cmdConsole.c \
+		 cmdEngine.c \
+		 cmdMain.c \
+		 cmdParser.c \
+		 initDbUserExit.c
+else
+
+        #C_EXCLUDE_FILE_LIST = initDbUserExit.c
+        #cmdMultiTapi.c 
+        FILES := \
+        	 cmdConsole.c \
+        	 cmdEngine.c \
+        	 cmdMain.c \
+        	 cmdParser.c \
+        	 userInitCmdDb.c 
+
+endif
+
+# ???
+#ifneq (,$(wildcard $(USER_BASE)/cpssEnabler))
+#	#C_EXCLUDE_FILE_LIST += cmdMultiTapi.c
+#	# initDbUserExit.c 
+#	FILES := \
+#		 cmdConsole.c \
+#		 cmdEngine.c \
+#		 cmdMain.c \
+#		 cmdParser.c \
+#		 userInitCmdDb.c 
+#endif
+
+
+#$(warning "OS_RUN=$(OS_RUN)")
+#$(warning "FILES=$(FILES)")
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+	LIB_NAME = mainCmd.lib
+endif
+
+ifeq (yes,$(CMD_FS))
+    cpssEnabler_AD_CFLAGS += $(FD)CMD_FS
+endif
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := mainCmd.lib
+    cpssEnabler_mainCmd_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

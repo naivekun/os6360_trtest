@@ -1,0 +1,8 @@
+#!/bin/bash
+
+rm -f /usr/data/wnc_fixed_mac
+sync
+echo "Removed fixed mac."
+
+exit 0
+

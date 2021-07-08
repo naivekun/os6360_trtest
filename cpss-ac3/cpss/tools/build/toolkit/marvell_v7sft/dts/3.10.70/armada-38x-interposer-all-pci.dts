@@ -1,0 +1,33 @@
+/*
+ * Device Tree file for Marvell INTERPOSER card
+ * with all PCIE ports enabled
+ * Applicable for:
+ *    * PIPE x4 RD Board
+ *
+ *  Copyright (C) 2017 Marvell
+ *
+ * This file is licensed under the terms of the GNU General Public
+ * License version 2.  This program is licensed "as is" without any
+ * warranty of any kind, whether express or implied.
+ */
+
+#include "armada-38x-interposer.dts"
+
+/ {
+	model = "Marvell Armada 38x interposer card";
+
+	soc {
+		pcie-controller {
+			pcie@2,0 {
+				status = "okay";
+			};
+			pcie@3,0 {
+				status = "okay";
+			};
+			pcie@4,0 {
+				status = "okay";
+			};
+		};
+	};
+
+};

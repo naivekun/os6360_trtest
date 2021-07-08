@@ -1,0 +1,23 @@
+// TAG:               switchport; tpid; restore; default;
+// Short Description: Disable switchports
+// Description:       Disable (restore default) tpid configuration
+
+end
+configure
+tpid device ${dev} direction ingress index 0 etherType 0x8100
+tpid device ${dev} direction ingress index 1 etherType 0x8100
+tpid device ${dev} direction egress  index 0 etherType 0x8100
+tpid device ${dev} direction egress  index 1 etherType 0x8100
+
+tpid ingress profile 0 device ${dev} ether_type_index 0 tpid-range 0,1,2,3,4,5,6,7
+tpid ingress profile 0 device ${dev} ether_type_index 1 tpid-range 0,1,2,3,4,5,6,7
+
+interface range ethernet ${dev}/${port[1]},${port[2]}
+no switchport pvid
+
+tpid ingress profile 0 ether_type_index 0 is_default false
+tpid ingress profile 0 ether_type_index 1 is_default false
+exit
+
+no interface vlan device ${dev} vid 20
+end

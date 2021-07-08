@@ -1,0 +1,11 @@
+// TAG:               cpss-log; history
+// Short Description: deconfigure settings of cpss-log-history
+// Description:       - disable cpss log for all libs for error type of log
+
+
+end
+debug-mode
+no trace cpss-log lib all log-type error
+trace cpss-log stack size 0
+no trace cpss-log
+end

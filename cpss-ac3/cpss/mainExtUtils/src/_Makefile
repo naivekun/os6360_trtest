@@ -1,0 +1,42 @@
+# $(warning "Started")
+#SUBDIRS  = extUtils
+
+#ifeq (EXIST, $(EXMX_FAMILY))
+#    SUBDIRS  += dfcdl
+#endif
+#ifeq (EXCLUDE_LIB, $(EXCLUDE_EXT_UTILS))
+#  ifneq (YES, $(INCLUDE_UTF))
+#    SUBDIRS  = NONE
+#  endif
+#endif
+
+
+#SUBDIRS  = extUtils
+MODULES := extUtils 
+
+ifeq (EXIST, $(EXMX_FAMILY))
+	#SUBDIRS  += dfcdl
+	MODULES += dfcdl
+endif
+ifeq (EXCLUDE_LIB, $(EXCLUDE_EXT_UTILS))
+	ifneq (YES, $(INCLUDE_UTF))
+		#SUBDIRS  = NONE
+		MODULES :=
+	endif
+endif
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINEXTUTILS_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

@@ -1,0 +1,68 @@
+--- busybox-1.01/shell/cmdedit_old.c	2008-04-03 19:19:32.000000000 +0300
++++ busybox-1.01/shell/cmdedit.c	2008-04-03 19:22:23.000000000 +0300
+@@ -1427,8 +1427,8 @@
+ 				input_backward(1);
+ 				break;
+ 			case '3':
+-				/* Delete */
+-				input_delete();
++				/* Backspace */
++				input_backspace();
+ 				break;
+ 			case '1':
+ 			case 'H':
+
+--- busybox-1.01/networking/ping6_old.c	2012-01-31 20:22:21.000000000 +0200
++++ busybox-1.01/networking/ping6.c	2012-01-31 20:19:28.000000000 +0200
+@@ -243,9 +243,9 @@
+ 	case ICMP6_PARAM_PROB:				return "Parameter Problem";
+ 	case ICMP6_ECHO_REPLY:				return "Echo Reply";
+ 	case ICMP6_ECHO_REQUEST:			return "Echo Request";
+-	case ICMP6_MEMBERSHIP_QUERY:		return "Membership Query";
+-	case ICMP6_MEMBERSHIP_REPORT:		return "Membership Report";
+-	case ICMP6_MEMBERSHIP_REDUCTION:	return "Membership Reduction";
++// case ICMP6_MEMBERSHIP_QUERY:		return "Membership Query";
++// case ICMP6_MEMBERSHIP_REPORT:		return "Membership Report";
++// case ICMP6_MEMBERSHIP_REDUCTION:	return "Membership Reduction";
+ 	default: 							return "unknown ICMP type";
+ 	}
+ }
+
+--- busybox-1.01/procps/top_old.c	2012-01-31 20:24:46.000000000 +0200
++++ busybox-1.01/procps/top.c	2012-01-31 20:17:40.000000000 +0200
+@@ -34,7 +34,7 @@
+ #include <string.h>
+ #include <sys/ioctl.h>
+ /* get page info */
+-#include <asm/page.h>
++//#include <asm/page.h>
+ #include "busybox.h"
+ 
+ //#define FEATURE_CPU_USAGE_PERCENTAGE  /* + 2k */
+
+
+--- busybox-1.01/modutils/insmod_old.c	2012-01-31 20:26:34.000000000 +0200
++++ busybox-1.01/modutils/insmod.c	2012-01-31 20:19:50.000000000 +0200
+@@ -3714,6 +3714,8 @@
+ 		}
+ 	}
+ 
++  k_version = 7;
++
+ #if defined(CONFIG_FEATURE_2_6_MODULES)
+ 	if (k_version > 4 && len > 3 && tmp[len - 3] == '.' &&
+ 			tmp[len - 2] == 'k' && tmp[len - 1] == 'o') {
+
+--- busybox-1.01/libbb/procps_old.c	2012-01-31 20:32:32.000000000 +0200
++++ busybox-1.01/libbb/procps.c	2012-01-19 21:09:56.000000000 +0200
+@@ -12,7 +12,7 @@
+ #include <string.h>
+ #include <stdlib.h>
+ #include <unistd.h>
+-#include <asm/page.h>
++//#include <asm/page.h>
+ 
+ #include "libbb.h"
+ 
+
+

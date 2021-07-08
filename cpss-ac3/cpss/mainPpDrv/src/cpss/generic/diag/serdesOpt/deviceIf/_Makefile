@@ -1,0 +1,41 @@
+# $(warning "Started") 
+
+#ifeq (VIPS, $(HOME_ENV))
+#
+#
+#
+#
+#PRESTERA_COMMON_DIR = $(subst \,/,$(SW_ROOT))
+#include $(PRESTERA_COMMON_DIR)/mainLabServices/gtBuild
+#
+#else
+#
+#C_EXCLUDE_FILE_LIST = SerdesRxOptMilos4If.c
+#
+#LIB_NAME = cpssGenDiagOptDevIf.lib
+#
+#include $(PROJ_BASE)/gtTopMake 
+#
+#endif
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ SerdesRxOptDeviceIf.c \
+ SerdesRxOptLionIf.c \
+ SerdesRxOptXcatIf.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINPPDRV_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

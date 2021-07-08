@@ -1,0 +1,105 @@
+# #$(warning "Started")
+
+#####################################################
+
+#List of files to include in list
+FILES := \
+ gtHitlessUpgrd.c \
+ gtMath.c \
+ gtOsMemLib.c \
+ gtOsVersion.c
+
+ #osTestPerf.c 
+
+#SUBDIRS += sharedMemory
+MODULES :=
+
+ifeq (1, $(LINUX_SIM))
+    ifeq (Linux, $(OS_TARGET))
+        #SUBDIRS      = linux
+        MODULES := linux
+        FILES += osTestPerf.c 
+        MODULES += sharedMemory
+    endif
+    ifeq (FreeBSD, $(OS_TARGET))
+        #SUBDIRS = FreeBSD
+        MODULES := FreeBSD
+        #MODULES += sharedMemory
+        FILES += osTestPerf.c 
+
+    endif
+else
+    ifeq (linux, $(OS_RUN))
+        #SUBDIRS      = linux
+        MODULES := linux
+        MODULES += sharedMemory
+        FILES += osTestPerf.c 
+    endif
+    ifeq (uClinux, $(OS_RUN))
+        #SUBDIRS      = uClinux
+        MODULES := uClinux
+        MODULES += sharedMemory
+        FILES += osTestPerf.c 
+    endif
+    ifeq (win32, $(OS_RUN))
+	#SUBDIRS      = win32
+        MODULES      := win32
+	#C_EXCLUDE_FILE_LIST = osTestPerf.c
+    endif
+    ifeq (VXWORKS, $(OS_RUN))
+	#SUBDIRS      = vxWorks
+        MODULES := vxWorks
+        MODULES += sharedMemory
+        FILES += osTestPerf.c 
+    endif
+    ifeq (FreeBSD, $(OS_RUN))
+        #SUBDIRS      = FreeBSD
+        MODULES       = FreeBSD
+        MODULES += sharedMemory
+        FILES += osTestPerf.c 
+    endif
+endif
+
+# Some shared abilities (PP DMA shared init) is used even without
+# shared memory approach. So we always include this folder.
+# For details see gtBuild for sharedMemory subdirectory.
+#SUBDIRS += sharedMemory
+#MODULES += sharedMemory
+
+ifeq (EXISTS, $(RTOS_ON_SIM))
+    ifneq (linux, $(OS_RUN))
+        #SUBDIRS += rtosStubs
+        MODULES  += rtosStubs
+        #MODULES += sharedMemory
+        FILES += osTestPerf.c 
+    endif
+endif
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))
+        LIB_NAME = gtOs.lib
+endif
+
+
+ #$(warning "LINUX_SIM=$(LINUX_SIM)")
+ #$(warning "OS_TARGET=$(OS_TARGET)")
+ #$(warning "RTOS_ON_SIM=$(RTOS_ON_SIM)")
+ #$(warning "CPSS_SPLIT_LIBRARIES=$(CPSS_SPLIT_LIBRARIES)")
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+ifeq (1,$(CPSS_SPLIT_LIBRARIES))                          
+    LIB_NAME := gtOs.lib
+    cpssEnabler_gtOs_SRC1 += $(patsubst %,$(CWD)%,$(FILES)) 
+endif                                                     
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+
+

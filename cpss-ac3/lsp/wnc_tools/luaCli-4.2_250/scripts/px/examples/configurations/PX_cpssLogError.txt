@@ -1,0 +1,5 @@
+API history log entry 0.
+Enter: cpssPxDiagPrbsSerdesStatusGet
+Enter: cpssPxPortInterfaceModeGet
+Exit: cpssPxPortInterfaceModeGet
+ERROR GT_BAD_PARAM in function: prvCpssPxDiagPrbsSerdesIndexGet, file cpssPxDiag.c, line[1837]. 

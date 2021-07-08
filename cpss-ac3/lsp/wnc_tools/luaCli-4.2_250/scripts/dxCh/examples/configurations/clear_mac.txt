@@ -1,0 +1,25 @@
+// TAG:               mac, address-table, static, dynamic
+// Short Description: Creates MAC entries
+// Description:       Creates MAC entries on 1-st, 2-nd and 3-rd VLAN's and first and second
+//                    ethernet interfaces
+end
+configure
+interface vlan device ${dev} vid 1
+exit
+interface vlan device ${dev} vid 2
+exit
+interface vlan device ${dev} vid 3
+exit
+mac address-table static 00:11:00:00:00:00 device ${dev} vlan 1 ethernet ${dev}/${port[2]}
+mac address-table dynamic 00:22:00:00:00:00 device ${dev} vlan 1 ethernet ${dev}/${port[1]}
+mac address-table static 00:11:11:00:00:00 device ${dev} vlan 2 ethernet ${dev}/${port[1]}
+mac address-table dynamic 00:22:11:00:00:00 device ${dev} vlan 1 ethernet ${dev}/${port[2]}
+mac address-table static 00:11:22:00:00:00 device ${dev} vlan 1 ethernet ${dev}/${port[1]}
+mac address-table dynamic 00:22:22:00:00:00 device ${dev} vlan 2 ethernet ${dev}/${port[2]}
+mac address-table static 00:11:33:00:00:00 device ${dev} vlan 1 ethernet ${dev}/${port[1]}
+mac address-table dynamic 00:22:33:00:00:00 device ${dev} vlan 3 ethernet ${dev}/${port[1]}
+mac address-table static 00:33:33:00:00:00 device ${dev} vlan 1 ethernet ${dev}/${port[1]}
+mac address-table static 00:22:44:00:00:00 device ${dev} vlan 3 ethernet ${dev}/${port[2]}
+mac address-table static 00:11:55:00:00:00 device ${dev} vlan 2 ethernet ${dev}/${port[1]}
+mac address-table dynamic 00:22:66:00:00:00 device ${dev} vlan 3 ethernet ${dev}/${port[1]}
+end

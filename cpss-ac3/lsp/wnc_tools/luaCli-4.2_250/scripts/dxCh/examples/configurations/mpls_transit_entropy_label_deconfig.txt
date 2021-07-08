@@ -1,0 +1,23 @@
+// TAG:               restore; entropy label; mpls; transit; LSR; swap;
+// Short Description: Restore configurations
+// Description:       deconfigure MPLS transit
+
+end
+clear bridge type ${dev} all
+
+configure
+
+interface ethernet ${dev}/${port[1]}
+no mpls-transit all
+do show mpls-transit
+exit
+
+interface ethernet ${dev}/${port[2]}
+no channel-group 10
+exit
+
+interface ethernet ${dev}/${port[3]}
+no channel-group 10
+exit
+
+end

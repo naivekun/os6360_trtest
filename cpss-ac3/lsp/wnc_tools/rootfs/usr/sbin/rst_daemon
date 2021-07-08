@@ -1,0 +1,39 @@
+#!/bin/bash                     
+
+Restore()
+{
+  #Clean fixed info
+  /usr/sbin/rm_fixed_all
+  #Reboot device
+  /usr/sbin/gpio_reboot
+}
+
+#Wait 30 seconds to start
+sleep 30
+
+
+x=1                
+while [ 1 ]       
+do                            
+  #echo $x                     
+                              
+  ST=`aikido_tool -r 0x00 -b 3`
+  RST=`echo $ST | awk '{print $7}'`
+  #echo $RST
+ 
+  if [ $RST -eq 0 ];
+  then
+    x=$(( $x + 1 ))
+  else
+    x=1
+  fi     
+ 
+  if [ $x -eq 6 ];
+  then
+     Restore
+  fi	
+  
+  #echo $x
+  sleep 1
+done
+

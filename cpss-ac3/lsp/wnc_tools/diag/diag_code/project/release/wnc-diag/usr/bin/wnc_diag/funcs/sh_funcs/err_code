@@ -1,0 +1,8 @@
+#!/bin/bash
+
+ERR_COMMON_FAIL=1               #Common fail or unkown fail
+ERR_TEST_FAIL=2                 #Common test or compare fail
+ERR_PARA_FAIL=3                 #Input options or parameters fail
+ERR_SDK_NOT_RUNNING=10          #Sdk is not running 
+ERR_BCM_ASIC_NOT_FOUND=11       #Can not find Broadcom ASIC
+

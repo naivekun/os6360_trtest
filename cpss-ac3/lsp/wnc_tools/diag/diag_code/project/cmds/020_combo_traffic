@@ -1,0 +1,264 @@
+#!/bin/bash
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/include
+
+prog_name=`basename $0`
+SKU=`cat /usr/local/sku`
+DUR="10"
+INF="copper"
+PORTS_LIST_S=""
+PORTS_LIST_E=""
+COPPER_LINK_CHK_CNT="15"    # 15 times
+COPPER_LINK_CHK_INT="1"     # every 1 sec
+
+usage() {
+
+echo "Usage:
+NAME
+       $prog_name - two ports a loop traffic test for combo ports
+
+SYNOPSIS
+       $prog_name [-i interface] [-d duration] [-h]
+
+DESCRIPTION
+       The command is a traffic tester for all combo ports. It sets an environ-
+       ment to loop two combo ports together. The amount of packets sent are
+       designed to nearly reach the line rate of the port. After reaching the
+       test timeout, the command will retrieve packets for each port and check
+       contents to determine whether they are correctly delivered and received.
+
+       Parameter \"-i\" is to choose which interface (RJ45 or SFP+) to test. Once
+       the interface is choosen, the command will write the PHY register to fix
+       selecting on the choosen interface, and won't change to the other one
+       even if the choosen interface is not link-up. After the traffic test is
+       done, it will restore the PHY register to default configuration.
+
+       Parameter \"-d\" is to set the running duration of traffic flow from send-
+       ing out packets to capturing packets, including the environment setup
+       time. However, the execution time of the command will also include the
+       time of analyzing received packets, which is correlated to the number of
+       combo ports that the DUT has and the number of packets we send.
+
+MANDATORY OPTIONS
+       -i    With \"0\" to fix on RJ45, and with \"1\" to fix on SFP+.
+             Default value will be \"0\" to test RJ45 interface.
+
+       -d    Duration between starting to send packets and stopping the traffic
+             flow. Acceptable value is from 10 to 86400 seconds.
+
+OPTIONAL OPTIONS
+       -h    Show this help message.
+
+PASS CRITERIA
+       - Test combo ports with two-port loop traffic:
+           SUCCESS: all combo ports send and receive packets correctly
+             Display: \"Result: PASS\" with traffic rates and Tx/Rx packet counts
+                      of ports that are tested
+             Return code : 0
+
+           ERROR: any combo port fails to send, or receives packets incorrectly
+             Display: \"Result: FAIL\" with further messages like
+                      \"FAIL: Get MAC link-down on port 49!\"
+                      or
+                      \"FAIL: Get PHY link-down on port 49!\"
+                      or
+                      \"FAIL: Not got packet# 1 that CPU injects to port 49\"
+                      \"FAIL: Packet checking failed on port 49\"
+             Return code : 1
+
+EXAMPLE
+       $prog_name -i 0 -d 60
+       $prog_name -i 1 -d 60
+       $prog_name -h
+">&2
+}
+
+if [ $# -lt 1 ] || [[ "$1" != -* ]]; then
+    usage
+    res=$FAIL
+    quit $res
+    echo "">&2
+fi
+
+get_all_combo_ports() {
+    case $SKU in
+        OS6360-P24X | OS6360-PH24)
+            PORTS_LIST_S="25"
+            if [ "$INF" == "fiber" ]; then
+                PORTS_LIST_E="26"
+            else
+                PORTS_LIST_E="25"
+            fi
+            ;;
+        OS6360-P48X)
+            PORTS_LIST_S="49"
+            if [ "$INF" == "fiber" ]; then
+                PORTS_LIST_E="50"
+            else
+                PORTS_LIST_E="49"
+            fi
+            ;;
+        *) # OS6360-P48X
+            PORTS_LIST_S="49"
+            if [ "$INF" == "fiber" ]; then
+                PORTS_LIST_E="50"
+            else
+                PORTS_LIST_E="49"
+            fi
+            ;;
+    esac
+}
+
+chk_rj45_link_status() {
+    local check_cnt
+    local reg_value
+
+    if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+        # check front port 25
+        API_CMD="do cpss-api call cpssDxChPhyPort10GSmiRegisterRead devNum 0 portNum 26 phyId 0xd useExternalPhy true phyReg 0x8008 phyDev 3"
+    elif [ "$SKU" == "OS6360-P48X" ]; then
+        # check front port 49
+        API_CMD="do cpss-api call cpssDxChPhyPort10GSmiRegisterRead devNum 1 portNum 25 phyId 0xd useExternalPhy true phyReg 0x8008 phyDev 3"
+    fi
+
+    check_cnt=0
+    while [ $check_cnt -lt $COPPER_LINK_CHK_CNT ]; do
+        reg_value=`$LUASH -c "$API_CMD" | sed 's/\r//g' | grep "data" | cut -d '=' -f2`
+        if [ $((reg_value >> 10 & 0x1)) -eq 1 ]; then   # bit 10 for copper link status
+            # link up, break and do traffic test
+            return 0
+        fi
+        check_cnt=$((check_cnt + 1))
+        sleep $COPPER_LINK_CHK_INT
+    done
+
+    echo -e "Check copper link status failed within 15 second!\n"
+    return 1
+}
+
+while getopts "i:d:h" arg; do
+    case $arg in
+        i) # interface
+            if [ "$OPTARG" == "1" ]; then
+                INF="fiber"
+            else
+                INF="copper"
+            fi
+            ;;
+        d) # test duration
+            DUR=$OPTARG
+            ;;
+        h | *) # display usage
+            usage
+            quit_ok
+            ;;
+    esac
+done
+
+if [ "$SKU" == "OS6360-10" ] || [ "$SKU" == "OS6360-P10" ]; then
+    print_fail "Get port configuration FAIL, or DUT is not supported! Please check diag version or board ID."
+    res=$FAIL
+    quit $res
+fi
+
+# To ensure in the right folder, since the relative path is used
+pushd ${dir_path} >/dev/null
+
+res=$PASS
+
+# Check if CPSS is ready
+wait_cpss
+if [ $? -eq 1 ]; then
+    print_fail "CPSS not ready!"
+    exit 1
+fi
+
+# Clean previous generated files
+rm -rf ./trtest/data
+
+# Generate a 1518B unicast packet with random pattern
+./traffic-test edit-pkt -i 1 -l 1514 -d 00:00:00:00:00:01 -s 00:00:00:00:00:02 -e 0800 -p 5
+
+# Get all RJ45 ports
+get_all_combo_ports
+
+# Copy loop files from data_plan to trtest/data
+for ((idx=${PORTS_LIST_S}; idx<=${PORTS_LIST_E}; idx++)); do
+    if [ "$INF" == "fiber" ]; then
+        cp ./cmd_cfg/data_plan/${idx}_combo_lb ./trtest/data/${idx}_loop
+    else
+        cp ./cmd_cfg/data_plan/${idx}_combo_cable ./trtest/data/${idx}_loop
+    fi
+done
+
+# Fix interface via power down/up
+if [ "$INF" == "fiber" ]; then
+    send_cmd "do debug-mode"
+    if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+        # power down copper
+        send_cmd "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa840"
+        send_cmd "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa840"
+        # power up fiber
+        send_cmd "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa040"
+        send_cmd "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040"
+    elif [ "$SKU" == "OS6360-P48X" ]; then
+        # power down copper
+        send_cmd "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xd data 0xa840"
+        send_cmd "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa840"
+        # power up fiber
+        send_cmd "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xd data 0xa040"
+        send_cmd "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040"
+    fi
+    send_cmd "end"
+    echo -e "Swtich interface media to fiber done!\n"
+else
+    send_cmd "do debug-mode"
+    if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+        # power down fiber
+        send_cmd "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa840"
+        send_cmd "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa840"
+        # power up copper
+        send_cmd "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa040"
+        send_cmd "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040"
+    elif [ "$SKU" == "OS6360-P48X" ]; then
+        # power down fiber
+        send_cmd "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xd data 0xa840"
+        send_cmd "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa840"
+        # power up copper
+        send_cmd "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xd data 0xa040"
+        send_cmd "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040"
+    fi
+    send_cmd "end"
+    echo -e "Swtich interface media to copper done!\n"
+
+    chk_rj45_link_status
+fi
+
+# Run traffic tester with timeout setting (default 10 sec)
+./traffic-test run -l all -d "$DUR"
+if [ "$?" != "0" ]; then
+    res=$FAIL
+fi
+
+# Restore PHY register
+send_cmd "do debug-mode"
+if [ "$SKU" == "OS6360-P24X" -o "$SKU" == "OS6360-PH24" ]; then
+    # power up copper/fiber
+    send_cmd "phy 10G register write device 0 port 26 register 0x0000 phyDev 1 phyID 0xd data 0xa040"
+    send_cmd "phy 10G register write device 0 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040"
+    send_cmd "phy 10G register write device 0 port 26 register 0x1000 phyDev 3 phyID 0xd data 0xa040"
+    send_cmd "phy 10G register write device 0 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040"
+elif [ "$SKU" == "OS6360-P48X" ]; then
+    # power up copper/fiber
+    send_cmd "phy 10G register write device 1 port 25 register 0x0000 phyDev 1 phyID 0xd data 0xa040"
+    send_cmd "phy 10G register write device 1 port 24 register 0x0000 phyDev 1 phyID 0xc data 0xa040"
+    send_cmd "phy 10G register write device 1 port 25 register 0x1000 phyDev 3 phyID 0xd data 0xa040"
+    send_cmd "phy 10G register write device 1 port 24 register 0x1000 phyDev 3 phyID 0xc data 0xa040"
+fi
+send_cmd "end"
+
+# Back to the folder where the command is executed
+popd >/dev/null
+
+exit $res

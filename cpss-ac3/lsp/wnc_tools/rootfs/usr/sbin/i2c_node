@@ -1,0 +1,11 @@
+#!/bin/bash
+
+#Create I2C device node
+echo pca9548 0x70 > /sys/bus/i2c/devices/i2c-0/new_device
+echo os6360_sys_cpld 0x7f > /sys/bus/i2c/devices/i2c-0/new_device
+echo 24c16d 0x50 > /sys/bus/i2c/devices/i2c-5/new_device
+echo lm75 0x48 > /sys/bus/i2c/devices/i2c-6/new_device
+echo optoe2 0x50 > /sys/bus/i2c/devices/i2c-1/new_device
+echo optoe2 0x50 > /sys/bus/i2c/devices/i2c-2/new_device
+echo optoe2 0x50 > /sys/bus/i2c/devices/i2c-3/new_device
+echo optoe2 0x50 > /sys/bus/i2c/devices/i2c-4/new_device

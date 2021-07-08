@@ -1,0 +1,28 @@
+// TAG: fdb; fid; vid1; vlan;
+// Short Description: Cleanup FDB static entries for double lookup test.
+// Description: Cleanup configured FDB static entries and all dynamic entries.
+//TEST ON DOUBLE VTAG FDB LOOKUP
+//Deconfigure FDB static entries
+// unicast
+// mac 00:11:22:33:44:55 vid 5 vid1 7 ===>> 0/18
+// mac 00:11:22:33:44:55 vid 5 vid1 8 ===>> 0/36
+// multicast
+// mac A1:11:22:33:44:55 vid 5 vid1 7 ===>> 0/18,54
+// mac A1:11:22:33:44:55 vid 5 vid1 8 ===>> 0/36,54
+//
+end
+configure
+no mac address-table static 00:11:22:33:44:55 device ${dev} vlan 5 vid1 7
+no mac address-table static 00:11:22:33:44:55 device ${dev} vlan 5 vid1 8
+interface vlan device ${dev} vid 5
+no bridge multicast mac address group A1:11:22:33:44:55 vid1 7
+no bridge multicast mac address group A1:11:22:33:44:55 vid1 8
+exit
+interface vlan device ${dev} vid 5
+fdb-key-lookup-mode fid
+exit
+no interface vlan device ${dev} vid 8
+no interface vlan device ${dev} vid 7
+no interface vlan device ${dev} vid 5
+bridge fdb-vid1-assignmemt-mode false
+bridge fdb-hash-mode ${@@getDefaultFdbHashMode()} device ${dev}

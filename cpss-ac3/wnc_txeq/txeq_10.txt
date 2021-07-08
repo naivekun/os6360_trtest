@@ -1,0 +1,8 @@
+// QSGMII
+do configure
+interface ethernet 0/3
+serdes manual configuration tx lane_num 0 amp 14 amp_adj_enable true emph_0 1 emph_1 9 amp_shift false
+exit
+interface ethernet 0/7
+serdes manual configuration tx lane_num 0 amp 14 amp_adj_enable true emph_0 1 emph_1 9 amp_shift false
+end

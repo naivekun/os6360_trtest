@@ -1,0 +1,11 @@
+#!/bin/bash
+
+rm -f /usr/data/wnc_fixed_ip
+rm -f /usr/data/wnc_fixed_mac
+rm -f /usr/data/wnc_fixed_mask
+sync
+echo "Removed fixed ip/mac/mask."
+
+exit 0
+
+

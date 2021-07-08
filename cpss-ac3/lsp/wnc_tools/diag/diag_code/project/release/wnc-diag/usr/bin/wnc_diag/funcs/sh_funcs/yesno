@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#ask user for yes/no for flow status
+function yesno() {
+	local result=''
+
+	while [ -z "$result" ]; do
+		read result
+		case "$result" in
+			[Yy])
+				result=0;;
+			[Nn])
+				result=1;;
+			*)
+				echo "Please enter y or n.";;
+		esac
+	done
+
+	return $result
+}

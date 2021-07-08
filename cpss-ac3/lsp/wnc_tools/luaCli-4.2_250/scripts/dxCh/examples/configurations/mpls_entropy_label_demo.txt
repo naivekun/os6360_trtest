@@ -1,0 +1,46 @@
+// TAG:               entropy label; mpls;
+// Short Description: entropy label:
+// Description:       configure MPLS entropy label
+
+
+//Test description:
+//
+//configure FDB entry to redirect packet on egress ports [2] depending on MAC-DA,
+//          MPLS command with corresponding entropy labels
+//          MPLS transit command with corresponding entropy labels
+//          a trunk index 10 with 2 ports in it: port[3] and port[4]
+//Ingress: Two Ethernet packets. the only difference between the packets is MAC-SA
+//Action: The packet will redirect to egress port according to FDB entry.
+//        MPLS command will assign TS properties to egress port. MPLS header
+//        and Entropy label will be added - according to configuration
+//        my-mac-addr 00:04:05:06:07:11 is used to configure macToMe entry.
+//        Then packets loopback on port [2]. Packet modified by MPLS command ingress port [2]
+//        The packet will have a match in the TTI table according to the MPLS labels configured in the command.
+//        it will not NOT be TT but redirected to the trunk, the packet will get properties from TS.
+//Egress: First packet will egress to port[3] and the second one will egress to port[4] according to load balancing
+//        done due to different entropy labels.
+
+end
+clear bridge type ${dev} all
+
+configure
+
+mac address-table static 00:01:02:03:34:01 device ${dev} vlan 1 eport ${dev}/0x201
+
+interface ethernet ${dev}/${port[3]}
+channel-group 10
+exit
+
+interface ethernet ${dev}/${port[4]}
+channel-group 10
+exit
+
+interface ethernet ${dev}/${port[2]}
+mpls assign-eport 0x201 vid 1 my-mac-addr 00:04:05:06:07:11 nexthop-mac-addr 00:01:02:03:34:02 ingress-labels-values-list 0x444 egress-labels-values-list 0x333 add-egress-entropy-label-after-labels 0
+mpls-transit assign-eport 0x200 vid 1 my-mac-addr 00:01:02:03:34:02 egress-mac-sa-addr 00:04:05:06:07:12 nexthop-mac-da-addr 00:01:02:03:34:03 ingress-labels-values-list 0x333 entropy-labels-locations-list 0 mpls-command SWAP mpls-new-label 0x123 egress_port_channel 10
+do show mpls
+do show mpls-transit
+exit
+
+end
+

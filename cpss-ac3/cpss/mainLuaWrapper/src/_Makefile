@@ -1,0 +1,62 @@
+# $(warning "Started") 
+
+ifeq (yes,$(CMD_LUA_CLI))
+	#SUBDIRS      =
+	MODULES :=
+
+	ifeq (EXISTS, $(CHX_FAMILY))
+		#SUBDIRS      += dxCh
+		MODULES += dxCh
+	endif
+
+	ifeq (EXISTS, $(PM_FAMILY))
+		#SUBDIRS      += exMxPm
+		MODULES += exMxPm
+	endif
+
+	ifeq (EXISTS, $(PX_FAMILY))
+		MODULES += px
+	endif
+
+	ifeq (EXISTS, $(ASIC_SIMULATION))
+		#SUBDIRS      += simulation
+		MODULES += simulation
+	endif
+
+	#SUBDIRS      += cpssCommon generic tgf
+	MODULES += \
+	 cpssCommon \
+	 generic
+
+	ifeq (EXISTS, $(IMPL_TGF))
+	    MODULES += tgf
+	endif
+
+else
+	#SUBDIRS = NONE
+	MODULES :=
+endif
+
+##List of subfolders to include in build
+#MODULES := \
+# cpssCommon \
+# dxCh \
+# generic \
+# simulation \
+# tgf 
+
+#List of files to include in list
+FILES := 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINLUAWRAPPER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

@@ -1,0 +1,296 @@
+#!/bin/bash
+
+# ## Include ## #
+
+dir_path=$(dirname ${0})
+source ${dir_path}/sh_funcs/defines
+source ${dir_path}/sh_funcs/exit
+source ${dir_path}/sh_funcs/print
+
+prog_name=`echo ${0} | awk -F / '{print $NF}'`
+
+# ## Functions ## #
+
+function usage() {
+echo "
+Usage:
+NAME
+        ${prog_name} - control fan's rotation speed via PWM
+
+SYNOPSIS
+        ${prog_name} [-t pwm_mode] [-u duty_cycle] [-h]
+
+DESCRIPTION
+        ${prog_name} is used to control fan's rotation speed. Fan's rotation speed
+        is affected by adjusting PWM mode (1 (25%), 2 (50%), 3 (75%) and 4 (100%) 
+        or specifying duty cycle (from 1 to 100 percent) directly.
+
+MANDATORY OPTIONS
+        At least one optional option is needed.
+
+OPTIONAL OPTIONS
+        -t    Specify expected PWM mode.
+              Mode:
+                  1: 25%
+                  2: 50%
+                  3: 75%
+                  4: 100%            
+
+        -u    Specify expected duty cycle (from 1 to 100 percent)
+
+        -h    Help message
+
+PASS CRITERIA
+        - Set and test inserted PWM mode (-t):
+            SUCCESS: Set up successfully
+                Display: PASS
+                Return code: 0
+
+            ERROR: Can't control fan's rotation speed
+                Display: FAIL
+                Return code: 1 (input  error)
+                             2 (option error)
+                             3 (system error)
+                             6 (test   error)
+        
+        - Set and test inserted duty cycle (-u):
+            SUCCESS: Set up successfully
+                Display: PASS
+                Return code: 0
+
+            ERROR: Can't control fan's rotation speed
+                Display: FAIL
+                Return code: 1 (input  error)
+                             2 (option error)
+                             3 (system error)
+                             6 (test   error)
+
+Example:
+        ${prog_name} -t 1
+        ${prog_name} -u 35
+" >&2
+}
+
+function error_msg() {
+
+    # 1: error_code, 2: error_msg
+
+    # ERROR CODE
+    #   Input error : 1
+    #   Option error: 2
+    #   System error: 3
+    #   Read error  : 4
+    #   Write error : 5 
+    #   Test error  : 6 
+
+    if [ ${1} -eq 1 ]; then
+        echo -e "\n[Input error] ${2}" >&2
+    elif [ ${1} -eq 2 ]; then
+        :
+    elif [ ${1} -eq 3 ]; then
+        echo -e "\n[System error] ${2}" >&2
+    elif [ ${1} -eq 4 ]; then
+        echo -e "\n[Read error] ${2}" >&2
+    elif [ ${1} -eq 5 ]; then
+        echo -e "\n[Write error] ${2}" >&2
+    elif [ ${1} -eq 6 ]; then
+        echo -e "\n[Test error] ${2}" >&2
+    fi
+    quit ${1}
+}
+
+function get_pwm_and_speed() {
+
+    # 1: mode
+
+    local max_pwm=0x1F
+    local max_speed=17600
+
+    local pwm=`printf '0x%.2x' $((${max_pwm}*${1}/100))` # Hex
+    local speed=$((${max_speed}*${1}/100))
+
+    local list=("${pwm}" "${speed}")
+
+    echo "${list[@]}"
+}
+
+function modify_pwm() {
+
+    # 1: pwm_file_path, 2: pwm
+
+    if [ -f ${1} ]; then
+        echo ${2} > ${1}
+        local pwm_value=`cat ${1}`
+        if [[ ${pwm_value} -ne ${2} ]]; then
+            error_msg 6 "Couldn't write ${1}"
+        fi
+    else
+        error_msg 3 "Fan's PWM file doesn't exist, CPLD may not work"
+    fi
+}
+
+function check_valid_hex() {
+
+    # 1: hexadecimal
+
+    if [[ ! ${1} =~ ^0[xX][0-9a-fA-F]+$ ]]; then
+        error_msg 1 "Variable \"${1}\" isn't a hexadecimal"
+    fi
+}
+
+function check_valid_int() {
+    
+    # 1: integer
+
+    if [[ ! ${1} =~ ^[0-9]+$ ]]; then
+        error_msg 1 "Variable \"${1}\" isn't a integer"
+    fi
+}
+
+function check_speed() {
+
+    # 1: status_file_path, 2: speed
+
+    if [ -f ${1} ]; then
+
+        local speed_value=`cat ${1}`
+        check_valid_hex ${speed_value}
+
+        if [ $((${speed_value})) -gt 0 ]; then
+            speed_value=$((5000 * 60 / ${speed_value}))
+        else
+            error_msg 3 "Fan's speed error"
+        fi
+
+        if [ ${2} -le $((${speed_value} + ${tolerance})) ] && [ ${2} -ge $((${speed_value} - ${tolerance})) ]; then
+
+            echo -e "\nSet up successfully, Fan's rpm is ${speed_value} rpm"
+        else
+            error_msg 6 "Actual speed doesn't match expected speed"
+        fi
+    else
+        error_msg 3 "Fan's status file doesn't exist, CPLD may not work"
+    fi
+}
+
+# ## initial variables ## #
+
+declare -a speed_list  # 1: pwm, 2: speed
+
+sku_file_path="/usr/local/sku"
+pwm1_file_path="/sys/bus/i2c/devices/0-007f/sys_fan_1_pwm"
+pwm2_file_path="/sys/bus/i2c/devices/0-007f/sys_fan_2_pwm"
+# status1_file_path="/sys/bus/i2c/devices/0-007f/sys_fan_1_status"
+# status2_file_path="/sys/bus/i2c/devices/0-007f/sys_fan_2_status"
+
+# # Test path 
+# sku_file_path="${dir_path}/test_items/sku"
+# pwm1_file_path="${dir_path}/test_items/pwm1"
+# pwm2_file_path="${dir_path}/test_items/pwm2"
+# status1_file_path="${dir_path}/test_items/status1"
+# status2_file_path="${dir_path}/test_items/status2"
+
+mode=""
+tolerance=500
+product_name=`cat ${sku_file_path}`
+
+# ## Check sys argvs ## #
+
+if [ $# -lt 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] At least one optional option is needed."
+fi
+
+while getopts ":t:u:h" arg
+do
+    case ${arg} in      
+        t)
+            if [ -z ${mode} ]; then
+                mode=1
+                check_valid_int ${OPTARG}
+                if [ ${OPTARG} -eq 1 ]; then
+                    speed_list=( `get_pwm_and_speed 25` )
+                elif [ ${OPTARG} -eq 2 ]; then
+                    speed_list=( `get_pwm_and_speed 50` )
+                elif [ ${OPTARG} -eq 3 ]; then
+                    speed_list=( `get_pwm_and_speed 75` )
+                elif [ ${OPTARG} -eq 4 ]; then
+                    speed_list=( `get_pwm_and_speed 100` )
+                else
+                    error_msg 1 "Mode only have 1 (25%), 2 (50%), 3 (75%) and 4 (100%)"
+                fi
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        u)
+            if [ -z ${mode} ]; then
+                mode=2
+                check_valid_int ${OPTARG}
+                if [ ${OPTARG} -ge 1 ] && [ ${OPTARG} -le 100 ] ; then
+                    speed_list=( `get_pwm_and_speed ${OPTARG}` )
+                else
+                    error_msg 1 "Duty cycle is from 1 to 100 percent"
+                fi
+            else
+                usage
+                error_msg 2
+                # error_msg 2 "[Option error] Please select only one mode"
+            fi
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        :)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Option \"-${OPTARG}\" requires an argument"
+            ;;
+        ?)
+            usage
+            error_msg 2
+            # error_msg 2 "[Option error] Unknown option \"-${OPTARG}\""
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    usage
+    error_msg 2
+    # error_msg 2 "[Option error] No options were passed"
+fi
+
+# Fan control
+case ${product_name} in
+    OS6360-10 | OS6360-P10)
+        error_msg 6 "There is no FAN in ${product_name}"
+        ;;
+    OS6360-P24X | OS6360-PH24)
+        if [ ${mode} -eq 1 ]; then
+            modify_pwm ${pwm1_file_path} ${speed_list[0]}
+            # check_speed ${status1_file_path} ${speed_list[1]} || exit ${?}
+        elif [ ${mode} -eq 2 ]; then
+            modify_pwm ${pwm1_file_path} ${speed_list[0]}
+        fi
+        quit ${PASS}
+        ;;
+    OS6360-P48X)
+        if [ ${mode} -eq 1 ]; then
+            modify_pwm ${pwm1_file_path} ${speed_list[0]}
+            # check_speed ${status1_file_path} ${speed_list[1]} || exit ${?}
+            # modify_pwm ${pwm2_file_path} ${speed_list[0]}
+            # check_speed ${status2_file_path} ${speed_list[1]} || exit ${?}
+        elif [ ${mode} -eq 2 ]; then
+            modify_pwm ${pwm1_file_path} ${speed_list[0]}
+            # modify_pwm ${pwm2_file_path} ${speed_list[0]}
+        fi
+        quit ${PASS}
+        ;;
+    *) # OS6360-10 or OS6360-P10
+        error_msg 6 "There is no FAN in ${product_name}"
+        ;;
+esac

@@ -1,0 +1,59 @@
+###########################################
+##                                       ##
+##    Top Make file for shlibTestClients ##
+##                                       ##
+###########################################
+
+$(PROJ_NAME)_PROJECT_PATH :=  \
+            $(PROJ_NAME)/h    \
+            $(PATH_MAINOS)    \
+            $(PATH_COMMON)    \
+            $(PATH_EXT_UTILS) \
+            $(PATH_EXT_DRV)   \
+            $(PATH_SYSCONFIG)
+
+
+ifneq (EXCLUDE_LIB,$(EXCLUDE_GALTIS))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_GALTIS)
+endif
+ifeq (EXISTS, $(CHX_FAMILY))
+
+        $(PROJ_NAME)_AD_CFLAGS += $(FD)CHX_FAMILY
+        $(PROJ_NAME)_AD_CFLAGS += $(FD)CONFIG_DDR3
+
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_PP_DRV)
+endif
+
+
+
+############
+## CFLAGS ##
+############
+
+$(PROJ_NAME)_AD_CFLAGS += $(FD)MCD_RUN_WITH_CPSS
+
+ifeq ($(NAMED_SEM_TYPE),NO_NAMED_SEM)
+        ifeq (1,$(LINUX_SIM))
+                ifndef RTOS_ON_SIM
+                        # Linux sim on PC
+                        NAMED_SEM_TYPE = POSIX_SEM
+                        $(PROJ_NAME)_AD_CFLAGS += $(FD)POSIX_SEM
+                endif
+        endif
+endif
+
+ifeq ($(NAMED_SEM_TYPE),NO_NAMED_SEM)
+        ifdef USE_GNUEABI
+                # GnuEabi
+                NAMED_SEM_TYPE = POSIX_SEM
+                $(PROJ_NAME)_AD_CFLAGS += $(FD)POSIX_SEM
+        endif
+endif
+
+ifeq (MP_ON,$(CPSS_USE_MUTEX_PROFILER))
+     $(PROJ_NAME)_AD_CFLAGS += $(FD)CPSS_USE_MUTEX_PROFILER
+endif
+ifdef APP_DEMO_CPU_ETH_PORT_MANAGE
+    $(PROJ_NAME)_AD_CFLAGS += $(FD)APP_DEMO_CPU_ETH_PORT_MANAGE
+endif
+

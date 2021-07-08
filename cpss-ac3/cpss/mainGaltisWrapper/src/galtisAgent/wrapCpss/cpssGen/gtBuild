@@ -1,0 +1,31 @@
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST =
+
+SUBDIRS = \
+ Events \
+ cpssHwInit \
+ cpssLog \
+ smi \
+ systemRecovery
+
+ifeq (EXISTS, $(CHX_FAMILY))
+ SUBDIRS += \
+   dragonite \
+   Phy \
+   networkIf \
+   hsu
+
+   ifeq (YES, $(INCLUDE_TM))
+   	SUBDIRS += tm
+   endif
+endif
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

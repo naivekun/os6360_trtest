@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mkdir -p /flash
+mount -t ubifs ubi0:flash /flash
+

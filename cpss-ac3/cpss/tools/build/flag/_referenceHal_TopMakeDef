@@ -1,0 +1,54 @@
+###########################################
+##                                       ##
+##    Top Make file for referenceHal     ##
+##                                       ##
+###########################################
+
+$(PROJ_NAME)_PROJECT_PATH :=              \
+                $(PATH_COMMON)            \
+                $(PATH_EXT_DRV)           \
+                $(PATH_SYSCONFIG)
+
+
+ifeq (EXISTS, $(ASIC_SIMULATION))
+    $(PROJ_NAME)_PROJECT_PATH += $(PATH_SIM)
+endif
+
+ifeq (EXISTS, $(PX_FAMILY))
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_PX_DRV)
+endif
+
+ifeq (EXISTS, $(CHX_FAMILY))
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_PP_DRV)
+endif
+
+ifeq (YES, $(INCLUDE_UTF))
+        $(PROJ_NAME)_PROJECT_PATH += \
+                $(PATH_UTFTOOL)      \
+                $(PATH_UTFTRAFFIC)   \
+		$(PATH_EXT_UTILS)
+endif
+ifeq (yes,$(CMD_LUA_CLI))
+        $(PROJ_NAME)_PROJECT_PATH += cpssEnabler/mainCmd/src/cmdShell/FS $(PATH_MAINCMD)
+        $(PROJ_NAME)_PROJECT_PATH += $(PATH_LUA) $(PATH_EXT_UTILS)
+        $(PROJ_NAME)_PROJECT_DEFS += $(FD)ENV_MAINCMD
+        # WA because of wrong bindiongs in
+        # cpssEnabler/mainCmd/h/cmdShell/common/cmdExtServices.h
+        ifeq (EXISTS, $(CHX_FAMILY))
+                $(PROJ_NAME)_AD_CFLAGS += $(FD)CONFIG_DDR3
+                $(PROJ_NAME)_PROJECT_PATH += $(PATH_LABSERVICE)
+        endif
+endif
+
+ifneq (, $(wildcard referenceHal/px/bpe/h))
+    $(PROJ_NAME)_PROJECT_PATH += referenceHal/px/bpe/h
+endif
+
+# $(PROJ_NAME)_AD_CFLAGS += $(FD)IMPL_FPGA
+
+#ifeq (gnu.host_gcc, $(TOOL).$(TOOLKIT_MAKE_RULES))
+#  #don't threat #warning as error
+#  $(PROJ_NAME)_CFLAGS2 += -Wno-error=cpp
+#endif
+
+$(PROJ_NAME)_CMD_CFLAGS += $(CMD_CFLAGS)

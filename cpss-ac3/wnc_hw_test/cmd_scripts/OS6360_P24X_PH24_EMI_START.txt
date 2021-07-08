@@ -1,0 +1,4 @@
+do traffic
+send port 0/0 file packet_EMI.txt
+send port 0/0 file packet_EMI.txt
+end

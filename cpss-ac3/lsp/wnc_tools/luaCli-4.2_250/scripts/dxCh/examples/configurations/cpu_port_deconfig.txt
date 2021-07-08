@@ -1,0 +1,22 @@
+// TAG:               network; interface; cpu; mg;
+// Short Description: Configures cpu traffic to go through the first cpu port
+// Description:       delete rule-id 18, delete the binding of port 36 to pcl-ID 11,
+//		      delete pcl-ID 11 in access-list.
+//                    in addition sets all traffic to-cpu to go through the first cpu port
+end
+configure
+
+access-list device ${dev} pcl-ID 11
+delete rule-id 18
+exit
+
+interface ethernet ${dev}/${port[3]}
+no service-acl pcl-ID 11
+exit
+
+delete access-list device ${dev} pcl-id 11
+end
+
+traffic
+cpu code bind device 0 cpu-code all port 63
+end

@@ -1,0 +1,199 @@
+#!/bin/bash
+# Script name: 021_sfp_i2c_bus 
+# Script version: V1.00.00
+# Author: WeiHsiang Chen
+# History: 
+#     V0.00.01 - New release - 2019.12.12
+#####################################################################
+
+# ----- Include ----- #
+source $(dirname $0)/sh_funcs/include
+
+# ----- Path ----- #
+sku_path="/usr/local"
+drv_path="/sys/bus/i2c/devices"
+## Test path (in VM)
+TEST_select=0
+if [ ${TEST_select} -eq 1 ]; then
+    sku_path=/home/test/${sku_path}
+	drv_path=/home/test/${drv_path}
+fi
+
+# ----- Declare ----- #
+prog_name=`echo $0 | awk -F / '{print $NF}'`
+product_name=`cat ${sku_path}/sku`
+
+# ----- Function ----- #
+function usage() {
+echo "
+Usage:
+NAME
+       ${prog_name} - Test SFP/SFP+ module via I2C bus
+
+SYNOPSIS
+       ${prog_name} [-g] [-h]
+
+DESCRIPTION
+       This command is used to read the contents of EEPROM from SFP/SFP+ 
+       module to ensure that I2C bus works normally.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+       Only one optional option will be processed at once.
+
+OPTIONAL OPTIONS
+       -g    Get the contents of EEPROM from SFP/SFP+ module
+
+       -h    Help message
+
+PASS CRITERIA
+       - Get the contents of EEPROM from SFP/SFP+ module (-g) :
+           SUCCESS: All contents are received.
+             Display: PASS
+             Return code: 0
+
+           ERROR: Fail to get contents of EEPROM from SFP/SFP+ module.
+             Display: FAIL
+             Return code: 9
+
+EXAMPLE
+       ${prog_name} -g
+" >&2
+}
+
+function get_spec() {
+	# Function description: 
+	#   Judge SKU to confirm which specification of I2C device address (SFP port)
+	# Parameter: N/A
+
+    g_spec_sfp=("") # spec.
+
+    case ${product_name} in
+        OS6360-10 | OS6360-P10)
+            g_spec_sfp=("1-0050" "2-0050")
+            ;;
+        OS6360-P48X | OS6360-P24X | OS6360-PH24)
+            g_spec_sfp=("3-0050" "4-0050")
+            ;;
+        *) # Default SKU = OS6360-P10
+            product_name="OS6360-P10"
+            g_spec_sfp=("1-0050" "2-0050")
+            ;;
+    esac
+}
+
+function access_drv() {
+	# Function description: 
+	#   Access driver of I2C device to check address.
+    #   And ensure contents of EEPROM from SFP+ module on SFP port.
+	# Parameter:
+	#   $1=g_spec_sfp
+
+	local arr_spec=("${!1}")
+    local i2c_num=${#arr_spec[@]}
+    local i2c_bus=""
+    local i2c_addr=""
+    local flag_rdee=0
+    local flag_fail="FALSE"
+
+    for ((cnt=0; cnt < ${i2c_num}; cnt++))
+	do 
+        i2c_bus=`echo "${arr_spec[cnt]}" | awk -F'-' '{print $1}'`
+        i2c_addr=`echo "${arr_spec[cnt]}" | awk -F'-' '{print $2}'`
+
+		#step1: check driver (combo port) (as same as 003_i2c_controller)
+        if [ ! -d "${drv_path}/${arr_spec[cnt]}" ]; then
+            echo -e "\n*[Oops] Fail to probe device." >&2
+            echo -e "  - Device address: Bus ${i2c_bus} Addr=0x${i2c_addr}" >&2
+            flag_fail="TRUE"
+        else
+            #step2: Check if eeprom of loopback module is accessible
+            cat ${drv_path}/${arr_spec[cnt]}/eeprom 2> /dev/null 1> /dev/null
+            flag_rdee=$? 
+            if [ ${flag_rdee} -ne 0 ]; then
+                echo -e "\n*[Oops] Fail to read eeprom." >&2
+                echo -e "  - Device address: Bus ${i2c_bus} Addr=0x${i2c_addr}" >&2
+                flag_fail="TRUE"
+            else
+                #step3: Read back context of eeprom if all driver are valid 
+                    # Only check if eeprom is not empty now, wait to discuss if need to verify context
+                if [ ! -s ${drv_path}/${arr_spec[cnt]}/eeprom ]; then
+                    echo -e "\n*[Oops] Context of eeprom is NOT valid." >&2
+                    echo -e "  - Device address: Bus ${i2c_bus} Addr=0x${i2c_addr}" >&2
+                    flag_fail="TRUE"
+                else
+                    cat ${drv_path}/${arr_spec[cnt]}/eeprom | grep Optech > /dev/null 2>&1
+                    flag_rdee=$?
+                    if [ ${flag_rdee} -ne 0 ]; then
+                        echo -e "\n*[Oops] Cannot find vendor name Optech in eeprom." >&2
+                        echo -e "  - Device address: Bus ${i2c_bus} Addr=0x${i2c_addr}" >&2
+                       flag_fail="TRUE"
+                    fi
+                fi
+            fi
+        fi
+    done
+    
+   	if [ ${flag_fail} == "TRUE" ]; then
+		return ${Err_Verify}
+	else 
+		return ${PASS}
+	fi
+}
+
+# ----- Common function ----- #
+## Error Code List ##
+Err_Option=1	# Option not suport
+Err_Param=2		# Incompatible format or number of parameter
+Err_System=5	# Fail to access system directory or file
+Err_Verify=9	# Common test or compare fail
+#    Err_Read=10	#
+#    Err_Write=11	#
+
+function quit_msg() {
+	# Parameter:
+	#   $1=${err_code}
+	#   $2=${err_msg}
+
+    if [ ${1} == ${Err_Option} ]; then
+		:	# Don't need to print msg
+    elif [ ${1} == ${Err_Param} ]; then
+        echo -e "\n ==> [Parameter Error] ${2}" >&2
+    elif [ ${1} == ${Err_System} ]; then
+        echo -e "\n ==> [System Error] ${2}" >&2
+#    elif [ ${1} == ${Err_Read} ]; then
+#        echo -e "\n ==> [Read Error] ${2}" >&2
+#    elif [ ${1} == ${Err_Write} ]; then
+#        echo -e "\n ==> [Write Error] ${2}" >&2
+    elif [ ${1} == ${Err_Verify} ]; then
+        echo -e "\n ==> [Verify Error] ${2}" >&2
+    fi
+    quit ${1}
+}
+
+# ----- Initial variable ----- #
+g_fail=0
+
+# ----- Main ----- #
+# Check option length
+if [ $# -ne 1 ]; then
+	usage
+	quit ${FAIL} # [Option Error] Can only input one option
+fi
+
+# Judge option (-g, -h)
+if [ ${1} == "-g" ]; then
+    echo -e "--- Start to probe EEPROM on SFP/SFP+ port ---" >&2
+    get_spec
+	access_drv g_spec_sfp[@]
+    g_fail=${?}
+    echo -e "\n--- End of probing ---" >&2
+
+    quit_msg ${g_fail} "Fail to get contents of EEPROM from SFP/SFP+ module."
+elif [ ${1} == "-h" ]; then
+	usage
+	quit_ok
+else
+	usage
+	quit ${FAIL} # [Option Error] Option not suport
+fi

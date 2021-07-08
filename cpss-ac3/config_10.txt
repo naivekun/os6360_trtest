@@ -1,0 +1,53 @@
+cpssInitSystem 19,2,0
+
+configure
+interface ethernet 0/26
+no speed
+speed 1000 mode 1000Base_X
+end
+
+configure
+interface ethernet 0/27
+no speed
+speed 1000 mode 1000Base_X
+end
+
+configure
+interface ethernet 0/25
+serdes polarity lane_num 0 invert_tx false invert_rx true
+end
+
+configure
+interface ethernet 0/26
+serdes polarity lane_num 0 invert_tx true invert_rx true
+end
+
+// LED to blink for 88E1543
+debug
+phy register write device 0 port 24 register 22 data 3
+phy register write device 0 port 24 register 16 data 0x1771
+phy register write device 0 port 24 register 22 data 0
+phy register write device 0 port 25 register 22 data 3
+phy register write device 0 port 25 register 16 data 0x1771
+phy register write device 0 port 25 register 22 data 0
+end
+
+debug
+smi write device 0 portgroup 0 interface 0 address 0x8 register 0 data 0x1140                                                            
+smi write device 0 portgroup 0 interface 0 address 0x9 register 0 data 0x1140
+end 
+
+// WNC Tx EQ
+do load wnc_txeq/txeq_10.txt
+
+// default disable pauseAdvertise
+do configure
+interface range ethernet all
+flow-control off
+end
+
+// Enable SFP LED power switch
+do shell-execute OsCmd "echo 1 > /sys/bus/i2c/devices/0-007f/sfp_led_pwr_ctrl_en"
+
+// set ACL rule to trap packet to CPU
+do load OS6360_P10_10_SET_ACL_RULE.txt

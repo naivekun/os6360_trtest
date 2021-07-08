@@ -1,0 +1,15 @@
+#!/bin/bash
+
+DIR=$(dirname $0)
+
+# include files
+source ${DIR}/const
+source ${DIR}/conf
+source ${DIR}/app_funcs
+source /usr/bin/wnc_diag/funcs/sh_funcs/sdkutils_mrvl
+
+CPU_AFFINITY=$CFG_BURN_IN_CPU_AFFINITY
+
+# add other init steps, wait cpss init done
+
+exit 0

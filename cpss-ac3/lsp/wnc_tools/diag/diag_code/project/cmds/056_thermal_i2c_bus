@@ -1,0 +1,168 @@
+#! /bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+prog_name=$(basename $0)
+
+usage() {
+    echo "Usage:
+NAME
+       056_thermal_i2c_bus - Display TMP1075 thermal sensor
+SYNOPSIS
+       056_thermal_i2c_bus [-g] [-t Lower, Upper] [-h]
+
+DESCRIPTION
+       Display TMP1075 thermal sensor and test it criteria.
+       In this command, get temperature data from south interface.
+       For test use, this command will check the temperature is
+       within the criteria or out of range.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -g    Get temperature information.
+
+       -t    Test the temperature is over criteria or not.
+             Lower: decimal
+             Upper: decimal
+
+       -h    Help message
+
+PASS CRITERIA
+       - Get temperature (-g) :
+           SUCCESS: could get temperature information
+             Display: temperature information
+             Return code : 0
+
+           ERROR: couldn't find this device or info not exist
+             Display: FAIL
+             Return code : 2
+
+       - Test temperature is within the criteria (-t) :
+           SUCCESS: the temperature is within the criteria
+             Display: PASS
+             Return code : 0
+
+           ERROR: the temperature is out of criteria
+             Display: FAIL
+             Return code : 3
+
+           ERROR: invalid argument
+             Display: FAIL
+             Return code : 4
+
+       - Wrong Option
+           ERROR: input option is none or not matching OPTIONAL OPTIONS
+             Display: N/A
+             Return code : 1
+
+EXAMPLE
+       056_thermal_i2c_bus -g
+       056_thermal_i2c_bus -t 35,45
+">&2
+}
+
+check_tmp1075()
+{
+    temp=`cat ${tmp_path}`
+    if [ -z "${temp}" ]; then
+        echo
+        echo "===================================="
+        print_fail "temp1075 not present"
+        echo "===================================="
+
+        quit 1
+    fi
+
+    tmp_int=`echo $((${temp}/1000))`
+    tmp_point=`echo $((${temp}/100-${tmp_int}*10))`
+    temp="${tmp_int}.${tmp_point}"
+}
+
+#====================================================================
+# variable define.
+
+# result status.
+result=${PASS}
+
+# default temp.
+temp=0
+
+# sensors south interface path.
+tmp_path="/sys/bus/i2c/devices/6-0048/hwmon/hwmon0/temp1_input"
+
+# test_mode status.
+test_mode=false
+disp_mode=false
+
+#====================================================================
+
+if [ $# -lt 1 ]; then
+    usage
+    quit 1
+fi
+
+while getopts ":hgt:" arg
+do
+    case ${arg} in
+        g)
+            disp_mode=true
+            ;;
+        t)
+            input_temp=${OPTARG}
+            test_mode=true
+            ;;
+        h)
+            usage
+            quit_ok
+            ;;
+        *)
+            usage
+            quit 1
+            ;;
+    esac
+done
+
+if [ ${OPTIND} -eq 1 ]; then
+    quit 1
+fi
+
+check_tmp1075
+
+if [ ${disp_mode} = true ]; then
+    echo
+    echo "===================================="
+    echo "temp_1075 = ${temp} deg C"
+    echo "===================================="
+fi
+
+if [ ${test_mode} = true ]; then
+    # value of criteria range don't need to sort.
+    lower=`echo ${input_temp} | awk -F"," '{print $1}'`
+    upper=`echo ${input_temp} | awk -F"," '{print $2}'`
+
+    echo
+    echo "===================================="
+
+    if [ -z "$(echo ${upper} | grep ^[[:digit:]]*$)" ] || \
+        [ -z "$(echo ${lower} | grep ^[[:digit:]]*$)" ] || \
+        [ ${upper} -le ${lower} ]; then
+        print_fail "Invalid argument"
+        result=4
+    else
+        lower_cp=$((${lower}*1000))
+        upper_cp=$((${upper}*1000))
+        tmp_cp=`cat ${tmp_path}`
+        if [ ${tmp_cp} -lt ${lower_cp} ] || [ ${tmp_cp} -gt ${upper_cp} ]; then
+            print_fail "${temp} deg C out of criteria ${lower}-${upper}"
+            result=3
+        else
+            print_pass "${temp} deg C within criteria ${lower}-${upper}"
+        fi
+    fi
+
+    echo "===================================="
+fi
+
+quit ${result}

@@ -1,0 +1,36 @@
+// TAG:               traffic_generator_emulated
+// Short Description: generate wirespeed traffic to and from CPU
+// Description:       generate wirespeed traffic on port1 by command of 'traffic-generator emulation', 
+//                    and ingress burst traffic on port2 with capture
+end
+//
+traffic
+//
+// generate continuous wirespeed from port 18
+//
+traffic-generator emulate port ${dev}/${port[2]} data 001122334455008899aabbcc2222222222222222222222222222222222 count continuous-wire-speed
+//
+// capture from port 0/58
+//
+capture from port ${dev}/${port[4]}
+//
+// generate single packet from port ${dev}/${port[4]}
+//
+traffic-generator emulate port ${dev}/${port[4]} data 00aabbccddeeff00112233444444444444444444444444444444444444
+//
+exit
+//
+// show which ports are generating wirespeed
+//
+show traffic traffic-generator emulate all
+//
+// show rates on the ports 
+//
+//show traffic rates all
+show traffic rates ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+//
+exit
+//
+//enable printings of indication of AUQ/FUQ messages
+shell-execute appDemoTraceAuqFlagSet 1
+

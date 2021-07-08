@@ -1,0 +1,14 @@
+// TAG:               ping; loopback;
+// Short Description: Ping test through loopback
+// Description:       Ping test through loopback
+end
+configure
+mac address 00:00:00:00:11:22
+interface ethernet ${dev}/${port[1]}
+ip address 192.168.0.1 255.255.255.0
+loopback mode internal
+force link up
+end
+traffic
+protocol enable arp
+protocol enable ping

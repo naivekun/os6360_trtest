@@ -1,0 +1,21 @@
+// TAG:               trap/mirror; trap/mirror to CPU, CPU code, ARP BC traffic
+// Short Description: Disable trap/mirroring to CPU for ARP BC packet
+// Description:       Disable trap/mirroring to CPU for ARP BC packet by VLAN 
+
+end
+configure
+interface vlan device ${dev} vid 2
+exit
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]}
+switchport allowed vlan add 2 untagged
+switchport allowed vlan remove 2
+end
+
+debug-mode
+cpss-api call cpssDxChBrgGenArpBcastToCpuCmdSet  devNum ${dev} cmdMode CPSS_DXCH_ARP_BCAST_CMD_MODE_VLAN_E cmd CPSS_PACKET_CMD_FORWARD_E
+
+end
+configure
+do clear bridge type ${dev} all 
+
+end

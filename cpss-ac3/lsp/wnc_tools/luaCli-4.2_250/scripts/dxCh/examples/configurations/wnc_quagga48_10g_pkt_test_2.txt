@@ -1,0 +1,45 @@
+end
+configure
+interface ethernet 0/24
+no cascade dsa
+end
+configure
+interface ethernet 0/26
+no cascade dsa
+end
+configure
+interface ethernet 1/27
+no cascade dsa
+end
+configure
+interface ethernet 1/27
+no cascade dsa
+end
+con
+interface ethernet 1/24
+switchport protected ethernet 1/26
+exit
+interface ethernet 1/26
+switchport protected ethernet 0/26
+exit
+interface ethernet 0/26
+switchport protected ethernet 0/25
+exit
+interface ethernet 0/25
+switchport protected ethernet 0/27
+exit
+interface ethernet 0/27
+switchport protected ethernet 0/24
+exit
+interface ethernet 0/24
+switchport protected ethernet 1/27
+exit
+interface ethernet 1/27
+switchport protected ethernet 1/25
+exit
+interface range vlan device 1 vid 113
+exit
+interface ethernet 1/25
+switchport allowed vlan add 113 untagged
+switchport pvid 113
+exit 

@@ -1,0 +1,53 @@
+# $(warning "Started") 
+
+#ifeq (VIPS, $(HOME_ENV))
+#
+#
+#ROOT_DIR = $(subst \,/,$(SW_ROOT))
+#include $(ROOT_DIR)/mainLabServices/gtBuild
+#
+#else
+#
+#INCLUDE_PATH += -I$(PROJ_BASE)/src/cpss/generic/labServices/port/gop/src/port/serdes/avago/aapl/include\
+#		-I$(PROJ_BASE)/src/cpss/generic/labServices/port/gop/src/port/serdes/avago/aapl/marvell
+#
+#include $(PROJ_BASE)/gtTopMake
+#endif
+
+#List of subfolders to include in build
+MODULES := \
+ include \
+ marvell 
+
+#List of files to include in list
+FILES := \
+ aacs.c \
+ aacs_server.c \
+ aapl_core.c \
+ eye.c \
+ eye_math.c \
+ gpio_mdio.c \
+ i2c.c \
+ library.c \
+ logging.c \
+ mdio.c \
+ meas.c \
+ pmd.c \
+ sbus.c \
+ sbus_access.c \
+ serdes_core.c \
+ spico.c \
+ user_code.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+COMMON_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

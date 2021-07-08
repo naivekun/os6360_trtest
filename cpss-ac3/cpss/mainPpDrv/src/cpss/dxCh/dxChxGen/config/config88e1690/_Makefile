@@ -1,0 +1,26 @@
+# $(warning "Started") 
+
+
+#List of subfolders to include in build
+MODULES := \
+ driver 
+
+#List of files to include in list
+FILES := \
+ prvCpssDxChCfg88e1690.c \
+ prvCpssDxChCfg88e1690Interrupts.c \
+ prvCpssDxChCfg88e1690Obj.c \
+ prvCpssDxChCfg88eDebug.c
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+MAINPPDRV_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

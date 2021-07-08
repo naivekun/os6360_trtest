@@ -1,0 +1,48 @@
+// TAG:               routing, ipv4, loose urpf, default route entry command
+// Short Description: set routing configuration
+// Description:       de-configure ports 1,2,3,4 and route entry
+//------------------------------------------------------------------------------
+
+end
+configure
+
+no ip route 1.1.1.0 255.255.255.0 vrf-id 100
+no ip next-hop 101
+
+no ip route 1.1.0.0 255.255.255.0 vrf-id 100
+no ip next-hop 102
+
+interface ethernet ${dev}/${port[1]}
+switchport allowed vlan remove 200
+no ip routing
+exit
+
+interface ethernet ${dev}/${port[2]}
+switchport allowed vlan remove 300
+no ip routing
+exit
+
+interface ethernet ${dev}/${port[3]}
+switchport allowed vlan remove 200
+switchport allowed vlan remove 300
+no ip routing
+exit
+
+interface ethernet ${dev}/${port[4]}
+switchport allowed vlan remove 200
+switchport allowed vlan remove 300
+no ip routing
+exit
+
+no mac address-table static 00:00:00:01:01:01 device ${dev} vlan 200 ethernet ${dev}/${port[1]}
+
+no interface vlan device ${dev} vid 200
+no interface vlan device ${dev} vid 300
+
+no ip vrf-id 100
+
+no mac address
+
+do clear bridge interface ${dev} all
+ 
+end

@@ -1,0 +1,36 @@
+# $(warning "Started") 
+
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ osObjIdLib.c \
+ osVxDebug.c \
+ osVxExc.c \
+ osVxGen.c \
+ osVxInet.c \
+ osVxIntr.c \
+ osVxIo.c \
+ osVxMem.c \
+ osVxMsgQ.c \
+ osVxRand.c \
+ osVxSem.c \
+ osVxStdLib.c \
+ osVxStr.c \
+ osVxTask.c \
+ osVxTimer.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

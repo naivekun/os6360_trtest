@@ -1,0 +1,27 @@
+// TAG:               acl; pcl-ID; set-vpt; access-list
+// Short Description: Configures acl set-vpt feature
+// Description:       Configures for pcl-ID 11 with rule-id 18 an action that
+//                    will set vpt to 6.
+
+end
+configure
+
+interface vlan device ${dev} vid 8
+exit
+
+interface range ethernet ${dev}/${port[1]},${port[2]},${port[3]}
+switchport allowed vlan add 8 tagged
+exit
+
+mac address-table static 00:11:22:33:44:55 device ${dev} vlan 8 ethernet ${dev}/${port[1]}
+
+end
+configure
+
+access-list device ${dev} pcl-ID 11
+rule-id 18 action  permit set-vpt 6 mac-source 00:AA:BB:CC:DD:EE FF:FF:FF:FF:FF:FF 
+exit
+
+interface ethernet ${dev}/${port[3]}
+service-acl pcl-ID 11 lookup 0
+end

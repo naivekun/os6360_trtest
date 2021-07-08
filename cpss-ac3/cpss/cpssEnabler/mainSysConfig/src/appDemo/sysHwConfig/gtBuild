@@ -1,0 +1,52 @@
+
+
+###
+###  add include path and file list
+###
+
+#INCLUDE_PATH =
+#C_FILE_LIST  =
+#SUBDIRS      =
+#C_EXCLUDE_FILE_LIST = gtAppDemoSfPhyIf.c
+
+######################
+## CPSS FAMILY TYPE ##
+######################
+ifeq (EXISTS, $(CHX_FAMILY))
+  DX_FAMILY = EXIST
+endif
+
+DX_FILES =      gtAppDemoDxSysConfig.c          \
+                gtAppDemoQT2025PhyConfig.c      \
+                gtAppDemoSfPhyIf.c              \
+                gtAppDemoLion2FabricForBc2.c    \
+                gtAppDemoZarlinkConfig.c
+
+ifeq (YES, $(INCLUDE_TM))
+	DX_FILES += gtAppDemoTmConfig.c 
+	DX_FILES += gtAppDemoTmUtils.c  
+endif
+
+
+C_FILE_LIST = gtAppInit.c gtAppDemoGenSysConfig.c gtAppDemoPciConfig.c gtAppDemoSmiConfig.c appDemoDb.c
+C_FILE_LIST += appDemoStaticDb.c
+
+FA_FILES = gtAppDemoFaConfig_stub.c
+ifeq (PRESTERA, $(FA_VENDOR))
+  FA_FILES = gtAppDemoFaConfig.c
+endif
+
+
+ifeq (EXIST, $(DX_FAMILY))
+ C_FILE_LIST += $(DX_FILES)
+endif
+
+ifeq (EXISTS, $(CHX_FAMILY))
+ CFLAGS += $(FD)IMPL_TM
+endif
+
+LIB_NAME = mainSysConfig.lib
+
+##################################################
+##################################################
+include $(PROJ_BASE)/gtTopMake

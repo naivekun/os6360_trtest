@@ -1,0 +1,14 @@
+// TAG:               acl; pcl-ID; trap-to-cpu; access-list;
+// Short Description: Configures acl trap-to-cpu feature
+// Description:       Configures for pcl-ID 11 with rule-id 18 an action that
+//                    traps packet to CPU.
+//		      in addition, binding port 36 to pcl-ID 11
+end
+configure
+access-list device ${dev} pcl-ID 11
+rule-id 18 action trap-to-cpu mac-destination 00:AA:BB:CC:DD:EE FF:FF:FF:FF:FF:FF cpu-code-number 195
+exit
+
+interface ethernet ${dev}/${port[3]}
+service-acl pcl-ID 11 lookup 0
+end

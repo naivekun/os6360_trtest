@@ -1,0 +1,481 @@
+#!/bin/bash
+
+source $(dirname $0)/sh_funcs/include
+
+###  Global variables
+# Assign any content to print debug message
+DBG_PRINTF=
+DBG_PRINTF_TIME=
+
+# System information parsed from DB (sysinfo file)
+UNIT_CNT=`sysinfo_get_mac_units $(dirname $0)/prod_sysinfo`
+
+# Used to setup VLAN for each loop
+FIRST_VLAN=2
+VID=`echo $FIRST_VLAN`
+SAME_VLAN=0
+SET_SAME_VLAN_CNT=0
+TOTAL_IPORTS=`grep "IPORTLINK_SET" $(dirname $0)/prod_sysinfo | grep -o "i" | wc -l`
+TOTAL_IPORTS=$((TOTAL_IPORTS / 2))
+
+# Used for packet sending by once or by loop
+PKT_INFO_IS_SAME=false
+
+# Skip the basic checking for loop ID that had checked in check stage
+SKIP_LID_CHECK=false
+
+LOOPBACK_PORT_LIST="$(dirname $0)/metadata/lb_port_list"
+PORTS_LIST_TO_TRAP="$(dirname $0)/metadata/ports_to_trap"
+ALL_SEGLIST_TO_GET="$(dirname $0)/metadata/seglist_to_get"
+SHOW_IPORT_COUNTER="$(dirname $0)/metadata/show_iport_counter"
+IPORTS_RM_TRUNK=0
+LB_PORT_LIST=""
+PORTS_TO_TRAP=""
+SEGLIST_ALL=""
+
+declare -A PKT_SEND_COUNT
+
+### Local functions ###
+# Get system information from SDK
+function get_sys_info()
+{
+    local sdk_unit_cnt
+
+    sdk_unit_cnt=`cpss_get_unit_count`
+    [ -n "$DBG_PRINTF" ] && echo "INFO: The MAC unit count from SDK is $sdk_unit_cnt."
+    if [ "$UNIT_CNT" != "$sdk_unit_cnt" ]; then
+        echo "FAIL: The SDK MAC unit count ($sdk_unit_cnt) is different from sysinfo file ($UNIT_CNT)!"
+        exit 3
+    fi
+}
+
+# Send packet from CPU
+function send_packet()
+{
+    local unit=$1
+    local portlist=$2
+    local pidlist=$3
+    local pidnum=$4
+    local pid pktfile
+
+    for pid in $pidlist; do
+        if [ -z "`ls $(dirname $0)/data/${pid}_packet* 2>/dev/null`" ]; then
+            echo "WARNING: The packet $pid is not exist in data folder ($(dirname $0)/data)!"
+            continue
+        fi
+        [ -n "$DBG_PRINTF" ] && echo "Info: TX $pidnum packet#$pid with VLAN $FIRST_VLAN for unit($unit), portlist($portlist)."
+        pktfile=$(pwd)/data/${pid}_packet.txt
+        [ -n "$DBG_PRINTF" ] && echo "Info: pktfile=$pktfile."
+        cp -f $pktfile /cmdFS/$(basename $pktfile)
+        cpss_tx_packet "$unit" "$FIRST_VLAN" "$portlist" $pidnum "$(basename $pktfile)"
+#        rm -f /cmdFS/$(basename $pktfile)
+    done
+}
+
+# Setup VLAN for each inter segment pair
+function set_vlan () {
+    local seglist=$@
+    local seg unit_port1 unit_port2 port1 port2 ports seg_iport_cnt vlan_created
+
+    # Setup VLAN for each inter segment
+    # Two intra segments between two switch chips (Snake-like traffic loop)
+    #   +---------------------------------------------------------+
+    #   |   +--------------+                 +---------------+    |
+    #   |   |   MAC #0     |   Inter-link    |    MAC #1     |    |
+    #   |   |         0/26 +-----------------+ 1/26          |    |
+    #   |   | Intra seg /  |                 |   \ Intra seg |    |
+    #   |   |        0/23  |                 |    1/0        |    |
+    #   |   +---------|----+                 +-----|---------+    |
+    #   +-------------|----------------------------|--------------+
+    #                 +============================+  Loop wtih external cable
+    # A loop with two front ports cross different MACs, like: "0/23,0/26i 1/26i,1/0" ==> seg# = "i"#
+
+    # Setup VLAN for each segment
+    for seg in $seglist; do
+
+        # Loop like: "0/23,0/26i 1/26i,1/0" (cross two MACs) needs to have the same VID
+        seg_iport_cnt=`echo $seg | grep -o 'i' | wc -l`
+        if [ $seg_iport_cnt -ne 0 ]; then
+            [ -n "$DBG_PRINTF" ] && echo "Info: Setup VLAN for each inter segment pair."
+            iport_update_VID
+        fi
+
+        if [ "$CFG_MODE" != "1" ]; then
+            # Parse unit/port information
+#            seg=${seg//i/}       # Discard "i" if got one
+            unit_port1=${seg%,*}
+            unit_port2=${seg#*,}
+            unit1=${unit_port1%/*}
+            unit2=${unit_port2%/*}
+            port1=${unit_port1#*/}
+            port2=${unit_port2#*/}
+            port1=${port1%i*}        # Discard "i" if got one
+            port2=${port2%i*}        # Discard "i" if got one
+            
+            if [ $seg_iport_cnt -ne 0 ]; then
+                [ -n "$DBG_PRINTF" ] && echo "Info: Create vlan $VID for seg_pair=$seg, unit=$unit1, port1=$port1, port2=$port2."
+            fi
+
+            # 3 cases: (1) 0/0,0/0 (2) 0/0,0/1 (3) 0/26,1/26
+            [ "$unit_port1" == "$unit_port2" ] && ports="$port1"
+            [ "$unit_port1" != "$unit_port2" -a "$unit1" == "$unit2" ] && ports="$port1,$port2" || ports="$port1"
+
+            # Create VLAN and set PVID for each pair
+            [ -n "$DBG_PRINTF" ] && echo "Info: Create vlan $VID for ports $ports on unit $unit1."
+            # Create non-existent VLAN and set PVID for each pair
+            if [ -z "`echo $vlan_created | grep -w "${unit1}_${VID}"`" ]; then
+                create_cpss_vlan "$unit1" $VID $ports
+                vlan_created="$vlan_created ${unit1}_${VID}"
+            fi
+            add_cpss_vlan_port "$unit1" $VID $ports
+
+            if [ "$unit1" != "$unit2" ]; then
+                [ -n "$DBG_PRINTF" ] && echo "Info: Create vlan $VID for ports $port2 on unit $unit2."
+                if [ -z "`echo $vlan_created | grep -w "${unit2}_${VID}"`" ]; then
+                    create_cpss_vlan "$unit2" $VID $port2
+                    vlan_created="$vlan_created ${unit2}_${VID}"
+                fi
+                add_cpss_vlan_port "$unit2" $VID $port2
+            fi
+        fi
+
+        VID=`expr $VID + 1`
+    done
+
+    # Dump VLAN settings for debug
+    [ -n "$DBG_PRINTF" ] && $LUASH -c 'do show vlan device all'
+}
+
+function setup_system()
+{
+    local unit
+
+    # Get the packet information check result that compare in check stage.
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        if [ -f $(dirname $0)/metadata/tx_pkt_info_${unit} ]; then
+            if [ `grep -c "PKT_INFO_NOT_SAME" $(dirname $0)/metadata/tx_pkt_info_${unit}` -eq 0 ]; then
+                PKT_INFO_IS_SAME=true
+                [ -n "$DBG_PRINTF" ] && echo "Info: Packet inforation for all test loops on unit $unit are same."
+            fi
+        else
+            [ -n "$DBG_PRINTF" ] && echo "The file - tx_pkt_info_${unit} does not exist."
+        fi
+    done
+}
+
+function gen_pkt()
+{
+    local lidlist=$@
+    local lid seg segment_cnt
+    local unit_port1 unit_port2 unit1 unit2 port1 port2
+    local stime=`date +%s`
+    local first_vlan
+    declare -A rec_tx_plist
+
+    echo -n "Setup and generate packets for valid loops."  # Show the action in frontend
+    for lid in $lidlist; do
+        echo -n "."    # Generate process bar in frontend
+        if [ $SKIP_LID_CHECK == false ]; then
+            [ -z "`ls $(dirname $0)/data/${lid}_loop 2>/dev/null`" ] && continue
+            [ `grep -c "INVALID_SEGMENT" $(dirname $0)/metadata/${lid}_loop` -ne 0 ] && continue
+        fi
+
+        # Parse parameters from loop file in metadata that genearted from prod_check
+        while read line; do
+            if [ "${line:0:23}" == "SEG_LIST_PAIR_INT_REMAP" ]; then
+                pair_int_seglist=${line##*=}
+            elif [ "${line:0:21}" == "SEG_LIST_SINGLE_REMAP" ]; then
+                single_seglist=${line##*=}
+            elif [ "${line:0:19}" == "SEG_LIST_PAIR_REMAP" ]; then
+                pair_seglist=${line##*=}
+            elif [ "${line:0:14}" == "SEG_LIST_REMAP" ]; then
+                seglist=${line##*=}
+            fi
+
+            if [ "$MFG_MODE" == "1" ] && [ "${line:0:10}" == "FIRST_VLAN" ]; then
+                # VLAN info is fixed and prerecorded in MFG_MODE
+                first_vlan=${line##*=}
+            fi
+        done < $(dirname $0)/metadata/${lid}_loop
+
+        # Count the number of total segment
+        segment_cnt=`echo $seglist | awk '{print NF}'`
+
+        [ -n "$DBG_PRINTF" ] && echo "Info: seglist=$seglist."
+
+        if [ "$MFG_MODE" != "1" ]; then
+            # Record VLAN ID for first segment
+            first_vlan="$VID"
+
+            # Setup VLAN for each segment
+            set_vlan $seglist
+        fi
+
+        # TX both side traffic at the first segment only of each loop.
+        # Parse unit/port information
+        #tx_seg=${seglist%% *}
+        seg=${seglist% *}           # first segment
+        unit_port1=${seg%,*}        # SDK port w/ "i" if got iport
+        unit_port2=${seg#*,}        # SDK port w/ "i" if got iport
+        tx_port1=${unit_port1//i/}  # Discard "i" if got one
+        tx_port2=${unit_port2//i/}  # Discard "i" if got one
+        unit1=${tx_port1%/*}
+        unit2=${tx_port2%/*}
+        port1=${tx_port1#*/}
+        port2=${tx_port2#*/}
+        #ports="$port1,$port2"
+
+        # Handle cases that first segment got iport:
+        #   Case I : two ports a pair cross two MACs, like: "1/27,1/26i 0/26i,0/24"
+        #   Case II: snake like: "1/27,1/26i 0/26i,0/24 0/23,0/22 0/21,0/26i 1/27i,1/25"
+        if [ `echo $seg | grep -o 'i' | wc -l` -eq 1 ]; then
+            # Since we can't use cascading port as the Tx port (not sure for the traffic flow if more than 2 internal path),
+            # we need to find another front port as the Tx port, which the last segment should have one.
+            last_segment="${seglist##* }"   # The last segment of the seglist
+            if [ -z "`echo ${last_segment#*,} | grep "i"`" ]; then
+                # Last segment like: 0/26i,0/24
+                unit_port2=${last_segment#*,}     # port after ","
+            else
+                # Last segment like: 0/24,0/26i
+                unit_port2=${last_segment%,*}     # port before ","
+            fi
+
+            tx_port2=${unit_port2//i/}
+            unit2=${tx_port2%/*}
+            port2=${tx_port2#*/}
+        fi
+
+        if [ "$tx_port1" == "$tx_port2" ]; then
+            ports="$tx_port1"
+        else
+            ports="$tx_port1,$tx_port2"
+        fi
+
+        [ -n "$DBG_PRINTF" ] && echo "Info: TX segment = $ports."
+
+        # Make the traffic looping
+        if [ "$seglist" == "$single_seglist" ]; then # single segment.
+            cpss_set_port_bridge_local_switching "$unit1" "$first_vlan" "$port1" "true"
+
+            LB_PORT_LIST="$LB_PORT_LIST $tx_port1"
+        elif [ "$seglist" == "$pair_int_seglist" ]; then
+            # Internal loop existed, remove trunking and DSA tag (once for all)
+            # Seglist like: "0/26i,1/26i" needs to remove, but seglist like: "0/20,0/23 0/22,0/26i 1/26i,1/1 1/0,1/3" doesn't
+            if [ $IPORTS_RM_TRUNK -ne 1 ]; then
+                remove_trunk_and_dsa_tag
+                IPORTS_RM_TRUNK=1
+                touch "$(dirname $0)/metadata/iport_restore"
+            fi
+            cpss_set_port_bridge_local_switching "$unit1" "$first_vlan" "$port1" "true"
+            cpss_set_port_bridge_local_switching "$unit2" "$first_vlan" "$port2" "true"
+
+            LB_PORT_LIST="$LB_PORT_LIST $unit_port1 $unit_port2"
+
+            # Default not show iport counter in the result, but it needs to display in this case.
+            touch $SHOW_IPORT_COUNTER
+        fi
+
+        if [ "$unit1" != "$unit2" ]; then
+            rec_tx_plist[$unit1]="$port1,${rec_tx_plist[${unit1}]}"
+            rec_tx_plist[$unit2]="$port2,${rec_tx_plist[${unit2}]}"
+        else
+            rec_tx_plist[$unit1]="$ports,${rec_tx_plist[${unit1}]}"
+        fi
+        if [ "$MFG_MODE" != "1" ]; then
+            echo "TX_PORT1=$unit_port1" >> $(dirname $0)/metadata/${lid}_loop   # need SDK port with "i" indication
+            echo "TX_PORT2=$unit_port2" >> $(dirname $0)/metadata/${lid}_loop   # need SDK port with "i" indication
+            echo "FIRST_VLAN=$first_vlan" >> $(dirname $0)/metadata/${lid}_loop # first VID in the loop
+        fi
+
+        # Transmit packet for each loop with first segment
+        if [ $PKT_INFO_IS_SAME == false ]; then
+            pidlist=`grep -w "PID_LIST_REMAP" $(dirname $0)/data/${lid}_loop | cut -d '=' -f2`
+            pidnum=`grep -w "PKT_NUM" $(dirname $0)/data/${lid}_loop | cut -d '=' -f2`
+            send_packet "$unit1" "$ports" "$pidlist" "$pidnum"
+
+            # Loop to calculate the Tx count w.r.t pid list
+            for pid in $pidlist; do
+                PKT_SEND_COUNT[$pid]=$((PKT_SEND_COUNT[${pid}] + pidnum))
+            done
+        fi
+
+        # list all seglist for counter watcher
+        for port in `echo $seglist | sed 's/,/ /g'`; do
+            # To prevent iport shown more than once
+            if [ -z "`echo $SEGLIST_ALL | grep -w "$port"`" ]; then
+                SEGLIST_ALL="$SEGLIST_ALL $port"
+            fi
+        done
+    done
+
+    if [ $PKT_INFO_IS_SAME == true ]; then
+        # Remap TX_PLIST for MRVL platform
+        for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+            tmp_tx_plist=`echo "${rec_tx_plist[${unit}]}" | sed "s/$unit\///g" | sed "s/.$//g"` # Remove unit number, remove last char ",".
+            sed -i  "/TX_PLIST=/c\TX_PLIST=${tmp_tx_plist}" $(dirname $0)/metadata/tx_pkt_info_${unit}
+            [ -n "$DBG_PRINTF" ] && echo "Info: Record TX portlist($tmp_tx_plist) with unit $unit."
+        done
+    fi
+}
+
+function iport_update_VID()
+{
+    if [ $SET_SAME_VLAN_CNT -eq $TOTAL_IPORTS ]; then
+        # Loop like: "1/27,1/26i 0/26i,0/24 0/25,0/26i 1/26i,1/25"
+        # Internal pair is 1/26i <-> 0/26i, 1/27 and 0/24 a VLAN group, 0/25 and 1/25 another.
+        # Segment with one iport equals to the total iports of the port mapping table in prod_sysinfo.
+        # Reset needs to be done here (to enter first case later to increase VID), can't be elif case below.
+        SAME_VLAN=0
+        SET_SAME_VLAN_CNT=0
+    fi
+
+    if [ $SAME_VLAN -eq 0 ]; then
+        # First got iport, VID no need to decrease, but need to mark for next seg
+        SAME_VLAN=1
+        SET_SAME_VLAN_CNT=1
+    else
+        # Previous seg="1/27,1/26i", VID is N. After last loop, VID increases to N+1.
+        # Current seg="0/26i,0/24", VID needs to be same as N.
+        VID=$((VID - 1))
+        SET_SAME_VLAN_CNT=$((SET_SAME_VLAN_CNT + 1))
+    fi
+}
+
+function remove_trunk_and_dsa_tag () {
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        int_ports=`get_all_internal_ports $unit`
+
+        # Clear internal port trunking
+        all_trunkId=
+        for port_idx in `echo $int_ports | sed 's/,/ /g'`; do
+            trunkId=`cpss_get_trunk_id $unit $port_idx`
+            if [ $trunkId -ne 0 ]; then
+                cpss_clear_cscdtrunk $unit $trunkId
+                all_trunkId="$all_trunkId $trunkId"
+            fi
+        done
+        if [ "$all_trunkId" ]; then
+            echo "$all_trunkId" > metadata/clear_trunkId_$unit
+        fi
+
+        # Remove DSA tag
+        cpss_cscd_dsa_tag "$unit" "$int_ports" "network"
+    done
+}
+
+function record_port_list_for_stop() {
+    if [ -n "$LB_PORT_LIST" ]; then
+        # Collect all loopback ports for later to restore in stop
+        echo "$LB_PORT_LIST" > $LOOPBACK_PORT_LIST
+    fi
+
+    if [ -n "$PORTS_TO_TRAP" ]; then
+        # Collect all Tx ports for later to trap in stop
+        echo "$PORTS_TO_TRAP" > $PORTS_LIST_TO_TRAP
+    fi
+
+    if [ -n "$SEGLIST_ALL" ]; then
+        # Collect all seglist for later to get counters in stop
+        echo "$SEGLIST_ALL" > $ALL_SEGLIST_TO_GET
+    fi
+}
+
+function reset_pkt_send_count_per_pid()
+{
+    for pkt_list in `ls $(dirname $0)/data/*_packet.txt 2>/dev/null`; do
+        file_name=${pkt_list#*/}
+        pid=${file_name/_packet.txt/}
+        PKT_SEND_COUNT[$pid]=0
+    done
+}
+
+function update_final_pkt_send_count()
+{
+    # Update final Tx packet count
+#    for pkt_list in `ls $(dirname $0)/data/*_packet.txt 2>/dev/null`; do
+#        file_name=$(basename $pkt_list)
+#        pid=${file_name/_packet.txt/}
+#
+#        eval tx_pktcnt_per_pid=\${pkt_${pid}_tx_count}
+#        echo $tx_pktcnt_per_pid > $(dirname $0)/metadata/${pid}_pkt_tx_count
+#    done
+    for pkt_list in `ls $(dirname $0)/data/*_packet.txt 2>/dev/null`; do
+        file_name=$(basename $pkt_list)
+        pid=${file_name/_packet.txt/}
+
+        echo ${PKT_SEND_COUNT[${pid}]} > $(dirname $0)/metadata/${pid}_pkt_tx_count
+    done
+}
+
+### MAIN ###
+STIME_RUN=`date +%s` # For execution time calculation
+STIME=$STIME_RUN
+
+# Get system information from SDK
+get_sys_info
+
+# Setup system related information and settings
+setup_system
+print_exec_time_debug "$DBG_PRINTF_TIME" "system setup in run stage" "$STIME"; STIME=`date +%s`;
+
+# Record loop list
+if [ -f $(dirname $0)/metadata/test_looplist ];then
+    lidlist=`grep -w "LIDLIST_VALID" $(dirname $0)/metadata/valid_lidlist | cut -d '=' -f2`
+    SKIP_LID_CHECK=true
+else
+    lidlist=$@
+fi
+
+# Set default value of pkt send count for each *_packet.txt under /data
+reset_pkt_send_count_per_pid
+
+# Setup and generate packets for each loop
+gen_pkt $lidlist
+
+# Transmit packet once with portlist
+if [ $PKT_INFO_IS_SAME == true ]; then
+    # Calculate execution time
+    [ -n "$DBG_PRINTF_TIME" ] && echo ""
+    print_exec_time_debug "$DBG_PRINTF_TIME" "VLAN setup" "$STIME";STIME=`date +%s`
+
+    for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+        tx_plist=`grep -w "TX_PLIST" $(dirname $0)/metadata/tx_pkt_info_${unit} | cut -d '=' -f2`
+        pidlist=`grep -w "PID_LIST" $(dirname $0)/metadata/tx_pkt_info_${unit} | cut -d '=' -f2`
+        pidnum=`grep -w "PKT_NUM" $(dirname $0)/metadata/tx_pkt_info_${unit} | cut -d '=' -f2`
+        if [ "$tx_plist" != "" ]; then
+            send_packet "$unit" "$tx_plist" "$pidlist" "$pidnum"
+
+            # Loop to calculate the Tx count w.r.t pid list
+            comma_cnt=`echo "$tx_plist" | grep -o "," | wc -l`
+            expt_cnt=$(((comma_cnt + 1) * pidnum))
+            for pid in $pidlist; do
+                PKT_SEND_COUNT[$pid]=$((PKT_SEND_COUNT[${pid}] + expt_cnt))
+            done
+        fi
+    done
+
+    # Calculate execution time
+    print_exec_time_debug "$DBG_PRINTF_TIME" "Packet transmission once with portlist" "$STIME"
+else
+    # Calculate execution time
+    [ -n "$DBG_PRINTF_TIME" ] && echo ""
+    print_exec_time_debug "$DBG_PRINTF_TIME" "VLAN setup and packet transmission with each test loop" "$STIME"
+fi
+# Start the counter watcher and enable high resolution mode to monitor the traffic rate
+for ((unit=0; unit<$UNIT_CNT; unit=unit+1)); do
+    cpss_set_mac_counter_clear_on_read_all "$unit" "disable"
+    cpss_cw_start "$unit" all
+    cpss_cw_hr_start "$unit" all
+done
+
+record_port_list_for_stop
+
+# Update final Tx packet count for later use in stop
+update_final_pkt_send_count
+
+# For execution time calculation
+ETIME_RUN=`date +%s`
+EXEC_TIME=$(($ETIME_RUN - $STIME_RUN))
+[ -n "$DBG_PRINTF_TIME" ] && echo "Done(${EXEC_TIME}s)" || echo "Done"
+
+exit 0

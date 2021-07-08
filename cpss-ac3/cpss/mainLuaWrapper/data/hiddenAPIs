@@ -1,0 +1,10 @@
+cpssDxChIpLpmIpv4UcPrefixDelBulk
+cpssDxChIpLpmIpv4UcPrefixAddBulk
+cpssDxChIpLpmIpv6UcPrefixAddBulk
+cpssDxChIpLpmIpv6UcPrefixDelBulk
+cpssDxChLpmNodeNextPointersWrite
+cpssDxChLpmNodeRead
+cpssDxChPclRuleSet
+cpssPxHwInit
+cpssPxCfgHwAccessObjectBind
+

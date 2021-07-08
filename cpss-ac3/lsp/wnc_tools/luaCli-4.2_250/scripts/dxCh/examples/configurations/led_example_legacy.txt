@@ -1,0 +1,31 @@
+// TAG:               LED interface;
+// Short Description: Configure LED stream interface
+// Description:       Configure LED stream interfacem LED stream classes  and global LED parameteres for legacy devices
+
+end
+configure
+
+//The order of the signals driven in the LED stream - by port
+led interface ${ledIf} device ${dev} stream-order-by port
+//Start and end significant bit in stream - 100-255
+led interface ${ledIf} device ${dev} stream-length start 100 end 255
+//LED blink duty cycle signal and divider of blink frequency - LED blink duty cycle is 75% and LED blink frequency divider is 32.5 ms
+led interface ${ledIf} device ${dev} blink-cfg 0 duty-cycle 75/25 duration 2
+//LED indication stretching divider - LED clock stretching: 32.5-65.1 msec
+led interface ${ledIf} device ${dev} stretch-cfg 2
+//Inversion of LEDCLK signal
+led interface ${ledIf} device ${dev} clock-invert
+//LED interface indications when physical link is down
+led interface ${ledIf} device ${dev} disable-on-link-down
+//Configure a class 13 indication for ports connected to dual media PHY (combo-ports)
+led interface ${ledIf} device ${dev} dual-media-class-13 cooper-link-up
+//Configure a class 5 indication for ports connected to dual media PHY (combo-ports)
+led interface ${ledIf} device ${dev} dual-media-class-5 fiber-link-up
+
+// Enable forcing for LED class 3. Tri-speed ports 0,2 light up, ports 1,3-11 light down.
+led class 3 device ${dev} led-if ${ledIf} force 0x5 port-type tri-speed
+//enable indication blinking for class 3. Use blink0 (configured above)
+led class 3 device ${dev} led-if ${ledIf} use-blink 0
+//invert class 3 indication for XG ports
+led class 3 device ${dev} led-if ${ledIf} invert port-type xg
+exit

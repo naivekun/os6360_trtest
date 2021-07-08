@@ -1,0 +1,27 @@
+# $(warning "Started") 
+
+#List of subfolders to include in build
+MODULES := 
+
+#List of files to include in list
+FILES := \
+ osShellExec.c \
+ os_w32Data.c \
+ os_w32IO.c \
+ os_w32Shell.c \
+ w32_cmdStreamConsole.c \
+ w32_cmdStreamSerial.c \
+ w32_cmdStreamSocket.c 
+
+
+CWD := $(dir $(lastword $(MAKEFILE_LIST)))
+
+#Add relative path to original Makefile, to each file in the list
+CPSSENABLER_SRC += $(patsubst %,$(CWD)%,$(FILES))
+
+#Enable this line to add include path of this folder
+#CFLAGS := $(CFLAGS) -I$(CWD)
+
+#Recursively go into list of subfolders
+include $(patsubst %,$(CWD)%/$(MAKEFILE),$(MODULES))
+

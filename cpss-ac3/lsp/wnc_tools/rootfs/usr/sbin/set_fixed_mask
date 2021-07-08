@@ -1,0 +1,44 @@
+#!/bin/bash
+
+#Set fixed mask
+
+Usage()
+{
+   echo Usage: set_fixed_mask [netmask] : set fixed IPv4 netmask
+}
+
+Check_ubi0_4()
+{
+  #This file is generated in init_ubidata
+  CHK_FILE=/tmp/no_ubi0_4
+
+  if [ -f $CHK_FILE ];
+  then
+     echo Error: There is no data section.
+     exit 1
+  fi
+}
+
+
+if [ $# -ne 1 ];
+then
+   Usage
+   exit 1
+fi
+
+Check_ubi0_4
+
+
+MASK_FOLDER=/usr/data
+
+if [ ! -d $MASK_FOLDER ]; 
+then
+    mkdir -p $MASK_FOLDER
+fi
+ 
+echo $1 > $MASK_FOLDER/wnc_fixed_mask
+sync
+sleep 1
+echo Set fixed netmask as $1
+exit 0
+

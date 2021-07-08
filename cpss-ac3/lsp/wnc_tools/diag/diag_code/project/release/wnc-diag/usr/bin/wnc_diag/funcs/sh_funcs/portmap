@@ -1,0 +1,145 @@
+#!/bin/bash
+
+# Associative arrays
+declare -A ARRY_PPORT   # index with logic port, value is physical port
+declare -A ARRY_LPORT   # index with physical port, value is logic port
+
+function get_portmap_array() {
+    local sysinfo_file=$1
+    local logic_port
+    local phy_port
+    local hit_table=0
+
+    if [ -f $sysinfo_file ]; then
+        while read line; do
+            if [ "${line:0:5}" == "-----" ]; then
+                hit_table=1
+                continue
+            elif [ $hit_table -eq 0 ]; then
+                continue
+            fi
+
+            logic_port=${line%% *}
+            phy_port=`echo $line | awk '{print $2}'`
+            ARRY_LPORT["$phy_port"]="$logic_port"
+            ARRY_PPORT["$logic_port"]="$phy_port"
+        done < $sysinfo_file
+    else
+        echo -e "port mapping file not found!\n"
+    fi
+}
+
+function map_to_sdk_port() {
+    local logic_port=$1
+
+    echo "${ARRY_PPORT[${logic_port}]}"
+}
+
+function map_to_front_port() {
+    local phy_port=$1
+
+    echo "${ARRY_LPORT[${phy_port}]}"
+}
+
+function portmap_replace () {
+    local map_to=$2    # "front" or "sdk"
+
+    seg_remap=""
+    for seg in $1; do
+        if [ `echo $seg | grep -o ',' | wc -l` -ne 0 ]; then
+            # input is a pair
+            port1=${seg%,*}
+            port2=${seg#*,}
+            if [ "$map_to" == "front" ]; then
+                remap_port1="${ARRY_LPORT[${port1}]}"
+                remap_port2="${ARRY_LPORT[${port2}]}"
+            else
+                # default to get SDK port
+                remap_port1="${ARRY_PPORT[${port1}]}"
+                remap_port2="${ARRY_PPORT[${port2}]}"
+            fi
+            seg_remap="$seg_remap$remap_port1,$remap_port2 "
+        else
+            # input is a single port
+            if [ "$map_to" == "front" ]; then
+                remap_port="${ARRY_LPORT[${seg}]}"
+            else
+                # default to get SDK port
+                remap_port="${ARRY_PPORT[${seg}]}"
+            fi
+            seg_remap="$seg_remap$remap_port "
+        fi
+    done
+
+    # Return remapped strings
+    echo $seg_remap
+}
+
+function get_all_internal_ports() {
+    local unit=$1
+    local all_ports_idx=""
+
+    for int_port in `grep "^i$((unit + 1))" $(dirname $0)/prod_sysinfo | grep "i" | awk '{print $2}'`; do
+        port_index=`echo $int_port | cut -d '/' -f2 | sed 's/i//g'`
+        all_ports_idx="${all_ports_idx}${port_index},"
+    done
+
+    all_ports_idx=`echo ${all_ports_idx} | sed 's/.$//'`
+    echo ${all_ports_idx}
+}
+
+function get_port_config() {
+    # Used for raw command or DIAG command, which file name started with pinfo_${project}_${sku}.cfg.
+    # New project please use sysinfo_get_portinfo in file sysinfo, not use this one.
+    # FIXME, update Avenger to get rid of this and use new one.
+
+    local lport=$1
+    local opt_to_get=$2     #DevNum, PPort, PhyAddr, PhyType
+    local cfg_fpath=$3
+    local port_info=`cat $cfg_fpath | grep -w "^$lport"`
+
+    case $opt_to_get in
+        DevNum)
+            value=`echo $port_info | awk '{print $2}'`
+            ;;
+        PPort)
+            value=`echo $port_info | awk '{print $3}'`
+            ;;
+        PhyAddr)
+            value=`echo $port_info | awk '{print $4}'`
+            ;;
+        PhyType)
+            value=`echo $port_info | awk '{print $5}'`
+            ;;
+        *)
+            echo "Wrong option to get port config, please check!"
+            value="error"
+            ;;
+    esac
+
+    echo $value
+}
+
+function check_port_valid() {
+    local lport_idx=$1
+    local lower_bound=$2
+    local upper_bound=$3
+    local rtn=0
+
+    if [ $lport_idx -lt $lower_bound ] || [ $lport_idx -gt $upper_bound ]; then
+        rtn=1
+    fi
+
+    echo $rtn
+}
+
+function port_bitmap() {
+    local port=$1
+    local bitmap_hex=0
+    local port_power=0
+
+
+    port_power=$((2 ** port))
+    bitmap_hex=`echo "obase=16;ibase=10; $port_power" | bc`
+    echo "$bitmap_hex"
+}

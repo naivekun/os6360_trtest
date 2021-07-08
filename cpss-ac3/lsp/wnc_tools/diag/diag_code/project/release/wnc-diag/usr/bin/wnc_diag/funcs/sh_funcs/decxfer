@@ -1,0 +1,20 @@
+#!/bin/bash
+
+function dec2hex() {
+	local dec=$1
+	echo -n $dec | xargs -0 printf '0x%x'
+}
+
+function hex2dec() {
+	local hex=$1
+	echo $(($hex))
+}
+
+function is_digit() {
+	local input=$1
+	if [ -z "`echo $input | tr -d [:digit:]`" ]; then
+		echo true
+	else
+		echo false
+	fi
+}

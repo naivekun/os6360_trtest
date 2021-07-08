@@ -1,0 +1,1456 @@
+#!/bin/bash
+## This script is a PoE utility for Broadcom BCM59136 control on Paradise
+FLAG_DEBUG="0" ## 0:FALSE / 1:TRUE
+
+# ============================================================ # 
+#   Define
+# ============================================================ #
+UTIL_NAME=$(basename "$0")
+UTIL_VER="1.0.4"
+CONFIG_FILE=$FUNCS_PATH/utils/poe/poe_cfg
+SKU_NAME=$(cat /usr/local/sku 2> /dev/null)
+
+# ============================================================ #
+#   Declare PoE SPEC Structure
+# ============================================================ #
+# Get PoE settings from configuration file
+source $CONFIG_FILE
+declare -A poe_conf
+poe_conf["bus"]=$(printf "%d" "$BUS")
+poe_conf["addr"]=$(printf "0x%02X" "$ADDR" )
+poe_conf["MAX_PORT"]=$(printf "0x%02X" "$MAX_PORT")
+poe_conf["MAX_BANK"]="0x07"
+poe_conf["delay_time"]="0.020" # 20 ms
+poe_conf["msg_length"]="12"
+poe_conf["byte_cmd"]="0"
+poe_conf["byte_seq"]="1"
+poe_conf["byte_checksum"]="11"
+read -r -a PORT_MAX_POWER <<< "${PORT_MAX_POWER//,/\ }" # Turn the string to array
+read -r -a BANK_MAX_POWER <<< "${BANK_MAX_POWER//,/\ }" # Turn the string to array
+read -r -a PORT_MAPPING <<< "${PORT_MAPPING[*]}"
+
+# Command Table of BCM59136 #
+CMD_EN_PORT=0x00          # PSE Functionality Enable Command
+CMD_CONF_PORT_MAP=0x02    # Logical Port Map Enable Command
+CMD_EN_ALL_PORT=0x06      # Global PSE Functionality Enable Command
+CMD_RESET_MCU=0x09        # System Reset Command
+CMD_CONF_EVENT=0x0D       # Global Port Event Mask Configuration Command
+CMD_PAIR_PORT_MAP=0x0E    # Pair Mapping Command
+CMD_CONF_LIMIT_TYPE=0x15  # Power Threshold Type Configuration Command
+CMD_CONF_PORT_LIMIT=0x16  # Maxinum Power Threshold Configuration Command
+CMD_CONF_PWR_MODE=0x17    # Power Management Mode Configuration Command
+CMD_CONF_BANK_LIMIT=0x18  # Power Source Configuration Command
+CMD_CONF_PORT_MODE=0x1C   # Power-Up Mode (Port Mode) Configuration Command
+CMD_GET_VER=0x20          # System Status Query Command
+CMD_GET_PSE=0x23          # Total Power Allocated Query Command
+CMD_GET_PORT_CONF=0x25    # Port Configuration Query Command
+CMD_GET_PORT_LIMIT=0x26   # Port Extended Configuration Query Command
+CMD_GET_BANK_LIMIT=0x27   # System Power Management Configuration Query Command
+CMD_GET_PORT_PWR=0x30     # Port Measurement Query Command
+CMD_MISC=0xE0             # Miscellaneous Commands
+SUB_VERIFY_CRC=0x40       # Misc. Command: Force CRC Check Command
+SUB_DNLD_MCU_APP=0x80     # Misc. Command: Application Image Download Command
+SUB_CLEAR_MCU=0xC0        # Misc. Command: Clear Application Image Command
+SUB_CLEAR_CONF=0xE0       # Misc. Command: Clear Configuration Command
+SUB_SAVE_CONF=0xF0        # Misc. Command: Save Configuration Command
+
+# Error Code of Utility #
+RT_SUCCESS=0
+RT_ERR_OPTION=1
+RT_ERR_ARGUMENT=2
+RT_ERR_UNKNOWN_SKU=3
+RT_ERR_MISSING_FILE=4
+
+RT_ERR_REQUEST=11
+RT_ERR_RESPOND=12
+RT_ERR_REJECT=13
+
+# POE_NO_FW=175
+
+# ============================================================ #
+#   Common Function 
+# ============================================================ #
+function usage() {
+
+usage_str="\
+Usage:
+NAME
+       $UTIL_NAME - PoE utility for BCM59136
+
+SYNOPSIS
+       $UTIL_NAME [-itgvzh]
+       $UTIL_NAME [-b bank]
+       $UTIL_NAME [-p port [--status | --power | --limit]]
+       $UTIL_NAME [-e | -d port]
+       $UTIL_NAME [-n bank -l limit [-B guard_band]]
+       $UTIL_NAME [-o port -l limit]
+       $UTIL_NAME [-r mask]
+       $UTIL_NAME [-u image]
+       $UTIL_NAME [-w raw_command]
+       $UTIL_NAME [--restore]
+       $UTIL_NAME [--reboot]
+       $UTIL_NAME [--version]
+       $UTIL_NAME [--help]
+
+DESCRIPTION
+       This command is used to communicate with PoE MCU to achieve
+       the PoE feature, including the subsystem configuration, 
+       power management for PoE port, PSE and Power bank.
+
+       Only one action will be executed at once.
+
+MANDATORY OPTIONS
+       At least one optional option is needed.
+
+OPTIONAL OPTIONS
+       -i               Initialize the PoE subsystem
+
+       -t               Display total PSE information
+
+       -g               Display current power status
+       
+       -b               Display power bank information
+                        bank: 
+                            Decimal string, range: 0 - 7
+                            Format: '1,2-3,4,5'
+
+       -p               Display PoE port information
+                        port: 
+                           Decimal string, start from 1, 0 means all ports
+                           Format: '1,2-3,4,5'
+
+       -e               Enable PoE port
+                        port: 
+                            Decimal string, start from 1, 0 means all ports
+                            Format: '1,2-3,4,5'
+
+       -d               Disable PoE port
+                        port: 
+                            Decimal string, start from 1, 0 means all ports
+                            Format: '1,2-3,4,5'
+
+       -n               Specify power bank for setting power limit
+                        bank: 
+                            Decimal string, range: 0 - 7
+                            Format: '1,2-3,4,5'
+
+       -o               Specify PoE port for setting power limit
+                        port: 
+                            Decimal string, start from 1, 0 means all ports
+                            Format: '1,2-3,4,5'
+
+       -l               Set max power limit(w)
+
+       -B               Set guard band(w) for power bank, default is 0w 
+
+       -r               Set event mask
+                        mask: 
+                            0: Disable, 1: Enable
+
+       -v               Save current PoE system setting
+       
+       -u               Upgrade PoE MCU firmware
+
+       -w               PoE MCU raw command without checksum
+                        Format: 
+                            11 byte hex data split by ' '
+
+           --status     Display PoE port status
+            
+           --power      Display PoE port current power information
+            
+           --limit      Display PoE port power limit
+        
+           --restore    Restore PoE system setting to factory default
+           
+           --reboot     Reboot PoE system
+           
+       -z, --version    Display utility and subsystem version
+
+       -h, --help       Display help message
+
+PASS CRITERIA
+       - SUCCESS: 
+           Type: Get PoE information
+             Message: Display PoE information.
+             Return code : 0
+
+           Type: Request to control PoE subsystem
+             Message: Display [Success] at the end.
+             Return code : 0
+
+       - ERROR: 
+           Type: Input option is none or not matching OPTIONAL OPTIONS
+             Message: Display utility usage.
+             Return code : 1
+
+           Type: Input argument is not valid
+             Message: [FAIL] Invalid argument.
+             Return code : 2
+             
+           Type: Fail to send request to PoE MCU
+             Message: [FAIL] Unable to send request.
+             Return code : 3
+
+           Type: Fail to receive respond from PoE MCU
+             Message: [FAIL] Unable to receive respond.
+             Return code : 4
+
+           Type: The request is rejected by PoE MCU
+             Message: [FAIL] Request rejected.
+             Return code : 5
+             
+           Type: Fail to identify platform SKU number
+             Message: [FAIL] Unknown SKU.
+             Return code : 6
+  
+EXAMPLE
+       $UTIL_NAME -i
+       $UTIL_NAME -t
+       $UTIL_NAME -g
+       $UTIL_NAME -b 3
+       $UTIL_NAME -p 0
+       $UTIL_NAME -e 1,2-3,4,5
+       $UTIL_NAME -d 1,2-3,4,5
+       $UTIL_NAME -n 3 -l 650 -B 10
+       $UTIL_NAME -o 1,2-3,4,5 -l 10
+       $UTIL_NAME -r 1
+       $UTIL_NAME -v
+       $UTIL_NAME -u image.bin
+       $UTIL_NAME -w '20 00 ff ff ff ff ff ff ff ff ff'
+       $UTIL_NAME -z
+       $UTIL_NAME -h
+       $UTIL_NAME -p 0 --status
+       $UTIL_NAME -p 0 --power
+       $UTIL_NAME -p 0 --limit
+       $UTIL_NAME --restore
+       $UTIL_NAME --reboot
+       $UTIL_NAME --version
+       $UTIL_NAME --help
+
+"
+
+if [[ "$FLAG_DEBUG" == "1" ]]; then
+  print_dbg "$usage_str" && return 0
+else
+  print_poe_log "$usage_str" && return 0
+fi
+}
+
+function print_poe_log() {
+  echo -n -e "$1"
+}
+
+function print_dbg() {
+  if [[ $FLAG_DEBUG == "1" ]]; then
+    echo -n -e "[DEBUG] $1"
+  fi
+}
+
+function quit_util() {
+  local result=$1
+  local quit_line=$2
+  local message=$3
+
+  [[ -n "$message" ]] && print_poe_log "$message \n"
+
+  [[ $FLAG_DEBUG == "1" ]] && \
+    print_dbg "[Line: $quit_line] Exit with $result \n"
+
+  exit "$result"
+}
+
+function parse_usr_str() {
+  # Input Format : "1,2-3,4,5"
+  read -r -a input_str <<< "${1//,/\ }" # re-form "1,2,3" to "1 2 3"
+  local -n output_bitmap=$2
+  local num_str=$(( $(echo "$1" | grep -o ',' | wc -l) +1 ))
+  local num_arr=${#input_str[*]}
+
+  [[ "$num_str" -ne "$num_arr" ]] && \
+    quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Invalid input format"
+
+  output_bitmap=0x0
+  for token in "${input_str[@]}" ; do
+    # if digit number only
+    if [[ "$token" =~ ^[[:digit:]]*$ ]]; then
+      # bitmap max length is 52 bit
+      [[ "$token" -ge 52 ]] && \
+        quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Input out of range"
+
+      output_bitmap=$(( output_bitmap | (1 << token) ))
+
+    else 
+      # check format is "start-end"
+      if [[ "$token" =~ ^[[:digit:]]+-[[:digit:]]+$ ]]; then 
+        start=$(echo "$token" | cut -d "-" -f 1 )
+        end=$(echo "$token" | cut -d "-" -f 2 )
+
+        # start <= end
+        if [[ "$start" -le "$end" ]];then
+          # bitmap max length is 52 bit
+          [[ "$end" -ge 52 ]] && \
+            quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Input out of range"
+
+          for shift in $(seq "$start" "$end"); do
+            output_bitmap=$(( output_bitmap | (1 << shift) ))
+          done
+
+        else
+          quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Invalid input format"
+        fi
+
+      else
+        quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Invalid input format"
+      fi
+    fi
+  done
+ 
+  # bitmap max length is 52 bit
+  output_bitmap=$(printf "0x%013X" "$output_bitmap" )
+}
+
+# ============================================================ #
+#   PoE Common Transfer Function 
+# ============================================================ #
+function clear_previous_msg() {
+  local temp_buffer=("")
+  local receive="i2ctransfer -y ${poe_conf["bus"]} r${poe_conf["msg_length"]}@${poe_conf["addr"]}"
+
+  for ((clear_time = 1; clear_time <= 3; clear_time++ )); do 
+    sleep "${poe_conf["delay_time"]}"
+    read -r -a temp_buffer <<< "$($receive | tr '[:lower:]' '[:upper:]' | sed s/0X/0x/g )"
+    print_dbg "Previous : ${temp_buffer[*]} \n"
+  done
+
+}
+
+function transceive() {
+  read -r -a tx_buffer <<< "$1"
+  local -n rx_buffer=$3
+  local transfer="i2ctransfer -y ${poe_conf["bus"]} w${poe_conf["msg_length"]}@${poe_conf["addr"]}"
+  local rest_time="sleep $2"
+  local receive="i2ctransfer -y ${poe_conf["bus"]} r${poe_conf["msg_length"]}@${poe_conf["addr"]}"
+
+  $rest_time
+  [[ "$FLAG_DEBUG" == "1" ]] && print_poe_log "[ Send    ] ${tx_buffer[*]} \n"
+  $transfer "${tx_buffer[@]}"
+
+  $rest_time
+  read -r -a rx_buffer <<< "$($receive | tr '[:lower:]' '[:upper:]' | sed s/0X/0x/g)"
+  [[ "$FLAG_DEBUG" == "1" ]] && print_poe_log "[ Receive ] ${rx_buffer[*]} \n"
+
+}
+
+function transact_poe_mcu() {
+  read -r -a send_msg <<< "$1"
+  local -n received_msg=$3
+  local retry=0
+
+  [[ "${send_msg[$SEQ]}" == "SEQ" ]] && \
+    send_msg[$SEQ]=$(printf "0x%02X" "$((RANDOM %253 +1))" )
+
+  send_msg[$CHECKSUM]=$(printf "%04X" \
+    $(( send_msg[0] + send_msg[1] + send_msg[2] + send_msg[3] + send_msg[4] + \
+        send_msg[5] + send_msg[6] + send_msg[7] + send_msg[8] + send_msg[9] + \
+        send_msg[10] )) | cut -c 3-4 )
+  send_msg[$CHECKSUM]="0x${send_msg[$CHECKSUM]}"
+
+  while [ $retry -le 3 ]; do
+    transceive "${send_msg[*]}" "${wait_time:-$2}" "received_msg"
+
+    if [ "${received_msg[$CMD]}" != "0xFF" ] || \
+       [ "${received_msg[$SEQ]}" != "0xFF" ] || \
+       [ "${received_msg[$CHECKSUM]}" != "0xFF" ]; then
+      break
+    fi
+
+    [[ $retry -eq 3 ]] && \
+      quit_util "$RT_ERR_REQUEST" "$LINENO" "PoE MCU no response." 
+
+    retry=$(( retry +1 ))
+    print_poe_log "Re-send the request again. \n"
+  done
+
+  if [ "${received_msg[$CMD]}" != "${send_msg[$CMD]}" ] || \
+     [ "${received_msg[$SEQ]}" != "${send_msg[$SEQ]}" ]; then
+    quit_util "$RT_ERR_RESPOND" "$LINENO" "Receive wrong response message."
+  fi
+
+  verify_checksum=$(printf "%04X" \
+    $(( received_msg[0] + received_msg[1] + received_msg[2] + received_msg[3] + received_msg[4] + \
+        received_msg[5] + received_msg[6] + received_msg[7] + received_msg[8] + received_msg[9] + \
+        received_msg[10] )) | cut -c 3-4 )
+  verify_checksum="0x$verify_checksum"
+
+  if [ "${received_msg[$CHECKSUM]}" != "$verify_checksum" ]; then
+    quit_util "$RT_ERR_RESPOND" "$LINENO" "Receive response message with wrong checksum."
+  fi
+
+  return $RT_SUCCESS
+}
+
+# ============================================================ #
+#   PoE Feature Function 
+# ============================================================ #
+function init_poe_system() {
+  print_poe_log "Platform SKU : ${SKU_NAME} \n"
+
+# STEP 1. Restore the configuration to default setting
+  print_poe_log "Restore the PoE system configuration to default "
+  
+  ## 1.1    Enter the port mapping configuration mode
+  print_poe_log "."
+  ## (0x02) Logical Port Map Enable Command
+  transact_poe_mcu \
+    "$CMD_CONF_PORT_MAP SEQ 0x02 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "0.300" "received_data" # wait 300 ms
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+    quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+
+  ## 1.2    Restore the configuration to default setting
+  print_poe_log "."
+  ## (0xE0-E0) Misc. Command: Clear Configuration Command
+  transact_poe_mcu \
+    "$CMD_MISC $SUB_CLEAR_CONF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "0.044" "received_data" # wait 44 ms
+ 
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+    quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+
+  ## 1.3    Reset the entire PoE subsystem
+  print_poe_log "."
+  ## (0x09) System Reset Command
+  transceive \
+    "$CMD_RESET_MCU 0x00 0x01 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0x02" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  sleep 2 # wait 1200 ms + 800 ms
+
+  print_poe_log " OK \n"
+  
+# STEP 2. Configure the port mapping
+  print_poe_log "Configure port mapping "
+  
+  ## 2.1    Enter the port mapping configuration mode
+  print_poe_log "."
+  ## (0x02) Logical Port Map Enable Command
+  transact_poe_mcu \
+    "$CMD_CONF_PORT_MAP SEQ 0x02 ${poe_conf["MAX_PORT"]} 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "0.300" "received_data" # wait 300 ms
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+      quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+
+  ## 2.2    Perform the port mapping from PSE channel to Ethernet port
+  print_poe_log "."
+
+  for (( port = 0; port < poe_conf["MAX_PORT"]; port++ )); do
+    port=$(printf "0x%02X" "$port" )
+
+    pse_channel_prim=$(echo "${PORT_MAPPING[$port]}" | cut -d ':' -f 2 | cut -d ',' -f 1 )
+    pse_channel_alter=$(echo "${PORT_MAPPING[$port]}" | cut -d ':' -f 2 | cut -d ',' -f 2 )
+    if [[ ! "$pse_channel_prim" =~ ^[[:digit:]]*$ ]] || \
+       [[ ! "$pse_channel_alter" =~ ^[[:digit:]]*$ ]]; then
+      print_poe_log " Fail \n"
+      quit_util "$RT_ERR_REJECT" "$LINENO" "Invalid config data"
+    fi
+
+    pse_dev_id=$(printf "0x%02X" "$(( pse_channel_prim /8 ))" )
+    pse_channel_prim=$(printf "0x%02X" "$(( pse_channel_prim %8 ))" )
+    pse_channel_alter=$(printf "0x%02X" "$(( pse_channel_alter %8 ))" )
+
+    ## (0x0E) Pair Mapping Command
+    transact_poe_mcu \
+      "$CMD_PAIR_PORT_MAP SEQ $port 0x01 $pse_dev_id $pse_channel_prim $pse_channel_alter 0x00 0x00 0x00 0xFF CHECKSUM" \
+      "${poe_conf["delay_time"]}" "received_data"
+
+    [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+      quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+
+  done
+
+  ## 2.3    Exit the port mapping configuration mode
+  print_poe_log "."
+  ## (0x02) Logical Port Map Enable Command
+  transact_poe_mcu \
+    "$CMD_CONF_PORT_MAP SEQ 0x03 ${poe_conf["MAX_PORT"]} 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+      quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+
+  sleep 2 # wait 1200 ms + 800 ms for PoE subsystem auto reboot
+
+  ## 2.5    Disable all PoE port
+  print_poe_log "."
+  ## (0x06) Global PSE Functionality Enable Command
+  transact_poe_mcu \
+    "$CMD_EN_ALL_PORT SEQ 0x00 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+      quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+
+  print_poe_log " OK \n"
+
+# STEP 3. Set port poe power-up mode = AT/BT
+  print_poe_log "Configure PoE power-up mode ..."
+
+  local count=0
+  read -r -a send_command <<< "${STANDARD_COMMAND[*]}"
+
+  # 0 based for PoE MCU port
+  for port in $(seq 0 $(( poe_conf["MAX_PORT"] -1 )) ); do
+    count=$(( count +1 ))
+    send_command[$(( count *2 ))]=$(printf "0x%02X" "$port" )
+
+    poe_mode=$(echo "${PORT_MAPPING[$port]}" | cut -d ':' -f 1 | tr '[:lower:]' '[:upper:]' )
+    
+    if [[ "$poe_mode" == "AT" ]]; then
+      send_command[$(( count *2 +1 ))]=0x03 # IEEE 802.3at mode (Inrush current 700 mA to 1.0 A)
+    elif [[ "$poe_mode" == "BT" ]]; then
+      send_command[$(( count *2 +1 ))]=0x05 # IEEE 802.3bt mode
+    else
+      print_poe_log " Fail \n"
+      quit_util "$RT_ERR_REJECT" "$LINENO" "Invalid config data"
+    fi
+
+    # 4 port in 1 group to send 
+    if [[ $count -lt 4 && $port -eq $(( poe_conf["MAX_PORT"] -1 )) ]] || [[ $count -eq 4 ]]; then
+      ## (0x1C) Power-Up Mode (Port Mode) Configuration Command
+      send_command[$CMD]=$CMD_CONF_PORT_MODE
+      transact_poe_mcu \
+        "${send_command[*]}" "${poe_conf["delay_time"]}" "received_data"
+
+      if [[ ${received_data[2]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[3]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[4]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[5]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[6]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[7]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[8]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[9]} -ne $RT_SUCCESS ]]; then
+        quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+      fi
+      
+      # clear for next round
+      count=0
+      read -r -a send_command <<< "${STANDARD_COMMAND[*]}"
+    fi
+  done
+  print_poe_log " OK \n"
+
+# STEP 4. Set power management mode (Dynamic power management without port priority)
+  print_poe_log "Configure power management mode ..."
+
+  ## (0x17) Power Management Mode Configuration Command
+  transact_poe_mcu \
+    "$CMD_CONF_PWR_MODE SEQ 0x04 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+  
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+    quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+
+  print_poe_log " OK \n"
+
+# STEP 5. Set power budget to power bank index
+  print_poe_log "Configure power budget of PoE system "
+  print_poe_log ".."
+
+  local total_num=$(( ${#PORT_MAX_POWER[*]} -1 ))
+  local count=0
+  
+  read -r -a send_command <<< "${STANDARD_COMMAND[*]}"
+  check_max=$(echo 0x100 | awk '{print int( $1 * 0.2 ) }' )
+  
+  for idx in $(seq 0 $total_num); do
+    port=$(echo "${PORT_MAX_POWER[$idx]}" | cut -d ':' -f 1 )
+    max_power=$(echo "${PORT_MAX_POWER[$idx]}" | cut -d ':' -f 2 )
+    
+    if [[ ! "$port" =~ ^[[:digit:]]*$ ]] || [[ ! "$max_power" =~ ^[[:digit:]]*$ ]] || \
+       [[ "$port" -gt "${poe_conf["MAX_PORT"]}" ]] || [[ "$max_power" -ge "$check_max" ]]; then
+      print_poe_log " Fail \n"
+      quit_util "$RT_ERR_REJECT" "$LINENO" "Invalid config data"
+    fi
+
+    count=$(( count +1 ))
+    port=$(printf "0x%02X" "$(( port -1 ))" )  # 0 based for PoE MCU port
+    max_power=$(echo "$max_power" | awk '{print $1 / 0.2 }' )  # 0.2W / LSB
+    max_power=$(printf "0x%02X" "$max_power" ) 
+    
+    send_command[$(( count *2 ))]=$port
+    send_command[$(( count *2 +1 ))]=$max_power
+
+    # 4 port in 1 group to send 
+    if [[ $count -lt 4 && $idx -eq $total_num ]] || [[ $count -eq 4 ]]; then
+      ## (0x16) Maxinum Power Threshold Configuration Command
+      send_command[$CMD]=$CMD_CONF_PORT_LIMIT
+      transact_poe_mcu \
+        "${send_command[*]}" "${poe_conf["delay_time"]}" "received_data"
+
+      if [[ ${received_data[2]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[3]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[4]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[5]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[6]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[7]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[8]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[9]} -ne $RT_SUCCESS ]]; then
+        quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+      fi
+
+      ## (0x15) Power Threshold Type Configuration Command
+      send_command[$CMD]=$CMD_CONF_LIMIT_TYPE
+      send_command[3]=0x02  # User-Defined Max Power Value
+      send_command[5]=0x02  # User-Defined Max Power Value
+      send_command[7]=0x02  # User-Defined Max Power Value
+      send_command[9]=0x02  # User-Defined Max Power Value
+      transact_poe_mcu \
+        "${send_command[*]}" "${poe_conf["delay_time"]}" "received_data"
+
+      if [[ ${received_data[2]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[3]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[4]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[5]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[6]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[7]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[8]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[9]} -ne $RT_SUCCESS ]]; then
+        quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+      fi
+
+      # clear for next round
+      count=0
+      read -r -a send_command <<< "${STANDARD_COMMAND[*]}"
+    fi
+  done
+
+  print_poe_log "."
+  local total_num=$(( ${#BANK_MAX_POWER[*]} -1 ))
+  check_max=$(echo 0x10000 | awk '{print int( $1 * 0.1 ) }' )
+
+  for idx in $(seq 0 $total_num); do
+    power_bank=$(echo "${BANK_MAX_POWER[$idx]}" | cut -d ':' -f 1 )
+    total_power=$(echo "${BANK_MAX_POWER[$idx]}" | cut -d ':' -f 2 | cut -d '-' -f 1 )
+    guard_band=$(echo "${BANK_MAX_POWER[$idx]}" | cut -d ':' -f 2 | cut -d '-' -f 2 )
+
+    if [[ ! "$power_bank" =~ ^[[:digit:]]*$ ]] || [[ "$power_bank" -gt "${poe_conf["MAX_BANK"]}" ]] || \
+       [[ ! "$total_power" =~ ^[[:digit:]]*$ ]] || [[ "$total_power" -ge "$check_max" ]] || \
+       [[ ! "$guard_band" =~ ^[[:digit:]]*$ ]] || [[ "$guard_band" -ge "$check_max" ]]; then
+      print_poe_log " Fail \n"
+      quit_util "$RT_ERR_REJECT" "$LINENO" "Invalid config data"
+    fi
+
+    power_bank=$(printf "0x%02X" "$power_bank" )
+    total_power=$(echo "$total_power" | awk '{print $1 / 0.1 }' )  # 0.1W /LSB
+    guard_band=$(echo "$guard_band" | awk '{print $1 / 0.1 }' )  # 0.1W /LSB
+    total_power_HB=$(printf "0x%02X" "$(( total_power >> 8 ))" )
+    total_power_LB=$(printf "0x%02X" "$(( total_power & 0xFF ))" )
+    guard_band_HB=$(printf "0x%02X" "$(( guard_band >> 8 ))" )
+    guard_band_LB=$(printf "0x%02X" "$(( guard_band & 0xFF ))" )
+
+    ## (0x18) Power Source Configuration Command
+    transact_poe_mcu \
+      "$CMD_CONF_BANK_LIMIT SEQ $power_bank $total_power_HB $total_power_LB $guard_band_HB $guard_band_LB 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+      "${poe_conf["delay_time"]}" "received_data"
+    
+    [[ ${received_data[3]} -ne $RT_SUCCESS ]] && \
+      quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+  done
+
+  print_poe_log " OK \n"
+
+# STEP 6. Save configuration to MCU flash
+  print_poe_log "Save PoE system configuration ..."
+
+  ## (0xE0-F0) Misc. Command: Save Configuration Command
+  transact_poe_mcu \
+    "$CMD_MISC $SUB_SAVE_CONF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+    quit_util "$RT_ERR_REJECT" "$LINENO" " Fail"
+
+  print_poe_log " OK \n"
+
+  print_poe_log "Initialize PoE system [Success] \n"
+
+  return $RT_SUCCESS
+}
+
+function read_pse() {
+  local request_type=$1
+
+  ## (0x23) Total Power Allocated Query Command
+  transact_poe_mcu \
+    "$CMD_GET_PSE SEQ 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  MPSM_Status=$(( received_data[6] ))
+  Total_Power_Allocated=$(echo $(( received_data[2] << 8 | received_data[3] )) | awk '{print $1 * 0.1 }' )
+  Power_Available=$(echo $(( received_data[4] << 8 | received_data[5] )) | awk '{print $1 * 0.1 }' )
+  Display_Remaining_Power=$(echo "$Power_Available $Total_Power_Allocated" | awk '{print $1 - $2 }' )
+
+  if [ "$request_type" == "PSE_VER" ]; then
+    ## (0x20) System Status Query Command
+    transact_poe_mcu \
+      "$CMD_GET_VER SEQ 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+      "${poe_conf["delay_time"]}" "received_data"
+
+    SW_Version_HB=$(( received_data[7] >> 4 )) # Major num
+    SW_Version_LB=$(( received_data[7] & 0x0F )) # Minor num
+    Ex_Version_HB=$(( received_data[10] >> 4 )) # Release num
+    Ex_Version_LB=$(( received_data[10] & 0x0F )) # Build num
+
+    print_poe_log "PoE MCU version=$SW_Version_HB.$SW_Version_LB.$Ex_Version_HB.$Ex_Version_LB \n"
+  fi
+
+  print_poe_log "PowerBankIndex=$MPSM_Status \n"
+  print_poe_log "PowerConsumption(W)=$Total_Power_Allocated \n"
+  print_poe_log "AvailablePower(W)=$Display_Remaining_Power \n"
+
+  return $RT_SUCCESS
+}
+
+function enable_port() {
+  local request_type=$1
+  local port_bitmap=$2
+  local check_range=$(( 1 << (poe_conf["MAX_PORT"] +1) ))  # max port bit +1
+  local count=0
+  read -r -a send_command <<< "${STANDARD_COMMAND[*]}"
+
+  [[ "$port_bitmap" -ge "$check_range" ]] && \
+    quit_util "$RT_ERR_ARGUMENT" "$LINENO" "input out of range"
+  
+  print_poe_log "$request_type PoE port "
+
+  # bit[0] means all port
+  [[ $(( port_bitmap & 0x1 )) -eq 1 ]] && port_bitmap=0xFFFFFFFFFFFFF
+
+  for port in $(seq 1 "${poe_conf["MAX_PORT"]}"); do
+    if [[ $(( (port_bitmap >> port) & 0x1 )) -eq 1 ]]; then
+      count=$(( count +1 ))
+      send_command[$(( count *2 ))]=$(printf "0x%02X" "$(( port -1 ))" )  # 0 based for PoE MCU port
+
+      [[ $request_type == "Enable" ]] && \
+        send_command[$(( count *2 +1 ))]=0x01 || \
+        send_command[$(( count *2 +1 ))]=0x00
+    fi
+
+    # 4 port in 1 group to send
+    if [[ $count -gt 0 && $port -eq ${poe_conf["MAX_PORT"]} ]] || [[ $count -eq 4 ]]; then
+      ## (0x00) PSE Functionality Enable Command
+      send_command[$CMD]=$CMD_EN_PORT  
+      transact_poe_mcu \
+        "${send_command[*]}" "${poe_conf["delay_time"]}" "received_data"
+
+      if [[ ${received_data[2]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[3]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[4]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[5]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[6]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[7]} -ne $RT_SUCCESS ]] || \
+         [[ ${received_data[8]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[9]} -ne $RT_SUCCESS ]]; then
+        quit_util "$RT_ERR_REJECT" "$LINENO" "[Fail]"
+      fi
+
+      # clear for next round
+      count=0
+      read -r -a send_command <<< "${STANDARD_COMMAND[*]}"
+    fi
+  done
+  print_poe_log "[Success] \n"
+
+  return $RT_SUCCESS
+}
+
+function read_port() {
+  local request_type=$1
+  local port_bitmap=$2
+  local port_en_table=( "Disable" "Enable" "Test mode" "Reserved" )
+  local power_mode_table=( "16.2" "16.2" "16.2" "31.2" "31.2" "61.2" "91.2" )
+  local check_range=$(( 1 << (poe_conf["MAX_PORT"] +1) ))  # max port bit +1
+
+  [[ "$port_bitmap" == "NA" ]] && \
+    quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Unknown specific input"
+
+  [[ "$port_bitmap" -ge "$check_range" ]] && \
+    quit_util "$RT_ERR_ARGUMENT" "$LINENO" "input out of range"
+
+  # bit[0] means all port
+  [[ $(( port_bitmap & 0x1 )) -eq 1 ]] && port_bitmap=0xFFFFFFFFFFFFF
+ 
+  for port in $(seq 1 "${poe_conf["MAX_PORT"]}"); do
+    if [[ $(( (port_bitmap >> port) & 0x1 )) -eq 1 ]]; then
+      mcu_port_id=$(printf "0x%02X" "$(( port -1 ))" )  # 0 based for MCU port number
+    else
+      continue
+    fi
+
+    if [ "$request_type" == "ALL" ]; then
+      ## (0x25) Port Configuration Query Command
+      transact_poe_mcu \
+        "$CMD_GET_PORT_CONF SEQ $mcu_port_id 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+        "${poe_conf["delay_time"]}" "received_data"
+
+      PSE_Enable=$(( received_data[3] & 0x03 ))
+      Display_pse_enable=${port_en_table[$PSE_Enable]}
+
+      ## (0x26) Port Extended Configuration Query Command
+      transact_poe_mcu \
+        "$CMD_GET_PORT_LIMIT SEQ $mcu_port_id 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+        "${poe_conf["delay_time"]}" "received_data"
+
+      Power_Mode=$(( received_data[3] & 0x07 ))
+      Violation_Type=$(( received_data[4] & 0x03 ))
+      Maximum_Power=$(echo "${received_data[5]}" | awk '{print $1 * 0.2 }' )
+
+      ## (0x30) Port Measurement Query Command
+      transact_poe_mcu \
+        "$CMD_GET_PORT_PWR SEQ $mcu_port_id 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+        "${poe_conf["delay_time"]}" "received_data"
+
+      Voltage=$(echo $(( received_data[3] << 8 | received_data[4] )) | awk '{print $1 * 64.45 /1000 }' )
+      Current=$(( received_data[5] << 8 | received_data[6] ))
+      Temperature=$(echo $(( received_data[7] << 8 | received_data[8] )) | awk '{print ($1 -120) *(-1.25) +125 }' )
+      Power=$(echo $(( received_data[9] << 8 | received_data[10] )) | awk '{print $1 * 0.1 }' )
+    
+    else      
+      transact_poe_mcu \
+        "$request_type SEQ $mcu_port_id 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+        "${poe_conf["delay_time"]}" "received_data"
+
+      # For CMD_GET_PORT_CONF
+      PSE_Enable=$(( received_data[3] & 0x03 ))
+      Display_pse_enable=${port_en_table[$PSE_Enable]}
+      
+      # For CMD_GET_PORT_LIMIT
+      Power_Mode=$(( received_data[3] & 0x07 ))
+      Violation_Type=$(( received_data[4] & 0x03 ))
+      Maximum_Power=$(echo "${received_data[5]}" | awk '{print $1 * 0.2 }' )
+      
+      # For CMD_GET_PORT_PWR
+      Voltage=$(echo $(( received_data[3] << 8 | received_data[4] )) | awk '{print $1 * 64.45 /1000 }' )
+      Current=$(( received_data[5] << 8 | received_data[6] ))
+      Temperature=$(echo $(( received_data[7] << 8 | received_data[8] )) | awk '{print ($1 -120) *(-1.25) +125 }' )
+      Power=$(echo $(( received_data[9] << 8 | received_data[10] )) | awk '{print $1 * 0.1 }' )
+    fi
+
+    print_poe_log "Port=$port \n"
+    if [ "$request_type" == "$CMD_GET_PORT_CONF" ] || [ "$request_type" == "ALL" ]; then
+      print_poe_log "Status=$Display_pse_enable \n"
+    fi
+    
+    if [ "$request_type" == "$CMD_GET_PORT_LIMIT" ] || [ "$request_type" == "ALL" ]; then
+      # If power threshold type is not "User Defined"
+      [[ "$Violation_Type" -ne 0x02 ]] && Maximum_Power=${power_mode_table[$Power_Mode]}
+      
+      print_poe_log "PowerLimit(W)=$Maximum_Power \n"
+    fi
+    
+    if [ "$request_type" == "$CMD_GET_PORT_PWR" ] || [ "$request_type" == "ALL" ]; then
+      print_poe_log "Voltage(V)=$Voltage \n"
+      print_poe_log "Current(mA)=$Current \n"
+      print_poe_log "PortPowerConsumption(W)=$Power \n"
+      print_poe_log "Temperature(degC)=$Temperature \n"
+    fi
+    print_poe_log "\n"
+  done
+
+  return $RT_SUCCESS
+}
+
+function set_limit() {
+  local request_type=$1
+  limit_bitmap=$(echo "$2" | cut -d " " -f 1)
+  max_limit=$(echo "$2" | cut -d " " -f 2)
+  guard_band=$(echo "$2" | cut -d " " -f 3)
+
+  if [[ "$request_type" == "Bank" ]]; then
+    print_poe_log "Configure maximum power threshold for power bank "
+
+    check_range=$(( 1 << (poe_conf["MAX_BANK"] +1) ))  # max bank bit +1
+    check_max=$(echo 0x10000 | awk '{print int( $1 * 0.1 ) }') # max limit is 2 byte
+
+    if [[ "$limit_bitmap" -ge "$check_range" ]] || \
+       [[ "$max_limit" -ge "$check_max" ]] || \
+       [[ "$guard_band" -ge "$check_max" ]]; then
+      quit_util "$RT_ERR_ARGUMENT" "$LINENO" "input out of range"
+    fi
+
+    max_limit=$(echo "$max_limit" | awk '{print $1 / 0.1 }')  # 0.1W /LSB
+    max_limit_HB=$(printf "0x%02X" "$(( max_limit >> 8 ))")
+    max_limit_LB=$(printf "0x%02X" "$(( max_limit & 0xFF ))")
+
+    if [[ -n "$guard_band" ]];then
+      guard_band=$(echo "$guard_band" | awk '{print $1 / 0.1 }')  # 0.1W /LSB
+      guard_band_HB=$(printf "0x%02X" "$(( guard_band >> 8 ))")
+      guard_band_LB=$(printf "0x%02X" "$(( guard_band & 0xFF ))")
+    else
+      guard_band_HB=0x00
+      guard_band_LB=0x00
+    fi
+
+    for bank in $(seq 0 "${poe_conf["MAX_BANK"]}"); do
+      if [[ $(( (limit_bitmap >> bank) & 0x1 )) -eq 1 ]]; then
+        bank=$(printf "0x%02X" "$bank")
+
+        ## (0x18) Power Source Configuration Command
+        transact_poe_mcu \
+          "$CMD_CONF_BANK_LIMIT SEQ $bank $max_limit_HB $max_limit_LB $guard_band_HB $guard_band_LB 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+          "${poe_conf["delay_time"]}" "received_data"
+
+        [[ ${received_data[3]} -ne $RT_SUCCESS ]] && \
+          quit_util "$RT_ERR_REJECT" "$LINENO" "[Fail]"
+      else
+        continue
+      fi
+    done
+
+  elif [[ "$request_type" == "Port" ]]; then
+    print_poe_log "Configure maximum power threshold for PoE port "
+    
+    check_range=$(( 1 << (poe_conf["MAX_PORT"] +1) ))  # max port bit +1
+    check_max=$(echo 0x100 | awk '{print int( $1 * 0.2 ) }') # max limit is 1 byte
+    
+    count=0
+    read -r -a send_command <<< "${STANDARD_COMMAND[*]}"
+
+    if [[ "$limit_bitmap" -ge "$check_range" ]] || \
+       [[ "$max_limit" -ge "$check_max" ]]; then
+      quit_util "$RT_ERR_ARGUMENT" "$LINENO" "input out of range"
+    fi
+
+    max_limit=$(echo "$max_limit" | awk '{print $1 / 0.2 }')  # 0.2W / LSB
+    max_limit=$(printf "0x%02X" "$max_limit")
+
+    # bit[0] means all port
+    [[ $(( limit_bitmap & 0x1 )) -eq 1 ]] && limit_bitmap=0xFFFFFFFFFFFFF
+
+    for port in $(seq 1 "${poe_conf["MAX_PORT"]}"); do
+      if [[ $(( (limit_bitmap >> port) & 0x1 )) -eq 1 ]]; then
+        count=$(( count +1 ))
+        send_command[$(( count *2 ))]=$(printf "0x%02X" "$(( port -1 ))")  # 0 based for PoE MCU port
+        send_command[$(( count *2 +1 ))]=0x02  # User-Defined Max Power Value
+      fi
+
+      # 4 port in 1 group to send
+      if [[ $count -gt 0 && $port -eq ${poe_conf["MAX_PORT"]} ]] || [[ $count -eq 4 ]]; then
+        ## (0x15) Power Threshold Type Configuration Command
+        send_command[$CMD]=$CMD_CONF_LIMIT_TYPE
+        transact_poe_mcu \
+          "${send_command[*]}" "${poe_conf["delay_time"]}" "received_data"
+
+        if [[ ${received_data[2]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[3]} -ne $RT_SUCCESS ]] || \
+           [[ ${received_data[4]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[5]} -ne $RT_SUCCESS ]] || \
+           [[ ${received_data[6]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[7]} -ne $RT_SUCCESS ]] || \
+           [[ ${received_data[8]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[9]} -ne $RT_SUCCESS ]]; then
+          quit_util "$RT_ERR_REJECT" "$LINENO" "[Fail]"
+        fi
+
+        ## (0x16) Maxinum Power Threshold Configuration Command
+        send_command[$CMD]=$CMD_CONF_PORT_LIMIT
+        [[ ${send_command[2]} -lt ${poe_conf["MAX_PORT"]} ]] && send_command[3]="$max_limit"
+        [[ ${send_command[4]} -lt ${poe_conf["MAX_PORT"]} ]] && send_command[5]="$max_limit"
+        [[ ${send_command[6]} -lt ${poe_conf["MAX_PORT"]} ]] && send_command[7]="$max_limit"
+        [[ ${send_command[8]} -lt ${poe_conf["MAX_PORT"]} ]] && send_command[9]="$max_limit"
+        transact_poe_mcu \
+          "${send_command[*]}" "${poe_conf["delay_time"]}" "received_data"
+
+        if [[ ${received_data[2]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[3]} -ne $RT_SUCCESS ]] || \
+           [[ ${received_data[4]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[5]} -ne $RT_SUCCESS ]] || \
+           [[ ${received_data[6]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[7]} -ne $RT_SUCCESS ]] || \
+           [[ ${received_data[8]} -lt ${poe_conf["MAX_PORT"]} && ${received_data[9]} -ne $RT_SUCCESS ]]; then
+          quit_util "$RT_ERR_REJECT" "$LINENO" "[Fail]"
+        fi
+        # clear for next round
+        count=0 
+        read -r -a send_command <<< "${STANDARD_COMMAND[*]}"
+      fi
+    done
+  fi
+
+  print_poe_log "[Success] \n"
+  return $RT_SUCCESS
+}
+
+function read_bank() {
+  local bank_bitmap=$2
+  local check_range=$(( 1 << (poe_conf["MAX_BANK"] +1) ))  # max port bit +1
+
+  [[ "$bank_bitmap" -ge "$check_range" ]] && \
+    quit_util "$RT_ERR_ARGUMENT" "$LINENO" "input out of range"
+
+  for bank in $(seq 0 "${poe_conf["MAX_BANK"]}"); do
+    if [[ $(( (bank_bitmap >> bank) & 0x1 )) -eq 1 ]]; then
+      print_poe_log "PowerBankIndex=$bank \n"
+      
+      bank=$(printf "0x%02X" "$bank")
+
+      ## (0x27) System Power Management Configuration Query Command
+      transact_poe_mcu \
+        "$CMD_GET_BANK_LIMIT $bank 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+        "${poe_conf["delay_time"]}" "received_data"
+
+      total_power=$(echo $(( received_data[3] << 8 | received_data[4] )) | awk '{print $1 * 0.1 }')  # 0.1W /LSB
+      guard_band=$(echo $(( received_data[5] << 8 | received_data[6] )) | awk '{print $1 * 0.1 }')  # 0.1W /LSB
+
+      print_poe_log "PowerLimit(W)=$total_power \n"
+      print_poe_log "GuardBand(W)=$guard_band \n"
+      print_poe_log "\n"
+    else
+      continue
+    fi
+  done
+
+  return $RT_SUCCESS
+}
+
+function set_event_mask() {
+  local request_type=$1
+
+  if [[ "$request_type" -eq 0 ]]; then
+    print_poe_log "Disable PoE event mask "
+    en_event=0xFF  # Enable interrupt for all event
+  elif [[ "$request_type" -eq 1 ]]; then
+    print_poe_log "Enable PoE event mask "
+    en_event=0x00  # Ignore all event
+  fi
+
+  ## (0x0D) Global Port Event Mask Configuration Command
+  transact_poe_mcu \
+    "$CMD_CONF_EVENT SEQ $en_event 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+    quit_util "$RT_ERR_REJECT" "$LINENO" "[Fail]"
+
+  print_poe_log "[Success] \n"
+  return $RT_SUCCESS
+}
+
+function upgrade_mcu_fw() {
+  local mcu_image="$2"
+  local image_size
+
+# Step 1. Clear existing application image
+  print_poe_log "Jump to loader ..."
+  ## (0xE0-C0) Misc. Command: Clear Application Image Command
+  transceive \
+    "$CMD_MISC $SUB_CLEAR_MCU 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0x97" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  sleep 1 # wait 1 sec for PoE MCU jump to loader
+  print_poe_log " OK \n"
+
+# Step 2. Download application image to PoE MCU
+  print_poe_log "Downloading image "
+  image_size=$(wc -c "$mcu_image" | awk '{print $1}')
+  for (( offset = 0; offset < image_size; offset +=32 )); do
+    # dump 32 * 1 byte per line (-s offset) (-n print_lengh) (-v force_print)
+    read -r -a image_data <<< "$(hexdump -e '32 1 "0x%02X " "\n"' -s "$offset" -n 32 -v "$mcu_image")"
+
+    offset_HB=$(printf "0x%02X" $(( offset >> 8 )) )  # high byte of offset
+    offset_LB=$(printf "0x%02X" $(( offset & 0xFF )) )  # low byte of offset
+
+    [[ "$FLAG_DEBUG" == "1" ]] && echo
+    print_dbg "image_offset = $offset_HB $offset_LB \n"
+    print_dbg "image_data   = ${image_data[*]}"
+    [[ "$FLAG_DEBUG" == "1" ]] && echo
+
+    ## (0xE0-80) Misc. Command: Application Image Download Command
+    i2ctransfer -y "${poe_conf["bus"]}" w36@"${poe_conf["addr"]}" \
+      $CMD_MISC $SUB_DNLD_MCU_APP "$offset_HB" "$offset_LB" "${image_data[@]}"
+    print_poe_log "."
+  done
+  print_poe_log " OK \n"
+
+# Step 3. Force the PoE MCU to check the CRC and jump to the application
+  print_poe_log "Jump to application ..."
+  ## (0xE0-40) Misc. Command: Force CRC Check Command
+  i2ctransfer -y "${poe_conf["bus"]}" w2@"${poe_conf["addr"]}" $CMD_MISC $SUB_VERIFY_CRC
+
+  print_poe_log " OK \n"
+
+# Step 4. Wait a few seconds and check the PoE MCU status
+  print_poe_log "Reboot PoE subsystem ..."
+  sleep 2 # wait 2 sec
+
+  ## (0x20) System Status Query Command
+  transact_poe_mcu \
+    "$CMD_GET_VER SEQ 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  print_poe_log " OK \n"
+  SW_Version_HB=$(( received_data[7] >> 4 )) # Major num
+  SW_Version_LB=$(( received_data[7] & 0x0F )) # Minor num
+  Ex_Version_HB=$(( received_data[10] >> 4 )) # Release num
+  Ex_Version_LB=$(( received_data[10] & 0x0F )) # Build num
+
+  print_poe_log "Firmware Version=$SW_Version_HB.$SW_Version_LB.$Ex_Version_HB.$Ex_Version_LB \n"
+  print_poe_log "Upgrade PoE MCU firmware [Success] \n"
+
+  return $RT_SUCCESS
+}
+
+function send_usr_cmd() {
+  read -r -a send_command <<< "$2"
+  local data_lengh=$(( ${#send_command[@]} +1 )) # without checksum byte
+
+  [[ $data_lengh -ne ${poe_conf["msg_length"]} ]] && \
+    quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Invalid message length ($data_lengh)"
+
+  # Form the format as two byte Hex
+  for byte in $(seq 0 ${#send_command[@]}); do
+    send_command[$byte]=$(( 0x${send_command[$byte]} ))
+    send_command[$byte]=$(printf "0x%02X" "${send_command[$byte]}")
+  done
+
+  FLAG_DEBUG="1"
+  
+  transact_poe_mcu \
+    "${send_command[*]}" "${poe_conf["delay_time"]}" "received_data"
+  
+  FLAG_DEBUG="0"
+  
+  return $RT_SUCCESS
+}
+
+function save_poe_system() {
+  print_poe_log "Save current system configuration "
+
+  ## (0xE0-F0) Misc. Command: Save Configuration Command
+  transact_poe_mcu \
+    "$CMD_MISC $SUB_SAVE_CONF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+    quit_util "$RT_ERR_REJECT" "$LINENO" "[Fail]"
+
+  print_poe_log "[Success] \n"
+
+  return $RT_SUCCESS
+}
+
+function restore_poe_system() {
+  print_poe_log "Restore the PoE system configuration to default "
+
+# Step 1. Enter port mapping configuration mode
+  ## (0x02) Logical Port Map Enable Command
+  transact_poe_mcu \
+    "$CMD_CONF_PORT_MAP SEQ 0x02 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "0.300" "received_data" # wait 300 ms
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+    quit_util "$RT_ERR_REJECT" "$LINENO" "[Fail]"
+  
+# Step 2. Clear the saved configuration stored in the EEPROM
+  ## (0xE0-E0) Misc. Command: Clear Configuration Command
+  transact_poe_mcu \
+    "$CMD_MISC $SUB_CLEAR_CONF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "0.044" "received_data" # wait 44 ms
+
+  [[ ${received_data[2]} -ne $RT_SUCCESS ]] && \
+    quit_util "$RT_ERR_REJECT" "$LINENO" "[Fail]"
+
+  print_poe_log "[Success] \n"
+  print_poe_log "Please do the power cycle for PoE system \n"
+
+  return $RT_SUCCESS
+}
+
+function reboot_poe_system() {
+  print_poe_log "Reboot the PoE system ... "
+
+  ## (0x09) System Reset Command
+  transceive \
+    "$CMD_RESET_MCU 0x00 0x01 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0x02" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  sleep 2 # wait 2 sec
+  print_poe_log "[Success]\n"  
+
+  return $RT_SUCCESS
+}
+
+function display_version() {
+  ## (0x20) System Status Query Command
+  transact_poe_mcu \
+    "$CMD_GET_VER SEQ 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM" \
+    "${poe_conf["delay_time"]}" "received_data"
+
+  SW_Version_HB=$(( received_data[7] >> 4 )) # Major num
+  SW_Version_LB=$(( received_data[7] & 0x0F )) # Minor num
+  Ex_Version_HB=$(( received_data[10] >> 4 )) # Release num
+  Ex_Version_LB=$(( received_data[10] & 0x0F )) # Build num
+
+  print_poe_log "PoE utility version=$UTIL_VER \n"
+  print_poe_log "PoE MCU version=$SW_Version_HB.$SW_Version_LB.$Ex_Version_HB.$Ex_Version_LB \n"
+
+  return $RT_SUCCESS
+}
+
+# ============================== #
+#   Intial Global Variable
+# ============================== #
+declare -A usr_request
+usr_request["feature"]=""
+usr_request["flag"]=""
+usr_request["argument"]=""
+
+declare -a STANDARD_COMMAND=( 0xFF SEQ 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF 0xFF CHECKSUM )
+declare -a received_data=("")
+
+# Declare message field
+CMD=${poe_conf["byte_cmd"]}
+SEQ=${poe_conf["byte_seq"]}
+CHECKSUM=${poe_conf["byte_checksum"]}
+
+usr_bitmap="0x0"
+# ============================== #
+#   Main Function
+# ============================== #
+# when MAX_PORT <= 0, this SKU not supports PoE 
+[[ ${poe_conf["MAX_PORT"]} -le 0 ]] && quit_util "$RT_SUCCESS" "$LINENO" "SKU: $SKU_NAME not support PoE"
+
+if [ -z $# ] || [ $# -gt 6 ] || \
+   [[ $1 != -* && $1 != --* ]]; then
+  usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+fi
+
+for argv in "$@" ; do
+  shift # OPTIND++
+  case $argv in
+  --debug)
+    FLAG_DEBUG="1"
+    ;;
+
+  --status)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="read_port"
+    usr_request["flag"]=${Cmd_ID:-$CMD_GET_PORT_CONF}
+    usr_request["argument"]="NA"
+    ;;
+
+  --power)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="read_port"
+    usr_request["flag"]=${Cmd_ID:-$CMD_GET_PORT_PWR}
+    usr_request["argument"]="NA"
+    ;;
+
+  --limit)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="read_port"
+    usr_request["flag"]=${Cmd_ID:-$CMD_GET_PORT_LIMIT}
+    usr_request["argument"]="NA"
+    ;;
+
+  --restore)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="restore_poe_system"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="NA"
+    ;;
+
+  --reboot)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="reboot_poe_system"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="NA"
+    ;;
+
+  --version)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="display_version"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="NA"
+    ;;
+
+  --help)
+    usage && quit_util "$RT_SUCCESS" "$LINENO"
+    ;;
+
+  --*)
+    usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+    ;;
+
+  *)
+    set -- "$@" "$argv" 
+    ;;
+  esac
+done
+
+while getopts "itgvzhb:p:e:d:n:o:l:B:r:u:w:" argv ; do
+  case $argv in
+  i)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="init_poe_system"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="NA"
+    ;;
+
+  t)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+    
+    usr_request["feature"]="read_pse"
+    usr_request["flag"]="PSE_VER"
+    usr_request["argument"]="NA"
+    ;;
+
+  g)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="read_pse"
+    usr_request["flag"]="PSE"
+    usr_request["argument"]="NA"
+    ;;
+
+  v)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="save_poe_system"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="NA"
+    ;;
+
+  z)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_request["feature"]="display_version"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="NA"
+    ;;
+
+  b)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+    
+    parse_usr_str "$OPTARG" "usr_bitmap"
+
+    usr_request["feature"]="read_bank"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="$usr_bitmap"
+    ;;
+
+  p)
+    [[ -n "${usr_request[feature]}" && "${usr_request[feature]}" != "read_port" ]] \
+      && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    parse_usr_str "$OPTARG" "usr_bitmap"
+
+    [[ -z "${usr_request[feature]}" ]] && usr_request["feature"]="read_port"
+    [[ -z "${usr_request[flag]}" ]] && usr_request["flag"]="ALL"
+    usr_request["argument"]="$usr_bitmap"
+    ;;
+
+  e)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    parse_usr_str "$OPTARG" "usr_bitmap"
+
+    usr_request["feature"]="enable_port"
+    usr_request["flag"]="Enable"
+    usr_request["argument"]="$usr_bitmap"
+    ;;
+
+  d)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    parse_usr_str "$OPTARG" "usr_bitmap"
+
+    usr_request["feature"]="enable_port"
+    usr_request["flag"]="Disable"
+    usr_request["argument"]="$usr_bitmap"
+    ;;
+
+  n)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    parse_usr_str "$OPTARG" "usr_bitmap"
+
+    usr_request["feature"]="set_limit"
+    usr_request["flag"]="Bank"
+    usr_request["argument"]="$usr_bitmap"
+    ;;
+
+  o)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    parse_usr_str "$OPTARG" "usr_bitmap"
+
+    usr_request["feature"]="set_limit"
+    usr_request["flag"]="Port"
+    usr_request["argument"]="$usr_bitmap"
+    ;;
+
+  l)
+    [[ "${usr_request[feature]}" != "set_limit" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+    
+    [[ ! "$OPTARG" =~ ^[[:digit:]]*$ ]] && quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Invalid input format"
+    usr_request["argument"]="${usr_request["argument"]} $OPTARG"
+    ;;
+
+  B)
+    [[ "${usr_request[feature]}" != "set_limit" || "${usr_request[flag]}" != "Bank"  ]] \
+      && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    if [[ ! "$OPTARG" =~ ^[[:digit:]]*$ ]]; then
+      quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Invalid input format"
+    fi
+
+    usr_request["argument"]="${usr_request["argument"]} $OPTARG"
+    ;;
+
+  r)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+    
+    if [[ "$OPTARG" -ne 0 ]] && [[ "$OPTARG" -ne 1 ]]; then
+      quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Invalid input format"
+    fi
+
+    usr_request["feature"]="set_event_mask"
+    usr_request["flag"]="$OPTARG"
+    usr_request["argument"]="NA"
+    ;;
+
+  u)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+
+    usr_file_path="$OPTARG"
+    usr_file="$(basename "$usr_file_path")"
+    extension="${usr_file##*.}"
+
+    if [[ ! -f "$usr_file_path" ]]; then 
+      quit_util "$RT_ERR_MISSING_FILE" "$LINENO" "Invalid input format"
+    fi
+
+    if [[ "$extension" != "bin" ]]; then 
+      quit_util "$RT_ERR_ARGUMENT" "$LINENO" "Invalid input file format"
+    fi
+
+    usr_request["feature"]="upgrade_mcu_fw"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="$usr_file_path"
+    ;;
+
+  w)
+    [[ -n "${usr_request[feature]}" ]] && usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+    
+    usr_request["feature"]="send_usr_cmd"
+    usr_request["flag"]="NA"
+    usr_request["argument"]="$OPTARG"
+    ;;
+
+  h)
+    usage && quit_util "$RT_SUCCESS" "$LINENO"
+    ;;
+
+  *)
+    usage && quit_util "$RT_ERR_OPTION" "$LINENO"
+    ;;
+  esac
+done
+
+print_dbg "Feature  : '${usr_request[feature]}' \n"
+print_dbg "Option   : '${usr_request[flag]}' \n"
+print_dbg "Argument : '${usr_request[argument]}' \n"
+
+clear_previous_msg
+"${usr_request[feature]}" "${usr_request[flag]}" "${usr_request[argument]}"
+quit_util "$?" "$LINENO"
+# ==================== End of Utility ==================== #
+# ======================================================== #

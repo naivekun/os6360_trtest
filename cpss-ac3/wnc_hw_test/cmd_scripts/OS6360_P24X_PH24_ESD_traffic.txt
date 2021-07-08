@@ -1,0 +1,30 @@
+do traffic
+// 1G
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+send port 0/0,3 file packet_EMI.txt
+// 10G
+send port 0/26,27 file packet_EMI.txt
+send port 0/26,27 file packet_EMI.txt
+send port 0/26,27 file packet_EMI.txt
+send port 0/26,27 file packet_EMI.txt
+send port 0/26,27 file packet_EMI.txt
+send port 0/26,27 file packet_EMI.txt
+send port 0/26,27 file packet_EMI.txt
+send port 0/26,27 file packet_EMI.txt
+send port 0/26,27 file packet_EMI.txt
+end

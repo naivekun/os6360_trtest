@@ -1,0 +1,92 @@
+#!/bin/bash
+
+#----------------------------------------------------------------------------------
+# cmdd conf
+#----------------------------------------------------------------------------------
+# run mode RUN_BY_ROUND/RUN_PERMANENT/RUN_UNTIL_TIMEOUT
+CFG_RUN_MODE=$RUN_BY_ROUND
+
+# maximum round number
+#  this setting is only used with RUN_BY_ROUND
+CFG_RUN_MAX_ROUND=1
+
+# run timeout seconds
+# this setting is only used with RUN_UNTIL_TIMEOUT
+CFG_RUN_TIMEOUT_SEC=1200
+
+# stop mode STOP_NEVER/STOP_ON_ERROR
+CFG_STOP_MODE=$STOP_ON_ERROR
+
+# log file prefix
+CFG_LOG_PREFIX=/cmd_daemon
+
+# persistent media, if media is null or can not mount, using tmpfs 
+CFG_PERSISTENT_MEDIA="ubi0"
+
+# persistent mount point
+CFG_PERSISTENT_MNT="/flash/diags/"
+
+# CPU affinity for final funtional body
+CFG_BURN_IN_CPU_AFFINITY="0x1"
+
+# CPU affinity for serial and parallel command sets
+CFG_SER_CMDSET_CPU_AFFINITY="0x1"
+CFG_PAR_CMDSET_CPU_AFFINITY="0x7"
+
+# background stress load parameters
+CFG_CPU_STRESS_CORE_MASK="0x6" # CPU core to run stress test
+CFG_MEM_STRESS_CORE_MASK="0x8" # core to run memory stress test
+CFG_MEM_STRESS_MEM_SIZE="1G" # memory size to run stress test
+
+#cmdset
+CFG_CMD_SET_DIR=./cmdset
+CFG_CMD_LIST_FILE=cmd_list
+CFG_CMD_IDX_FILE=cmd_idx_file
+
+# Prefix of parallel command
+PAR_CMD_PREFIX=par_cmd_
+
+# Debug Mode 0:Off 1:On
+CFG_DEBUG_MODE=0
+
+# Parallel command srcipts mount point and tmpfs size
+CFG_PARCMD_TMPFS_MNT="/mnt/cmdd_parcmd"
+CFG_PARCMD_TMPFS_SIZE="2m"
+
+# Tmp log mount point and tmpfs size
+CFG_LOG_TMPFS_MNT="/mnt/cmdd_log"
+CFG_LOG_TMPFS_SIZE="50m"
+
+# Copy log to remote by scp command, 0:disable 1:enable
+CFG_LOG_SCP_ENABLE=0
+
+# Remote ssh ip, user/password and directory, this setting is only used with CFG_LOG_SCP_ENABLE=1
+CFG_LOG_SCP_IP="172.20.10.120"
+CFG_LOG_SCP_USR="wnc"
+CFG_LOG_SCP_PWD="12345678"
+CFG_LOG_SCP_REMOTE_PATH="/tmp/"
+
+# Show SFCS message
+SFCS_FLAG="true"
+
+#----------------------------------------------------------------------------------
+# final functional special conf
+#----------------------------------------------------------------------------------
+
+# STOP_ON_ERROR flag
+STOP_FLAG_FILE="${CFG_PARCMD_TMPFS_MNT}/stop_error_flag"
+
+# Dump log immediately
+DUMP_LOG_NOW="true"
+
+# Dump Simplify log
+LOG_LITE="true"
+
+# Debug flag
+DEBUG_FLAG="false"
+
+# Debug level 0/1/2
+DEBUG_LV=2
+
+# Debug flag file
+DEBUG_FLAG_FILE="/usr/bin/wnc_diag/funcs/sh_funcs/file/debug_file"

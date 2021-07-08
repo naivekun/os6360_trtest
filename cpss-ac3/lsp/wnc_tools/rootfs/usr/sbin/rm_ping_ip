@@ -1,0 +1,9 @@
+#!/bin/bash
+
+rm -f /usr/data/wnc_ping_ip
+sync
+echo "Removed ping ip."
+
+exit 0
+
+

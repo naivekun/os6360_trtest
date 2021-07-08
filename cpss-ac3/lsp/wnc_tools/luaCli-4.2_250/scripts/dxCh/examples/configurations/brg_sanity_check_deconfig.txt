@@ -1,0 +1,12 @@
+// TAG:               no; bridge; sanity-check
+// Short Description: disable packet sanity check
+// Description:       disable all the packet sanity check, AKA
+//		              Network Shield Technology
+end
+configure
+no bridge sanity-check sip-is-dip device ${dev}
+no bridge sanity-check tcp-udp-sport-is-dport device ${dev}
+no bridge sanity-check tcp-fin-without-ack device ${dev}
+
+no mac address-table dynamic 00:A0:BB:CC:DD:EE device all vlan 1
+end

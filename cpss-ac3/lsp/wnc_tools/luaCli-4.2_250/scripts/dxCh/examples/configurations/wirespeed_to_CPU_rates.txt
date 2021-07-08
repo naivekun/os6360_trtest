@@ -1,0 +1,42 @@
+// TAG:               traffic_generator_emulated; wirespeed; CPU;
+// Short Description: generate wirespeed traffic to CPU and show CPU rates
+// Description:       1. making the traffic unicast in cpu direction by configure dynamic mac address and by using the command of 'traffic-generator emulation'
+//                    2. doing capture from port 0/58 and setting mac loopback on port 58
+//					  3. show ports and CPU rates
+end
+//
+//making the traffic unicast in cpu direction
+//
+configure
+mac address-table dynamic 00:11:22:33:44:55 device ${dev} vlan 1 ethernet ${dev}/${port[4]}
+exit
+//
+traffic
+//
+// generate continuous wirespeed from port 18
+//
+traffic-generator emulate port ${dev}/${port[2]} data 001122334455008899aabbcc2222222222222222222222222222222222 count continuous-wire-speed
+//
+// capture from port 0/58
+//
+capture from port ${dev}/${port[4]}
+//
+//set mac loopback dev 0 port [4] enable
+//
+do shell-execute cpssDxChPortInternalLoopbackEnableSet ${dev},${port[4]},1
+//
+// too many printing ... when opened
+//capture show timeout 0
+//
+exit
+//
+// show which ports are generating wirespeed
+//
+show traffic traffic-generator emulate all
+//
+// show rates on the ports 
+//
+//show traffic rates all + cpu port (63)
+//
+show traffic rates ethernet ${dev}/${port[1]},${port[2]},${port[3]},${port[4]},63
+

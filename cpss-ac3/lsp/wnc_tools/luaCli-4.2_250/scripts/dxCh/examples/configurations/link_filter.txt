@@ -1,0 +1,9 @@
+// TAG:               link; counters
+// Short Description: Force link down for port 0
+// Description:       Use default VLAN. Send flooded packet check MAC counters.
+//                    Port 0 should have zero Tx packets.
+end
+configure
+interface ethernet ${dev}/${port[1]}
+shutdown
+end
